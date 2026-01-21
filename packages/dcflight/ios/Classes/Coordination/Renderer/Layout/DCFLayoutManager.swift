@@ -407,7 +407,7 @@ extension DCFLayoutManager {
         scheduleLayoutCalculation()
     }
     
-    func calculateLayoutNow() {
+    public func calculateLayoutNow() {
         assert(Thread.isMainThread, "calculateLayoutNow must be called on the main thread")
         
         let windowBounds: CGRect
@@ -416,6 +416,16 @@ extension DCFLayoutManager {
             windowBounds = window.bounds
         } else {
             windowBounds = UIScreen.main.bounds
+        }
+        
+        // 🔥 CRITICAL FIX: Never block main thread! Use async dispatch instead of Thread.sleep
+        // If reconciliation is in progress, schedule layout for next run loop
+        if YogaShadowTree.shared.isReconciling {
+            print("⏳ DCFLayoutManager: Reconciliation in progress, scheduling layout for next run loop")
+            DispatchQueue.main.async { [weak self] in
+                self?.calculateLayoutNow()
+            }
+            return
         }
         
         let success = YogaShadowTree.shared.calculateAndApplyLayout(
@@ -437,27 +447,31 @@ extension DCFLayoutManager {
                 }
             }
         } else {
-            // Layout calculation returned false - will retry
-            // Retry layout calculation if it failed (might be due to reconciliation in progress)
+            // Layout calculation returned false - might still be reconciling or other issue
+            // Make views visible anyway to prevent UI disappearing (especially after hot reload)
+            // This ensures views are visible even if layout calculation fails
+            print("⚠️ DCFLayoutManager: Layout calculation failed, but making views visible anyway")
+            if let rootView = viewRegistry[0] {
+                rootView.isHidden = false
+                rootView.alpha = 1.0
+            }
+            for (viewId, view) in viewRegistry {
+                if viewId != 0 {
+                    view.isHidden = false
+                    view.alpha = 1.0
+                }
+            }
+            
+            // Retry layout calculation after a delay
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 let retrySuccess = YogaShadowTree.shared.calculateAndApplyLayout(
                     width: windowBounds.width,
                     height: windowBounds.height
                 )
                 if retrySuccess {
-                    if let rootView = self.viewRegistry[0] {
-                        rootView.isHidden = false
-                        rootView.alpha = 1.0
-                    }
-                    for (viewId, view) in self.viewRegistry {
-                        if viewId != 0 {
-                            view.isHidden = false
-                            view.alpha = 1.0
-                        }
-                    }
-                    print("✅ DCFLayoutManager: Retry successful - all views made visible")
+                    print("✅ DCFLayoutManager: Retry successful - layout recalculated")
                 } else {
-                    print("❌ DCFLayoutManager: Retry also failed - layout calculation may be blocked")
+                    print("❌ DCFLayoutManager: Retry also failed - views are visible but layout may be incorrect")
                 }
             }
         }
@@ -473,5 +487,45 @@ extension DCFLayoutManager {
         isLayoutUpdateScheduled = false
         pendingLayouts.removeAll()
         print("✅ DCFLayoutManager: All pending layout work cancelled")
+    }
+    
+    /// Force all views to be visible (used after hot reload)
+    /// This ensures views are visible even if layout calculation fails
+    func forceAllViewsVisible() {
+        assert(Thread.isMainThread, "forceAllViewsVisible must be called on the main thread")
+        
+        print("🔥 DCFLayoutManager: Forcing all views visible after hot reload")
+        
+        // Ensure root view is visible and has correct frame
+        if let rootView = viewRegistry[0] {
+            rootView.isHidden = false
+            rootView.alpha = 1.0
+            
+            // Ensure root view has correct frame
+            let windowBounds: CGRect
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let window = windowScene.windows.first {
+                windowBounds = window.bounds
+            } else {
+                windowBounds = UIScreen.main.bounds
+            }
+            
+            let rootFrame = CGRect(x: 0, y: 0, width: windowBounds.width, height: windowBounds.height)
+            if !rootView.frame.equalTo(rootFrame) {
+                rootView.frame = rootFrame
+                rootView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                print("✅ DCFLayoutManager: Root view frame set to \(rootFrame)")
+            }
+        }
+        
+        // Make all other views visible
+        for (viewId, view) in viewRegistry {
+            if viewId != 0 { // Root view already handled above
+                view.isHidden = false
+                view.alpha = 1.0
+            }
+        }
+        
+        print("✅ DCFLayoutManager: All views forced visible (total: \(viewRegistry.count))")
     }
 }

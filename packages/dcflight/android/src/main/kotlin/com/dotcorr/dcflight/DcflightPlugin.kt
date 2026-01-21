@@ -18,10 +18,7 @@ import io.flutter.plugin.common.MethodChannel.Result
 import android.app.Activity
 import android.content.Context
 import android.util.Log
-import com.dotcorr.dcflight.bridge.DCMauiBridgeMethodChannel
 import com.dotcorr.dcflight.bridge.DCMauiEventMethodHandler
-import com.dotcorr.dcflight.bridge.DCMauiLayoutMethodHandler
-import com.dotcorr.dcflight.bridge.DCFHotRestartMethodChannel
 import com.dotcorr.dcflight.components.FrameworkComponentsReg
 import com.dotcorr.dcflight.layout.YogaShadowTree
 import com.dotcorr.dcflight.layout.DCFLayoutManager
@@ -60,15 +57,9 @@ class DcflightPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "dcflight")
         channel.setMethodCallHandler(this)
 
-        DCMauiBridgeMethodChannel.initialize(flutterPluginBinding.binaryMessenger)
-        DCMauiEventMethodHandler.initialize(flutterPluginBinding.binaryMessenger)
-        DCMauiLayoutMethodHandler.initialize(flutterPluginBinding.binaryMessenger)
-        
-        DCFScreenUtilities.initialize(flutterPluginBinding.binaryMessenger, flutterPluginBinding.applicationContext)
-        
-        DCFHotRestartMethodChannel.initialize(flutterPluginBinding.binaryMessenger)
+        DCFScreenUtilities.initialize(null, flutterPluginBinding.applicationContext)
 
-        Log.d(TAG, "DCFlight plugin initialized with method channels")
+        Log.d(TAG, "DCFlight plugin initialized - using JNI/FFI only")
     }
 
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {

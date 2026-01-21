@@ -116,9 +116,6 @@ import Flutter
             }
         }
         
-        DCMauiBridgeMethodChannel.shared.initialize(with: flutterEngine.binaryMessenger)
-        DCMauiEventMethodHandler.shared.initialize(with: flutterEngine.binaryMessenger)
-        DCMauiLayoutMethodHandler.shared.initialize(with: flutterEngine.binaryMessenger)
 
         let nativeRootVC = UIViewController()
         nativeRootVC.view.backgroundColor = .white
@@ -176,7 +173,7 @@ import Flutter
             print("✅ DCDivergerUtil: Root view frame set to screen.bounds: \(rootView.frame)")
         }
         
-        DCMauiBridgeImpl.shared.registerView(rootView, withId: 0)
+        DCFlightNative.shared.registerView(rootView, withId: 0)
         DCFScreenUtilities.shared.initialize(with: flutterEngine.binaryMessenger)
         _ = YogaShadowTree.shared
         _ = DCFLayoutManager.shared

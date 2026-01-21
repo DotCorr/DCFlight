@@ -22,7 +22,7 @@ class StateHook<T> extends Hook {
   final String? _name;
 
   /// Schedule update function to trigger re-render
-  final Function() _scheduleUpdate;
+  Function() _scheduleUpdate;
 
   /// Create a state hook
   StateHook(this._value, this._name, this._scheduleUpdate);
@@ -47,6 +47,10 @@ class StateHook<T> extends Hook {
   
   @override
   void dispose() {
+    // 🔥 CRITICAL: Clear _scheduleUpdate closure to break reference cycle
+    // The _scheduleUpdate closure captures the component instance, preventing GC
+    // Even though hooks are disposed, we need to explicitly clear the closure
+    _scheduleUpdate = () {}; // Replace with no-op to break reference
   }
   
   @override

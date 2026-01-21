@@ -6,13 +6,15 @@
  */
 
 import 'dart:async';
-import 'dart:developer' as developer;
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
 import 'package:dcflight/framework/renderer/engine/engine_api.dart';
 import 'package:dcflight/framework/utils/dcf_logger.dart';
+import 'package:dcflight/framework/renderer/interface/dcflight_ffi_wrapper.dart';
+import 'package:dcflight/framework/renderer/interface/dcflight_jni_wrapper.dart' show DCFlightJniWrapper;
 
 /// Hot reload detection and handling system for development
 /// Uses a code change detection mechanism since DCFlight diverges from Flutter widgets
@@ -24,12 +26,11 @@ class HotReloadDetector {
   }
 
   bool _isInitialized = false;
-  Timer? _monitorTimer;
   
   HotReloadDetector._();
 
   /// Initialize hot reload detection system
-  /// Hot reload is detected via reassemble() in _DCFlightHotReloadDetector widget
+  /// Hot reload is detected via reassemble() in HotReloadDetectorWidget
   /// Flutter automatically calls reassemble() on all State objects during hot reload
   void initialize() {
     if (!kDebugMode || _isInitialized) return;
@@ -42,72 +43,54 @@ class HotReloadDetector {
   void dispose() {
     if (!_isInitialized) return;
     
-    _monitorTimer?.cancel();
-    _monitorTimer = null;
     _isInitialized = false;
     
     DCFLogger.debug('Hot reload detection system disposed', 'HOT_RELOAD');
   }
 
   /// Handle hot reload - this is called when actual hot reload occurs
+  /// 
+  /// Hot reload behavior:
+  /// - Flutter recompiles changed code and injects it into the running Dart VM
+  /// - Native views are cleared (like hot restart) so VDOM can recreate them from updated code
+  /// - VDOM then recreates all views from the new component tree
+  /// 
+  /// This is different from hot restart:
+  /// - Hot restart: Restarts Dart VM, clears all state, VDOM recreates from scratch
+  /// - Hot reload: Recompiles code, clears native views, VDOM recreates from updated code
+  /// 
+  /// Both clear native views, but hot reload preserves Dart VM state (variables, etc.)
   Future<void> handleHotReload() async {
-    if (!kDebugMode) {
-      debugPrint('⚠️ Hot reload called but not in debug mode');
-      print('⚠️ Hot reload called but not in debug mode');
-      return;
-    }
+    if (!kDebugMode) return;
     
-    debugPrint('🔥🔥🔥 DCFlight HotReloadDetector.handleHotReload() called 🔥🔥🔥');
-    print('🔥 DCFlight HotReloadDetector.handleHotReload() called');
-    DCFLogger.debug('🔥 REAL Hot reload detected! Triggering VDOM tree re-render...', 'HOT_RELOAD');
+    DCFLogger.debug('Hot reload detected! Clearing native views and triggering VDOM re-render...', 'HOT_RELOAD');
     
     try {
-      // Small delay to ensure any pending operations complete
-      await Future.delayed(Duration(milliseconds: 100));
+      // CRITICAL: Clear native views (like hot restart) so VDOM can recreate from updated code
+      // Hot reload recompiles the code, so we need to clear views and let VDOM recreate them
+      await _cleanupNativeViews();
       
-      debugPrint('🔥 Calling _triggerVDOMHotReload()...');
-      print('🔥 Calling _triggerVDOMHotReload()...');
-      await _triggerVDOMHotReload();
-      
-      debugPrint('✅✅✅ VDOM hot reload completed successfully ✅✅✅');
-      print('✅ VDOM hot reload completed successfully');
-      DCFLogger.debug('✅ VDOM hot reload completed successfully', 'HOT_RELOAD');
+      final vdom = DCFEngineAPI.instance;
+      await vdom.isReady;
+      await vdom.forceFullTreeReRender();
+      DCFLogger.debug('VDOM hot reload completed successfully', 'HOT_RELOAD');
     } catch (e, stackTrace) {
-      debugPrint('❌❌❌ Failed to handle hot reload: $e');
-      debugPrint('❌ Stack trace: $stackTrace');
-      print('❌ Failed to handle hot reload: $e');
-      print('❌ Stack trace: $stackTrace');
       DCFLogger.error('Failed to handle hot reload: $e', tag: 'HOT_RELOAD');
+      debugPrint('Hot reload error: $e\n$stackTrace');
     }
   }
-
-  /// Trigger a complete VDOM tree re-render for hot reload
-  Future<void> _triggerVDOMHotReload() async {
-    debugPrint('🔥 _triggerVDOMHotReload() called');
-    print('🔥 _triggerVDOMHotReload() called');
-    
+  
+  /// Cleanup native views for hot reload (same as hot restart)
+  Future<void> _cleanupNativeViews() async {
     try {
-      final vdom = DCFEngineAPI.instance;
-      debugPrint('🔥 Got DCFEngineAPI instance');
-      print('🔥 Got DCFEngineAPI instance');
-      
-      debugPrint('🔥 Waiting for engine to be ready...');
-      print('🔥 Waiting for engine to be ready...');
-      await vdom.isReady;
-      debugPrint('✅ Engine is ready');
-      print('✅ Engine is ready');
-      
-      debugPrint('🔥🔥🔥 Calling forceFullTreeReRender()... 🔥🔥🔥');
-      print('🔥 Calling forceFullTreeReRender()...');
-      await vdom.forceFullTreeReRender();
-      debugPrint('✅✅✅ forceFullTreeReRender() completed ✅✅✅');
-      print('✅ forceFullTreeReRender() completed');
-    } catch (e, stackTrace) {
-      debugPrint('❌❌❌ Error in _triggerVDOMHotReload(): $e');
-      debugPrint('❌ Stack trace: $stackTrace');
-      print('❌ Error in _triggerVDOMHotReload(): $e');
-      print('❌ Stack trace: $stackTrace');
-      rethrow;
+      if (Platform.isIOS) {
+        await DCFlightFfiWrapper.cleanupViews();
+      } else if (Platform.isAndroid) {
+        await DCFlightJniWrapper.cleanupViews();
+      }
+      DCFLogger.debug('Hot reload: Native views cleared', 'HOT_RELOAD');
+    } catch (e) {
+      DCFLogger.debug('Hot reload cleanup failed (non-critical): $e', 'HOT_RELOAD');
     }
   }
 }
@@ -153,36 +136,12 @@ class _HotReloadDetectorWidgetState extends State<HotReloadDetectorWidget> {
 }
 
 /// Global function to manually trigger hot reload for testing
-/// Call this from your development tools or debug console
 void triggerManualHotReload() {
-  // Use debugPrint for better visibility on iOS
-  debugPrint('🔥🔥🔥 triggerManualHotReload() called 🔥🔥🔥');
-  print('🔥 triggerManualHotReload() called');
   if (kDebugMode) {
-    debugPrint('🔥 Calling HotReloadDetector.instance.handleHotReload()');
-    print('🔥 Calling HotReloadDetector.instance.handleHotReload()');
-    // Don't await - fire and forget to avoid blocking HTTP response
-    HotReloadDetector.instance.handleHotReload().catchError((e, stackTrace) {
-      debugPrint('❌❌❌ Hot reload error: $e');
-      debugPrint('❌ Stack trace: $stackTrace');
-      print('❌ Hot reload error: $e');
-      print('❌ Stack trace: $stackTrace');
+    HotReloadDetector.instance.handleHotReload().catchError((e) {
+      debugPrint('Hot reload error: $e');
     });
-  } else {
-    debugPrint('🔥 Not in debug mode, skipping hot reload');
-    print('🔥 Not in debug mode, skipping hot reload');
   }
 }
 
-/// Observer to detect Flutter hot reload events
-/// Uses reassemble() which Flutter calls automatically on hot reload
-class _HotReloadObserver extends WidgetsBindingObserver {
-  final HotReloadDetector _detector;
-  
-  _HotReloadObserver(this._detector);
-  
-  // Note: Flutter doesn't have a direct hot reload callback in WidgetsBindingObserver
-  // Hot reload is detected via reassemble() in StatefulWidget states
-  // This observer is kept for potential future use or lifecycle events
-}
 

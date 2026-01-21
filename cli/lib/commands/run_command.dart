@@ -7,7 +7,6 @@
 
 import 'dart:io';
 import 'package:args/command_runner.dart';
-import 'package:dcflight_cli/services/dcflight_runner.dart';
 
 class RunCommand extends Command {
   @override
@@ -42,28 +41,31 @@ class RunCommand extends Command {
 
   Future<void> _runDCFlightApp() async {
     final verbose = argResults!['verbose'];
-    final dcfArgs = argResults!['dcf-args'] as List<String>;
+    final dcfArgs = argResults!['dcf-args'] as List<String>? ?? [];
 
     print('🚀 Starting DCFlight app...');
 
     // Validate project structure
     await _validateProjectStructure();
 
-    // Flutter handles hot reload automatically via VM Service
-    // The framework detects it via reassemble() and updates VDOM
-    print('🎯 Launching DCFlight app...');
-    final dcfRunner = DCFlightRunner(
-      additionalArgs: dcfArgs,
-      verbose: verbose,
-    );
+    // Use Flutter's built-in hot reload - no custom watcher needed
+    print('🎯 Launching Flutter app with hot reload support...');
+    
+    final args = ['run', ...dcfArgs];
+    if (verbose) {
+      args.add('--verbose');
+    }
 
-    final dcfProcess = await dcfRunner.start();
-
-    print('✅ DCFlight app launched successfully!');
-    print('💡 Hot reload works automatically - just save your files!');
+    final process = await Process.start('flutter', args, mode: ProcessStartMode.inheritStdio);
+    
+    print('✅ DCFlight app launched!');
+    print('💡 Press "r" in the terminal for hot reload, "R" for hot restart');
 
     // Wait for the process to complete
-    await dcfProcess.exitCode;
+    final exitCode = await process.exitCode;
+    if (exitCode != 0) {
+      exit(exitCode);
+    }
   }
 
   Future<void> _validateProjectStructure() async {

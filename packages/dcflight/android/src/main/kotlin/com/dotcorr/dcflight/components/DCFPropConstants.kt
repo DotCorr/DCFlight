@@ -43,7 +43,7 @@ object DCFPropConstants {
      * Complete list of layout-related prop names.
      * These props affect component size, position, and layout behavior.
      * 
-     * This list matches the layout props extracted by DCMauiBridgeImpl
+     * This list matches the layout props extracted by DCFlightNative
      * to ensure consistency between component-level and bridge-level checks.
      */
     val LAYOUT_PROPS = listOf(

@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 import 'dart:async';
-import 'package:dcflight/framework/renderer/interface/interface_impl.dart';
+import 'package:dcflight/framework/renderer/interface/native_platform.dart';
 
 /// Interface for platform-specific native bridge operations
 abstract class PlatformInterface {
@@ -73,7 +73,7 @@ abstract class PlatformInterface {
 /// Factory for creating platform-specific native bridges
 class NativeBridgeFactory {
   static PlatformInterface create() {
-    return PlatformInterfaceImpl();
+    return NativePlatform();
   }
 }
 

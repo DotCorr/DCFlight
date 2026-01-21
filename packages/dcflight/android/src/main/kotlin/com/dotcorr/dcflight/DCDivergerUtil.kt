@@ -25,7 +25,7 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.*
 
-import com.dotcorr.dcflight.bridge.DCMauiBridgeImpl
+import com.dotcorr.dcflight.bridge.DCFlightNative
 
 import com.dotcorr.dcflight.layout.YogaShadowTree
 import com.dotcorr.dcflight.layout.DCFLayoutManager
@@ -225,7 +225,7 @@ object DCDivergerUtil {
 
     private fun initializeDCFlightSystems(activity: Activity, binaryMessenger: BinaryMessenger) {
         try {
-            DCMauiBridgeImpl.shared.setContext(activity)
+            DCFlightNative.shared.setContext(activity)
 
             Log.d(TAG, "Ensuring DCFlight systems are initialized")
 

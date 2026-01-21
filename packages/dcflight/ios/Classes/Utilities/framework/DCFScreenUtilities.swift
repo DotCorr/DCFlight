@@ -9,8 +9,12 @@
 import UIKit
 import Flutter
 
-class DCFScreenUtilities {
-    static let shared = DCFScreenUtilities()
+// Import C functions for FFI screen dimensions callbacks
+@_silgen_name("dcflight_send_screen_dimensions_changed")
+func dcflight_send_screen_dimensions_changed(_ dimensionsJson: UnsafePointer<CChar>)
+
+@objc public class DCFScreenUtilities: NSObject {
+    @objc public static let shared = DCFScreenUtilities()
     
     private var flutterBinaryMessenger: FlutterBinaryMessenger?
     private var methodChannel: FlutterMethodChannel?
@@ -25,7 +29,9 @@ class DCFScreenUtilities {
     
     private var dimensionChangeListeners: [() -> Void] = []
     
-    private init() {
+    private override init() {
+        super.init()
+        
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(orientationChanged),
@@ -93,21 +99,16 @@ class DCFScreenUtilities {
         }
     }
     
-    func initialize(with binaryMessenger: FlutterBinaryMessenger) {
-        self.flutterBinaryMessenger = binaryMessenger
+    func initialize(with binaryMessenger: FlutterBinaryMessenger?) {
+        // NO MethodChannel - all communication uses direct FFI callbacks
+        // No async needed - FFI callbacks can be called from any thread
+        updateScreenDimensions()
         
-        methodChannel = FlutterMethodChannel(
-            name: "com.dcmaui.screen_dimensions",
-            binaryMessenger: binaryMessenger
-        )
+        // CRITICAL: Always notify Dart of initial dimensions (even if unchanged)
+        // This ensures safeAreaTop and other values are available immediately
+        notifyDartOfDimensionChange()
         
-        setupMethodChannel()
-        
-        DispatchQueue.main.async {
-            self.updateScreenDimensions()
-        }
-        
-        print("✅ DCFScreenUtilities: Initialized with method channel")
+        print("✅ DCFScreenUtilities: Initialized - using FFI callbacks instead of MethodChannel")
     }
     
     func updateScreenDimensions(width: CGFloat? = nil, height: CGFloat? = nil) {
@@ -168,62 +169,67 @@ class DCFScreenUtilities {
     }
     
     private func notifyDartOfDimensionChange() {
-        guard let methodChannel = methodChannel else { return }
+        // Use FFI callback instead of MethodChannel
+        let dimensionData = getScreenDimensionsDict()
         
-        let dimensionData: [String: Any] = [
-            "width": _screenWidth,
-            "height": _screenHeight,
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: dimensionData, options: [])
+            if let dimensionsJson = String(data: jsonData, encoding: .utf8) {
+                dcflight_send_screen_dimensions_changed(dimensionsJson)
+            }
+        } catch {
+            print("❌ DCFScreenUtilities: Failed to serialize dimensions for FFI callback: \(error)")
+        }
+    }
+    
+    /// Get screen dimensions as dictionary (for FFI)
+    @objc public func getScreenDimensionsDict() -> [String: Any] {
+        // CRITICAL: Ensure dimensions are up-to-date before returning
+        // This is called from dcflight_get_screen_dimensions which might be called
+        // before initialize() has completed, so we refresh dimensions here
+        updateScreenDimensions()
+        
+        // CRITICAL: Always return valid values, even if window isn't ready
+        // Use UIScreen.main.bounds as fallback if dimensions are still 0
+        var width = _screenWidth
+        var height = _screenHeight
+        var safeAreaTop = _safeAreaTop
+        var safeAreaBottom = _safeAreaBottom
+        
+        if width == 0 || height == 0 {
+            let screenBounds = UIScreen.main.bounds
+            width = screenBounds.width
+            height = screenBounds.height
+            print("⚠️ DCFScreenUtilities: Using fallback dimensions from UIScreen: \(width)x\(height)")
+        }
+        
+        // Use status bar height as fallback for safe area top if not available
+        if safeAreaTop == 0 {
+            safeAreaTop = UIApplication.shared.statusBarFrame.height
+        }
+        
+        return [
+            "width": width,
+            "height": height,
             "scale": UIScreen.main.scale,
             "fontScale": _fontScale,
             "statusBarHeight": UIApplication.shared.statusBarFrame.height,
-            "safeAreaTop": _safeAreaTop,
-            "safeAreaBottom": _safeAreaBottom,
+            "safeAreaTop": safeAreaTop,
+            "safeAreaBottom": safeAreaBottom,
             "safeAreaLeft": _safeAreaLeft,
             "safeAreaRight": _safeAreaRight
         ]
-        
-        methodChannel.invokeMethod("dimensionsChanged", arguments: dimensionData)
     }
     
-    private func setupMethodChannel() {
-        guard let methodChannel = methodChannel else { return }
-        
-        methodChannel.setMethodCallHandler { [weak self] (call, result) in
-            guard let self = self else {
-                result(FlutterError(code: "UNAVAILABLE",
-                                   message: "Screen utilities not available",
-                                   details: nil))
-                return
-            }
-            
-            if call.method == "getScreenDimensions" {
-                result([
-                    "width": self._screenWidth,
-                    "height": self._screenHeight,
-                    "scale": UIScreen.main.scale,
-                    "fontScale": self._fontScale,
-                    "statusBarHeight": UIApplication.shared.statusBarFrame.height,
-                    "safeAreaTop": self._safeAreaTop,
-                    "safeAreaBottom": self._safeAreaBottom,
-                    "safeAreaLeft": self._safeAreaLeft,
-                    "safeAreaRight": self._safeAreaRight
-                ])
-            } else {
-                result(FlutterMethodNotImplemented)
-            }
-        }
-    }
     
     @objc private func orientationChanged() {
         print("🔄 DCFScreenUtilities: Device orientation changed")
         
         updateScreenDimensions()
         
-        guard let methodChannel = methodChannel else { return }
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.notifyDartOfDimensionChange()
-        }
+        // Use FFI callback instead of MethodChannel
+        // No async needed - FFI callbacks can be called from any thread
+        notifyDartOfDimensionChange()
     }
     
     var screenWidth: CGFloat {

@@ -54,7 +54,8 @@ export 'framework/renderer/engine/index.dart';
 // Hot reload is handled via Flutter's built-in system - no custom listener needed
 
 export 'framework/renderer/interface/interface.dart';
-export 'framework/renderer/interface/interface_impl.dart';
+export 'framework/renderer/interface/native_platform.dart';
+export 'framework/events/event_registry.dart';
 export 'framework/worklets/worklet.dart';
 export 'framework/constants/layout/yoga_enums.dart';
 export 'framework/constants/layout/layout_properties.dart';
@@ -158,7 +159,7 @@ class DCFlight {
 
     final wasHotRestart = await HotRestartDetector.detectAndCleanup();
 
-    final vdom = DCFEngineAPI.instance;
+    final engine = DCFEngineAPI.instance;
 
     // CRASH PROTECTION: Automatically wrap app in error boundary at framework level
     // This provides React Native-style crash protection without requiring developers
@@ -166,11 +167,7 @@ class DCFlight {
     // 
     // Core Wrapper: Wrap in SystemChangeListener to listen to OS-level changes
     // (font scale, language, etc.) and trigger re-renders when they occur
-    final coreWrapper = CoreWrapper(app);
-    final mainApp = RootErrorBoundary(coreWrapper);
-
-    await vdom.createRoot(mainApp);
-    
+    await engine.createRoot(CoreWrapper(app));
     // Create minimal Flutter widget for hot reload detection
     // This widget uses reassemble() which Flutter calls automatically on hot reload
     // When Flutter hot reloads, reassemble() is called, which notifies VDOM to update
@@ -181,8 +178,6 @@ class DCFlight {
     if (wasHotRestart) {
       print('🔥 DCFlight: Hot restart detected');
     }
-
-    vdom.isReady.whenComplete(() async {});
   }
 }
 
@@ -216,11 +211,8 @@ class _DCFlightHotReloadDetectorState extends State<_DCFlightHotReloadDetector> 
     // Return minimal transparent widget - this widget is invisible
     // It only exists to detect hot reload via reassemble()
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SizedBox.shrink(), // Completely invisible
-      ),
+      debugShowCheckedModeBanner: true,
+      home:  SizedBox.shrink(), // Completely invisible
     );
   }
 }

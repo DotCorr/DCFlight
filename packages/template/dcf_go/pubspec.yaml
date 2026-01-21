@@ -17,6 +17,7 @@ dependencies:
   dcf_screens:
 
   icons_launcher: ^3.0.1
+  jni: ^0.15.2
 
 dev_dependencies:
   flutter_test:

@@ -193,8 +193,19 @@ class ReanimatedView extends DCFStatelessComponent {
     if (worklet != null) {
       final workletConfig = WorkletExecutor.serialize(worklet!);
       props['worklet'] = workletConfig.toMap();
-      if (this.workletConfig != null) {
-        props['workletConfig'] = this.workletConfig;
+      
+      // 🔥 CRITICAL: Auto-detect text worklets and set updateTextChild
+      final returnType = workletConfig.returnType;
+      final config = this.workletConfig ?? <String, dynamic>{};
+      
+      // If worklet returns String, it's a text worklet - set updateTextChild automatically
+      if (returnType == 'String') {
+        config['returnType'] = 'String';
+        config['updateTextChild'] = true;
+      }
+      
+      if (config.isNotEmpty) {
+        props['workletConfig'] = config;
       }
     } else if (animate != null) {
       // Convert initial/animate to AnimatedStyle

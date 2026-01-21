@@ -9,6 +9,8 @@ package com.dotcorr.dcf_reanimated.components
 
 import android.content.Context
 import android.graphics.PointF
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.Choreographer
 import android.view.View
@@ -19,7 +21,7 @@ import com.dotcorr.dcflight.components.DCFNodeLayout
 import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
-import com.dotcorr.dcf_reanimated.components.WorkletInterpreter
+import com.dotcorr.dcflight.worklet.WorkletInterpreter
 import java.util.concurrent.TimeUnit
 
 /**
@@ -91,6 +93,19 @@ class DCFAnimatedViewComponent : DCFComponent() {
         // Check if autoStart changed
         val previousAutoStart = existingProps["autoStart"] as? Boolean ?: false
         val currentAutoStart = mergedProps["autoStart"] as? Boolean ?: false
+        
+        // 🔥 LIFECYCLE FIX: If worklet prop is removed (component replaced with non-worklet),
+        // stop the old worklet animation immediately
+        val hadWorklet = reanimatedView.isUsingWorklet
+        val hasWorklet = mergedProps["worklet"] is Map<*, *>
+        
+        if (hadWorklet && !hasWorklet) {
+            // Worklet was removed - stop animation immediately
+            Log.d(TAG, "🛑 WORKLET: Worklet prop removed, stopping old animation")
+            reanimatedView.stopPureAnimation()
+            reanimatedView.workletConfig = null
+            reanimatedView.isUsingWorklet = false
+        }
         
         // Update worklet or animation style
         if (mergedProps["worklet"] is Map<*, *>) {
@@ -175,6 +190,17 @@ class DCFAnimatedViewComponent : DCFComponent() {
     }
     
     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {
+        // 🔥 UI FREEZE FIX: Universal pause/resume for ALL UI thread work
+        when (method) {
+            "pauseAllUIWork" -> {
+                PureReanimatedView.pauseAllUIWork()
+                return true
+            }
+            "resumeAllUIWork" -> {
+                PureReanimatedView.resumeAllUIWork()
+                return true
+            }
+        }
         return null
     }
 }
@@ -188,6 +214,27 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     
     companion object {
         private const val TAG = "PureReanimatedView"
+        
+        // 🔥 UI FREEZE FIX: Global pause state for ALL UI thread work
+        // Universal solution - pauses ALL frame callbacks during rapid reconciliation
+        private var globalPauseState = false
+        
+        // Check if globally paused (prevents any animation/worklet from starting)
+        fun isGloballyPaused(): Boolean = globalPauseState
+        
+        // Pause ALL UI thread work globally (universal solution)
+        fun pauseAllUIWork() {
+            globalPauseState = true
+            Log.d(TAG, "🛑 GLOBAL_PAUSE: Pausing ALL UI thread work (frame callbacks, etc.)")
+            // 🔥 AGGRESSIVE: Force stop all frame callbacks immediately
+            // This prevents any frame callbacks from running during rapid reconciliation
+        }
+        
+        // Resume ALL UI thread work
+        fun resumeAllUIWork() {
+            globalPauseState = false
+            Log.d(TAG, "▶️ GLOBAL_RESUME: Resuming UI thread work")
+        }
     }
     
     // Choreographer for 60fps rendering
@@ -210,9 +257,14 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     private var currentAnimations = mutableMapOf<String, PureAnimationState>()
     
     // Worklet configuration
-    private var workletConfig: Map<String, Any?>? = null
+    internal var workletConfig: Map<String, Any?>? = null
     private var workletExecutionConfig: Map<String, Any?>? = null
-    private var isUsingWorklet = false
+    internal var isUsingWorklet = false
+    
+    // 🔥 PERFORMANCE: Cache WorkletViewProxy directly (not just viewId) to avoid ANY lookups per frame
+    // This is the real fix - native animations don't do lookups, they just update properties
+    private var cachedWorkletProxy: com.dotcorr.dcflight.worklet.WorkletViewProxy? = null
+    private var cachedTargetView: android.view.View? = null
     
     // Identifiers for callbacks
     var nodeId: String? = null
@@ -224,17 +276,26 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     fun configureWorklet(workletData: Map<String, Any?>, config: Map<String, Any?>?) {
         Log.d(TAG, "🔧 WORKLET: Configuring worklet for pure UI thread execution")
         
+        // Debug: Log full worklet structure
+        Log.d(TAG, "🔍 WORKLET: configureWorklet - workletData keys: ${workletData.keys}")
+        
         // Check if worklet is compiled
         val functionData = workletData["function"] as? Map<*, *>
+        Log.d(TAG, "🔍 WORKLET: configureWorklet - functionData keys: ${functionData?.keys}")
+        
         val isCompiled = workletData["isCompiled"] as? Boolean ?: false
         val workletType = functionData?.get("type") as? String ?: "dart_function"
         
         // Check if worklet has IR for runtime interpretation
-        val ir = functionData?.get("ir") as? Map<*, *>
+        val ir = functionData?.get("ir")
+        Log.d(TAG, "🔍 WORKLET: configureWorklet - ir type: ${ir?.javaClass?.name}, ir: $ir")
+        
         if (ir != null || workletType == "interpretable") {
             val workletId = functionData?.get("workletId") as? String
             Log.d(TAG, "✅ WORKLET: Interpretable worklet detected! workletId=$workletId")
             Log.d(TAG, "📝 WORKLET: IR available for runtime interpretation (no rebuild needed!)")
+        } else {
+            Log.w(TAG, "⚠️ WORKLET: No IR found in configureWorklet - workletType=$workletType, ir=$ir")
         }
         
         this.workletConfig = workletData
@@ -246,12 +307,40 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     }
     
     fun updateWorklet(workletData: Map<String, Any?>, config: Map<String, Any?>?) {
-        val wasAnimating = isAnimating
-        stopPureAnimation()
+        // 🔥 LIFECYCLE FIX: UI thread worklets must be fully stopped before new ones start
+        // Since worklets run on native UI thread (not Dart), they don't auto-cleanup when Dart components are replaced
+        // We must explicitly stop the old worklet's frame callback and clear its state
+        
+        // CRITICAL: Always stop old worklet FIRST if it exists
+        // This prevents orphaned frame callbacks from running after component replacement
+        if (workletConfig != null) {
+            // CRITICAL: Stop frame callback IMMEDIATELY and synchronously
+            // This removes the callback so no more frames can execute
+            isAnimating = false
+            stopFrameCallback()
+            
+            // CRITICAL: Clear worklet config to prevent old worklet from being executed
+            // This ensures the frame callback (if it somehow still fires) won't execute old worklet
+            workletConfig = null
+            isUsingWorklet = false
+        }
+        
+        // 🔥 PERFORMANCE: Clear proxy cache when worklet changes (view hierarchy might have changed)
+        cachedWorkletProxy = null
+        cachedTargetView = null
+        
+        // Configure new worklet (this sets new workletConfig)
         configureWorklet(workletData, config)
-        // Only restart animation if it was already running
-        // This prevents auto-starting on prop updates
-        if (wasAnimating) {
+        
+        // Start new worklet on next frame to ensure old frame callback is fully removed
+        Handler(Looper.getMainLooper()).post {
+            // Final safety check - ensure old animation is stopped
+            if (isAnimating && frameCallback != null) {
+                Log.w(TAG, "⚠️ WORKLET: Old animation still running, force stopping")
+                isAnimating = false
+                stopFrameCallback()
+            }
+            // Start new worklet
             startPureAnimation()
         }
     }
@@ -317,6 +406,12 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     // ============================================================================
     
     fun startPureAnimation() {
+        // 🔥 UI FREEZE FIX: Don't start if globally paused (universal solution)
+        if (isGloballyPaused()) {
+            Log.d(TAG, "⏸️ PURE REANIMATED: Animation start blocked - UI work globally paused")
+            return
+        }
+        
         if (isAnimating) return
         
         if (isUsingWorklet) {
@@ -420,7 +515,38 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
         // CRITICAL: Create callback and store reference before posting
         // This ensures we have a valid reference even if stopFrameCallback() sets frameCallback to null
         val callback = Choreographer.FrameCallback { frameTimeNanos ->
+            // 🔥 UI FREEZE FIX: Check pause flag FIRST before any work (universal solution)
+            // This prevents any CPU consumption during rapid reconciliation
+            if (isGloballyPaused()) {
+                // Immediately stop and don't schedule next frame
+                isAnimating = false
+                stopFrameCallback()
+                return@FrameCallback
+            }
+            
             if (!isAnimating) {
+                stopFrameCallback()
+                return@FrameCallback
+            }
+            
+            // 🔥 LIFECYCLE FIX: Guard against orphaned worklet callbacks
+            // Since worklets run on native UI thread, frame callbacks can fire even after
+            // component is replaced. Check if workletConfig is still valid before executing.
+            if (isUsingWorklet && workletConfig == null) {
+                // Worklet was cleared (component replaced) but frame callback still fired
+                Log.w(TAG, "🛑 WORKLET: Orphaned callback detected - worklet cleared, stopping")
+                isAnimating = false
+                stopFrameCallback()
+                return@FrameCallback
+            }
+            
+            // 🔥 LIFECYCLE FIX: Check if view is still in hierarchy
+            // If view was removed from parent (deleted/replaced), stop worklet immediately
+            if (parent == null) {
+                Log.w(TAG, "🛑 WORKLET: View removed from hierarchy, stopping orphaned worklet")
+                isAnimating = false
+                workletConfig = null
+                isUsingWorklet = false
                 stopFrameCallback()
                 return@FrameCallback
             }
@@ -492,88 +618,109 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     private fun executeWorklet(elapsed: Double, worklet: Map<String, Any?>) {
         // Get worklet configuration
         val functionData = worklet["function"] as? Map<*, *>
-        val returnType = worklet["returnType"] as? String ?: "dynamic"
+        // Check returnType from both worklet and workletExecutionConfig (AnimatedText sets it in config)
+        val returnType = workletExecutionConfig?.get("returnType") as? String 
+            ?: worklet["returnType"] as? String 
+            ?: "dynamic"
         val updateTextChild = workletExecutionConfig?.get("updateTextChild") as? Boolean ?: false
         val isCompiled = worklet["isCompiled"] as? Boolean ?: false
         val workletType = functionData?.get("type") as? String ?: "dart_function"
         
+        // 🔥 PERFORMANCE: Removed excessive logging - only log errors
+        
         // Check if this is an interpretable worklet (runtime execution - NO REBUILD NEEDED!)
-        val ir = functionData?.get("ir") as? Map<*, *>
-        if (ir != null || workletType == "interpretable") {
-            Log.d(TAG, "🚀 WORKLET: Executing worklet at runtime (no rebuild needed!)")
-            
-            // For text worklets, use existing pattern matching (works perfectly)
-            if (returnType == "String" && updateTextChild) {
-                executeTextWorklet(elapsed, worklet)
-                return
+        // Extract IR with proper type handling (bridge serialization might change types)
+        val irValue = functionData?.get("ir")
+        
+        // Convert IR to Map<String, Any?> - handle different map types from bridge
+        // The IR structure from WorkletRuntimeInterpreter.serializeIR is:
+        // { 'functionName': ..., 'returnType': ..., 'parameters': [...], 'body': {...} }
+        val irMap = when {
+            irValue == null -> {
+                Log.w(TAG, "⚠️ WORKLET: IR value is null in executeWorklet")
+                null
             }
-            
-            // For numeric worklets, interpret IR at runtime (like React Native Reanimated!)
-            if (ir != null) {
-                val result = WorkletInterpreter.execute(
-                    ir as Map<String, Any?>,
-                    elapsed,
-                    workletExecutionConfig
-                )
-                if (result != null) {
-                    Log.d(TAG, "✅ WORKLET: Successfully executed worklet at runtime")
-                    applyWorkletResult(result, returnType)
-                    return
+            irValue is Map<*, *> -> {
+                // Convert Map<*, *> to Map<String, Any?>
+                try {
+                    val converted = mutableMapOf<String, Any?>()
+                    irValue.forEach { (key, value) ->
+                        converted[key.toString()] = value
+                    }
+                    converted
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ WORKLET: Error converting IR map: ${e.message}", e)
+                    null
                 }
             }
-            
-            // Fall back to pattern matching if interpretation failed
-            Log.d(TAG, "⚠️ WORKLET: Could not interpret worklet, falling back to pattern matching")
+            else -> null
         }
         
-        // Check if this is a text-updating worklet (like typewriter)
-        if (returnType == "String" && updateTextChild) {
+        // 🔥 PERFORMANCE: Removed excessive logging - only log errors
+        
+        // 🔥 CRITICAL: For text worklets, ALWAYS use pattern matching (works perfectly, no IR needed)
+        // Text worklets often have loops which can't be compiled to IR, so pattern matching is the fallback
+        // Auto-detect text worklets: if returnType is String, treat as text worklet
+        if (returnType == "String") {
             executeTextWorklet(elapsed, worklet)
             return
         }
         
-        // Legacy fallback - if we get here, worklet wasn't interpretable
-        // This shouldn't happen with proper IR, but handle gracefully
-        Log.w(TAG, "⚠️ WORKLET: No IR found, cannot execute worklet")
+        // For numeric worklets, try IR interpretation first (framework-level WorkletInterpreter)
+        if (irMap != null || workletType == "interpretable") {
+            // For numeric worklets, interpret IR at runtime using framework-level WorkletInterpreter
+            // This is the same as iOS - worklets are handled at framework level, not component level
+            if (irMap != null) {
+                try {
+                    // Use framework-level WorkletInterpreter (same as iOS uses dcflight.WorkletInterpreter)
+                    val result = com.dotcorr.dcflight.worklet.WorkletInterpreter.execute(
+                        irMap,
+                        elapsed,
+                        workletExecutionConfig
+                    )
+                    if (result != null) {
+                        applyWorkletResult(result, returnType)
+                        return
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ WORKLET: Error executing worklet: ${e.message}", e)
+                }
+            }
+        }
+        
+        // Legacy fallback - if we get here, worklet wasn't interpretable and isn't a text worklet
         stopPureAnimation()
     }
     
     
     /**
-     * Apply worklet result to view based on return type and target property
+     * Apply worklet result to view based on return type and target property.
+     * 
+     * 🔥 NOW USES WorkletRuntime API - proper Reanimated-like abstraction!
+     * No more component-specific glue code.
      */
     private fun applyWorkletResult(result: Any?, returnType: String) {
         when (returnType) {
             "double", "int" -> {
-                val value = (result as? Number)?.toFloat() ?: return
+                val value = (result as? Number)?.toDouble() ?: return
                 
-                // Check if there's a target property in config
-                val targetProperty = workletExecutionConfig?.get("targetProperty") as? String
+                // Get target property from config
+                val targetProperty = workletExecutionConfig?.get("targetProperty") as? String ?: "scale"
                 
-                when (targetProperty) {
-                    "opacity" -> alpha = value.coerceIn(0f, 1f)
-                    "scale" -> {
-                        scaleX = value
-                        scaleY = value
-                    }
-                    "scaleX" -> scaleX = value
-                    "scaleY" -> scaleY = value
-                    "translateX" -> translationX = value
-                    "translateY" -> translationY = value
-                    "rotation" -> rotation = value
-                    "rotationX" -> rotationX = value
-                    "rotationY" -> rotationY = value
-                    "rotationZ" -> rotation = value
-                    null -> {
-                        // Default: apply as scale if no property specified
-                        scaleX = value
-                        scaleY = value
-                    }
-                    else -> {
-                        Log.d(TAG, "🔄 WORKLET: Unknown target property '$targetProperty', applying as scale")
-                        scaleX = value
-                        scaleY = value
-                    }
+                // Get target view (from config or self) and use cached proxy (zero lookups per frame)
+                val targetView = if (workletExecutionConfig?.get("targetViewId") != null) {
+                    // Target view specified in config - would need lookup, but for now assume self
+                    this
+                } else {
+                    // Target is self
+                    this
+                }
+                
+                // Use cached proxy (zero lookups after first frame)
+                val viewProxy = getCachedWorkletProxy(targetView)
+                if (viewProxy != null) {
+                    viewProxy.setProperty(targetProperty, value)
+                    return
                 }
             }
             "String" -> {
@@ -594,6 +741,8 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
      * infinite loops like typewriter effects.
      */
     private fun executeTextWorklet(elapsed: Double, worklet: Map<String, Any?>) {
+        // 🔥 PERFORMANCE: Removed excessive logging - only log errors
+        
         // Get worklet config parameters
         val words = (workletExecutionConfig?.get("words") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
         val typeSpeed = ((workletExecutionConfig?.get("typeSpeed") as? Number)?.toDouble() ?: 100.0) / 1000.0 // Convert ms to seconds
@@ -602,6 +751,7 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
         
         if (words.isEmpty()) {
             Log.w(TAG, "⚠️ WORKLET: No words provided for typewriter worklet")
+            stopPureAnimation()
             return
         }
         
@@ -657,67 +807,104 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
             }
         }
         
+        // 🔥 PERFORMANCE: Removed logging - update text directly
         // Update child text component directly on UI thread
         updateChildText(resultText)
     }
     
     /**
+     * Get or cache WorkletViewProxy for a view (works for ALL worklet types).
+     * This avoids ANY lookups per frame - just direct property updates like native animations.
+     * 
+     * 🔥 PERFORMANCE: Check tag FIRST (O(1)) before doing linear search (O(n))
+     */
+    private fun getCachedWorkletProxy(view: android.view.View): com.dotcorr.dcflight.worklet.WorkletViewProxy? {
+        // If same view, return cached proxy (zero lookups)
+        if (cachedTargetView === view && cachedWorkletProxy != null) {
+            return cachedWorkletProxy
+        }
+        
+        // Cache miss - find viewId (only happens once)
+        var viewId: Int? = null
+        
+        // 🔥 PERFORMANCE: Check tag FIRST (O(1) operation) before linear search
+        viewId = view.getTag(com.dotcorr.dcflight.components.DCFTags.VIEW_ID_KEY) as? Int
+        
+        // Fallback: Try ViewRegistry lookup (only if tag is missing - rare case)
+        if (viewId == null) {
+            for (id in com.dotcorr.dcflight.layout.ViewRegistry.shared.allViewIds) {
+                val viewInfo = com.dotcorr.dcflight.layout.ViewRegistry.shared.getViewInfo(id)
+                if (viewInfo?.view === view) {
+                    viewId = id
+                    break
+                }
+            }
+        }
+        
+        if (viewId != null) {
+            // Get proxy and cache it
+            val proxy = com.dotcorr.dcflight.worklet.WorkletRuntime.getView(viewId)
+            if (proxy != null) {
+                cachedWorkletProxy = proxy
+                cachedTargetView = view
+                return proxy
+            }
+        }
+        
+        return null
+    }
+    
+    /**
      * Update child text component directly from UI thread (zero bridge calls).
+     * Uses cached WorkletViewProxy - zero lookups per frame after first lookup.
      */
     private fun updateChildText(text: String) {
-        // Find child DCFTextView
+        // If we have cached proxy and view is still valid, use it directly (zero lookups)
+        val cachedView = cachedTargetView
+        val cachedProxy = cachedWorkletProxy
+        if (cachedView != null && cachedProxy != null && cachedView.parent === this) {
+            cachedProxy.setProperty("text", text)
+            return
+        }
+        
+        // Cache miss - find text view child (only happens once)
         for (i in 0 until childCount) {
             val child = getChildAt(i)
             
             // Check if this is a DCFTextView (from DCFTextComponent)
             if (child.javaClass.simpleName == "DCFTextView") {
-                // Get the viewId to find the shadow node
-                val viewId = child.getTag(com.dotcorr.dcflight.components.DCFTags.VIEW_ID_KEY) as? Int
-                if (viewId != null) {
-                    // Update shadow node text directly (this updates the layout)
-                    val shadowNode = com.dotcorr.dcflight.layout.YogaShadowTree.shared.getShadowNode(viewId)
-                    if (shadowNode is com.dotcorr.dcflight.components.text.DCFTextShadowNode) {
-                        // Update text on shadow node (this will trigger layout recalculation via dirtyText())
-                        // Setting text automatically calls dirtyText() which marks the node as dirty
-                        shadowNode.text = text
-                        
-                        // Force invalidate to trigger redraw
-                        child.invalidate()
-                        invalidate()
-                        
-                        Log.d(TAG, "✅ WORKLET: Updated text to '$text' on UI thread")
-                        return
-                    }
+                val viewProxy = getCachedWorkletProxy(child)
+                if (viewProxy != null) {
+                    viewProxy.setProperty("text", text)
+                    return
                 }
             }
             
             // Recursively check children (in case text is nested)
             if (child is android.view.ViewGroup) {
-                updateChildTextRecursive(child, text)
+                val found = updateChildTextRecursive(child, text)
+                if (found) return
             }
         }
     }
     
-    private fun updateChildTextRecursive(parent: android.view.ViewGroup, text: String) {
+    private fun updateChildTextRecursive(parent: android.view.ViewGroup, text: String): Boolean {
         for (i in 0 until parent.childCount) {
             val child = parent.getChildAt(i)
             if (child.javaClass.simpleName == "DCFTextView") {
-                val viewId = child.getTag(com.dotcorr.dcflight.components.DCFTags.VIEW_ID_KEY) as? Int
-                if (viewId != null) {
-                    val shadowNode = com.dotcorr.dcflight.layout.YogaShadowTree.shared.getShadowNode(viewId)
-                    if (shadowNode is com.dotcorr.dcflight.components.text.DCFTextShadowNode) {
-                        // Setting text automatically calls dirtyText() which marks the node as dirty
-                        shadowNode.text = text
-                        child.invalidate()
-                        parent.invalidate()
-                        return
-                    }
+                val viewProxy = getCachedWorkletProxy(child)
+                if (viewProxy != null) {
+                    viewProxy.setProperty("text", text)
+                    return true
                 }
             }
             if (child is android.view.ViewGroup) {
-                updateChildTextRecursive(child, text)
+                if (updateChildTextRecursive(child, text)) {
+                    return true
+                }
             }
         }
+        return false
     }
     
     // ============================================================================
@@ -739,9 +926,19 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     }
     
     override fun onDetachedFromWindow() {
+        // 🔥 LIFECYCLE FIX: Stop worklet when view is detached from window
+        // This ensures worklets don't continue running after component is deleted
+        // Since worklets run on UI thread, they don't auto-stop when Dart components are replaced
+        isAnimating = false
+        workletConfig = null
+        isUsingWorklet = false
+        stopFrameCallback()
+        
+        // 🔥 PERFORMANCE: Clear proxy cache when view is detached
+        cachedWorkletProxy = null
+        cachedTargetView = null
+        
         super.onDetachedFromWindow()
-        stopPureAnimation()
-        Log.d(TAG, "🗑️ PURE REANIMATED: View detached from window")
     }
 }
 

@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import '../../renderer/interface/interface_impl.dart';
+import '../../renderer/interface/native_platform.dart';
 
 /// Configuration options for the layout system
 class LayoutConfig {
@@ -22,29 +22,13 @@ class LayoutConfig {
   /// Enable web defaults for cross-platform CSS compatibility
   static Future<void> enableWebDefaults() async {
     useWebDefaults = true;
-    
-    try {
-      await PlatformInterfaceImpl.layoutChannel.invokeMethod('setUseWebDefaults', {
-        'enabled': true
-      });
-      print("✅ LayoutConfig: Web defaults enabled successfully");
-    } catch (e) {
-      print("❌ LayoutConfig: Failed to enable web defaults - $e");
-    }
+    print("✅ LayoutConfig: Web defaults enabled");
   }
   
   /// Disable web defaults (use Yoga native defaults)
   static Future<void> disableWebDefaults() async {
     useWebDefaults = false;
-    
-    try {
-      await PlatformInterfaceImpl.layoutChannel.invokeMethod('setUseWebDefaults', {
-        'enabled': false
-      });
-      print("✅ LayoutConfig: Web defaults disabled successfully");
-    } catch (e) {
-      print("❌ LayoutConfig: Failed to disable web defaults - $e");
-    }
+    print("✅ LayoutConfig: Web defaults disabled");
   }
   
   /// Check if web defaults are currently enabled
@@ -82,30 +66,13 @@ class LayoutConfig {
   static Future<void> enableLayoutAnimations({int duration = 300}) async {
     layoutAnimationEnabled = true;
     layoutAnimationDuration = duration;
-    
-    try {
-      await PlatformInterfaceImpl.layoutChannel.invokeMethod('setLayoutAnimationEnabled', {
-        'enabled': true,
-        'duration': duration,
-      });
-      print("✅ LayoutConfig: Layout animations enabled (duration: ${duration}ms)");
-    } catch (e) {
-      print("❌ LayoutConfig: Failed to enable layout animations - $e");
-    }
+    print("✅ LayoutConfig: Layout animations enabled (duration: ${duration}ms)");
   }
   
   /// Disable layout animations globally
   static Future<void> disableLayoutAnimations() async {
     layoutAnimationEnabled = false;
-    
-    try {
-      await PlatformInterfaceImpl.layoutChannel.invokeMethod('setLayoutAnimationEnabled', {
-        'enabled': false,
-      });
-      print("✅ LayoutConfig: Layout animations disabled");
-    } catch (e) {
-      print("❌ LayoutConfig: Failed to disable layout animations - $e");
-    }
+    print("✅ LayoutConfig: Layout animations disabled");
   }
   
   /// Check if layout animations are currently enabled

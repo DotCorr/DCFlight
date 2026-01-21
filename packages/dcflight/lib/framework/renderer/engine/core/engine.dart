@@ -6,8 +6,9 @@
  */
 
 import 'dart:async';
-import 'dart:isolate';
 import 'dart:math' as math;
+import 'package:worker_manager/worker_manager.dart' as worker_manager;
+import 'package:worker_manager/src/scheduling/work_priority.dart' as worker_priority show WorkPriority;
 
 import 'package:dcflight/framework/renderer/engine/core/cache/lru_cache.dart';
 import 'package:dcflight/framework/renderer/engine/core/concurrency/priority.dart';
@@ -27,6 +28,7 @@ import 'package:dcflight/src/components/error_boundary.dart';
 import 'package:dcflight/src/components/dcf_element.dart';
 import 'package:dcflight/src/components/component_node.dart';
 import 'package:dcflight/src/components/fragment.dart';
+import 'package:dcflight/framework/events/event_registry.dart';
 import 'package:dcflight/framework/utils/flutter_widget_renderer.dart';
 import 'package:dcflight/framework/utils/widget_to_dcf_adaptor.dart';
 import 'package:dcflight/framework/utils/system_state_manager.dart';
@@ -65,6 +67,9 @@ class DCFEngine {
   bool _isReconciling = false;
   bool _shouldPauseReconciliation = false;
   bool _incrementalReconciliationEnabled = true;
+  
+  /// Hot reload state - prevents worker_manager reconciliation during hot reload
+  bool _isHotReloading = false;
 
   /// Component instance tracking by position + type
   /// Key: "parentViewId:index:type" -> Component instance
@@ -111,6 +116,24 @@ class DCFEngine {
   Timer? _updateTimer;
   bool _isUpdateScheduled = false;
   bool _batchUpdateInProgress = false;
+  
+  /// 🔥 CPU THROTTLING: Track last batch processing time for rate limiting
+  /// Prevents CPU from spiking above 50% during rapid stress testing
+  DateTime? _lastBatchProcessTime;
+  static const Duration _minBatchCooldown = Duration(milliseconds: 8); // ~120fps max processing rate
+  
+  /// 🔥 UI FREEZE FIX: Track rapid reconciliation to pause ALL UI thread work
+  /// Universal solution - pauses ALL frame callbacks/display links during rapid reconciliation
+  /// This prevents ANY heavy UI thread work from blocking during rapid state changes
+  DateTime? _lastReconciliationTime;
+  int _rapidReconciliationCount = 0;
+  bool _uiWorkPaused = false;
+  static const Duration _rapidReconciliationWindow = Duration(milliseconds: 100); // 100ms window
+  static const int _rapidReconciliationThreshold = 3; // 3+ updates in 100ms = rapid
+  
+  /// 🔥 NESTED LOOP FIX: Track reconciliation depth to prevent infinite loops
+  int _reconciliationDepth = 0;
+  static const int _maxReconciliationDepth = 3; // Max 3 levels deep
 
   /// Root component and error boundaries
   DCFComponentNode? rootComponent;
@@ -124,25 +147,13 @@ class DCFEngine {
   /// Structural shock flag - when true, force full replacement instead of reconciliation
   /// This prevents component/prop leakage when app structure changes dramatically
   bool _isStructuralShock = false;
-  bool _isHotReloading = false; // Flag to prevent concurrent hot reloads
 
-  /// Concurrent processing features
-  static const int _concurrentThreshold = 5;
-  bool _concurrentEnabled = false;
-  final List<Isolate> _workerIsolates = [];
-  final List<SendPort> _workerPorts = [];
-  final List<bool> _workerAvailable = [];
-  final List<DateTime> _workerLastUsed =
-      []; // Track when each worker was last used
-  final int _maxWorkers = 2; // Maximum number of worker isolates
-  final int _minWorkers =
-      2; // Keep all pre-spawned workers alive for optimal performance
-  final Duration _isolateIdleTimeout = const Duration(
-      seconds: 30); // Close after 30s idle (but won't close if at minWorkers)
-  Timer? _isolateCleanupTimer;
-  final ReceivePort _mainIsolateReceivePort = ReceivePort();
-  StreamSubscription<dynamic>? _mainIsolateReceivePortSubscription;
-  final Map<String, Completer<Map<String, dynamic>>> _isolateTasks = {};
+  /// Worker manager for parallel reconciliation (singleton instance)
+  bool _workerManagerInitialized = false;
+  
+  /// Flag to prevent infinite loops when falling back from worker_manager
+  /// When true, worker_manager will be skipped for this reconciliation
+  bool _skipWorkerManagerForThisReconciliation = false;
 
   /// Performance tracking and monitoring
   final PerformanceMonitor _performanceMonitor = PerformanceMonitor();
@@ -180,11 +191,10 @@ class DCFEngine {
       _nativeBridge.setEventHandler(_handleNativeEvent);
       print('✅ DCFEngine: Event handler registered with PlatformInterface');
 
-      // Initialize concurrent processing (non-blocking - just sets up listener)
-      // This doesn't spawn isolates, so it's fast and won't block initialization
-      _initializeConcurrentProcessing().catchError((e) {
+      // Initialize worker manager for parallel reconciliation
+      _initializeWorkerManager().catchError((e) {
         EngineDebugLogger.log(
-            'ISOLATE_INIT_ERROR', 'Isolate infrastructure setup failed: $e');
+            'WORKER_MANAGER_INIT_ERROR', 'Worker manager setup failed: $e');
       });
 
       _readyCompleter.complete();
@@ -197,231 +207,33 @@ class DCFEngine {
     }
   }
 
-  /// Initialize concurrent processing capabilities (lazy - only sets up listener)
-  Future<void> _initializeConcurrentProcessing() async {
-    if (_concurrentEnabled) {
-      print(
-          '✅ ISOLATES: Already initialized (${_workerIsolates.length} workers ready)');
+  /// Initialize worker manager for parallel reconciliation
+  Future<void> _initializeWorkerManager() async {
+    if (_workerManagerInitialized) {
+      print('✅ WORKER_MANAGER: Already initialized');
       return;
     }
 
     try {
-      print(
-          '🔄 ISOLATES: Setting up isolate infrastructure (lazy initialization)...');
-      EngineDebugLogger.log('ISOLATE_INIT',
-          'Setting up isolate infrastructure (lazy initialization)');
+      print('🔄 WORKER_MANAGER: Initializing worker manager...');
+      EngineDebugLogger.log('WORKER_MANAGER_INIT', 'Initializing worker manager');
 
-      // Cancel existing subscription if any (for hot restart)
-      await _mainIsolateReceivePortSubscription?.cancel();
+      await worker_manager.workerManager.init(dynamicSpawning: true);
+      _workerManagerInitialized = true;
 
-      // Set up main receive port listener for isolate responses
-      _mainIsolateReceivePortSubscription =
-          _mainIsolateReceivePort.listen((message) {
-        if (message is Map<String, dynamic>) {
-          final taskId = message['id'] as String?;
-          if (taskId != null && _isolateTasks.containsKey(taskId)) {
-            final completer = _isolateTasks.remove(taskId)!;
-            if (message['success'] == true) {
-              completer.complete(message['data'] as Map<String, dynamic>);
-            } else {
-              completer.completeError(Exception(
-                  message['error'] as String? ?? 'Isolate task failed'));
-            }
-          }
-        } else if (message is SendPort) {
-          // Isolate sending its port back
-          final index = _workerPorts.length;
-          _workerPorts.add(message);
-          if (index < _workerAvailable.length) {
-            _workerAvailable[index] = true;
-          } else {
-            _workerAvailable.add(true);
-          }
-          if (index < _workerLastUsed.length) {
-            _workerLastUsed[index] = DateTime.now();
-          } else {
-            _workerLastUsed.add(DateTime.now());
-          }
+      print('✅ WORKER_MANAGER: Initialized successfully');
           print(
-              '✅ ISOLATES: Worker isolate $index ready (total: ${_workerPorts.length})');
-          EngineDebugLogger.log(
-              'ISOLATE_PORT_RECEIVED', 'Worker isolate $index sent port');
-        }
-      });
-
-      // Start cleanup timer to close idle isolates
-      _startIsolateCleanupTimer();
-
-      _concurrentEnabled = true;
-
-      // Pre-spawn all worker isolates at startup for optimal performance
-      // This avoids spawning delays during reconciliation
-      // Do this asynchronously so it doesn't block app startup
-      print(
-          '🔄 ISOLATES: Pre-spawning ${_maxWorkers} worker isolates for optimal performance...');
-      _preSpawnIsolates().catchError((e) {
-        print('⚠️ ISOLATES: Error during pre-spawning: $e');
-      });
-
-      print('✅ ISOLATES: Infrastructure ready (workers will be ready shortly)');
-      print(
-          '⚡ ISOLATES: Performance mode enabled - Large trees (50+ nodes) will use parallel reconciliation');
-      EngineDebugLogger.log('ISOLATE_INIT_SUCCESS',
-          'Isolate infrastructure ready, pre-spawning workers');
+          '⚡ WORKER_MANAGER: Performance mode enabled - Large trees (20+ nodes) will use parallel reconciliation');
+      EngineDebugLogger.log('WORKER_MANAGER_INIT_SUCCESS',
+          'Worker manager initialized successfully');
     } catch (e) {
-      print('❌ ISOLATES: Initialization failed: $e');
-      EngineDebugLogger.log('ISOLATE_INIT_ERROR',
-          'Failed to initialize isolate infrastructure: $e');
-      _concurrentEnabled = false;
+      print('❌ WORKER_MANAGER: Initialization failed: $e');
+      EngineDebugLogger.log('WORKER_MANAGER_INIT_ERROR',
+          'Failed to initialize worker manager: $e');
+      _workerManagerInitialized = false;
     }
   }
 
-  /// Pre-spawn all worker isolates at startup
-  Future<void> _preSpawnIsolates() async {
-    for (int i = 0; i < _maxWorkers; i++) {
-      try {
-        final spawned = await _spawnWorkerIsolate();
-        if (!spawned) {
-          print(
-              '⚠️ ISOLATES: Failed to pre-spawn worker $i, will spawn on demand');
-        }
-      } catch (e) {
-        print('⚠️ ISOLATES: Error pre-spawning worker $i: $e');
-      }
-    }
-    // After pre-spawning, ensure we keep at least the pre-spawned workers
-    // This prevents cleanup from closing them
-    final int preSpawnedCount = _workerPorts.length;
-    print(
-        '✅ ISOLATES: Pre-spawning complete (${_workerPorts.length}/${_maxWorkers} workers ready)');
-    if (preSpawnedCount > 0) {
-      print(
-          '⚡ ISOLATES: ${preSpawnedCount} workers ready for parallel reconciliation - optimal performance enabled');
-    }
-  }
-
-  /// Spawn a single worker isolate on demand
-  Future<bool> _spawnWorkerIsolate() async {
-    if (_workerIsolates.length >= _maxWorkers) {
-      return false; // Already at max
-    }
-
-    try {
-      final index = _workerIsolates.length;
-      print('🔄 ISOLATES: Spawning worker isolate $index...');
-
-      final isolate = await Isolate.spawn(
-        _workerIsolateEntry,
-        _mainIsolateReceivePort.sendPort,
-      );
-
-      _workerIsolates.add(isolate);
-      _workerAvailable.add(false);
-      _workerLastUsed.add(DateTime.now());
-
-      print('⏳ ISOLATES: Waiting for worker isolate $index to send port...');
-
-      // Wait for isolate to send its port (with longer timeout for reliability)
-      // The isolate should send its port immediately after spawning
-      int attempts = 0;
-      final maxAttempts = 100; // 1 second total wait time
-      while (_workerPorts.length <= index && attempts < maxAttempts) {
-        await Future.delayed(const Duration(milliseconds: 10));
-        attempts++;
-      }
-
-      // Double-check: the port might have been added but index might be different
-      // if multiple isolates spawned concurrently
-      if (_workerPorts.length > index && index < _workerPorts.length) {
-        print(
-            '✅ ISOLATES: Worker isolate $index ready (total: ${_workerPorts.length})');
-        // Ensure isolate is marked as available
-        if (index < _workerAvailable.length) {
-          _workerAvailable[index] = true;
-        } else {
-          while (_workerAvailable.length <= index) {
-            _workerAvailable.add(true);
-          }
-        }
-        print('✅ ISOLATES: Worker isolate $index ready and port received, marked as available');
-        return true;
-      } else if (_workerPorts.length > 0) {
-        // Port was received but index might be different - this is okay
-        // Find the actual index of the newly received port
-        final actualIndex = _workerPorts.length - 1;
-        if (actualIndex < _workerAvailable.length) {
-          _workerAvailable[actualIndex] = true;
-        } else {
-          while (_workerAvailable.length <= actualIndex) {
-            _workerAvailable.add(true);
-          }
-        }
-        print(
-            '✅ ISOLATES: Worker isolate spawned (port received at index $actualIndex, total: ${_workerPorts.length}), marked as available');
-        return true;
-      } else {
-        print(
-            '⚠️ ISOLATES: Worker isolate $index failed to send port after ${maxAttempts * 10}ms');
-        isolate.kill();
-        _workerIsolates.removeAt(index);
-        if (index < _workerAvailable.length) {
-          _workerAvailable.removeAt(index);
-        }
-        if (index < _workerLastUsed.length) {
-          _workerLastUsed.removeAt(index);
-        }
-        return false;
-      }
-    } catch (e) {
-      print('❌ ISOLATES: Failed to spawn isolate: $e');
-      return false;
-    }
-  }
-
-  /// Start timer to cleanup idle isolates
-  void _startIsolateCleanupTimer() {
-    _isolateCleanupTimer?.cancel();
-    _isolateCleanupTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
-      _cleanupIdleIsolates();
-    });
-  }
-
-  /// Close isolates that have been idle for too long
-  void _cleanupIdleIsolates() {
-    if (_workerIsolates.isEmpty) return;
-
-    final now = DateTime.now();
-    final toRemove = <int>[];
-
-    // Find idle isolates (available and not used recently)
-    for (int i = _workerIsolates.length - 1; i >= 0; i--) {
-      if (i < _workerAvailable.length &&
-          i < _workerLastUsed.length &&
-          _workerAvailable[i]) {
-        final idleTime = now.difference(_workerLastUsed[i]);
-        if (idleTime > _isolateIdleTimeout) {
-          toRemove.add(i);
-        }
-      }
-    }
-
-    // Remove idle isolates (keep at least _minWorkers)
-    final keepCount = _workerIsolates.length - toRemove.length;
-    if (keepCount >= _minWorkers) {
-      for (final index in toRemove) {
-        EngineDebugLogger.log('ISOLATE_CLEANUP', 'Closing idle isolate $index');
-        try {
-          _workerIsolates[index].kill();
-        } catch (e) {
-          // Ignore errors when killing
-        }
-        _workerIsolates.removeAt(index);
-        _workerPorts.removeAt(index);
-        _workerAvailable.removeAt(index);
-        _workerLastUsed.removeAt(index);
-      }
-    }
-  }
 
   Future<void> get isReady => _readyCompleter.future;
 
@@ -443,6 +255,9 @@ class DCFEngine {
 
     if (component is DCFStatefulComponent) {
       _statefulComponents[component.instanceId] = component;
+      // 🔥 CRITICAL: Clear old scheduleUpdate closure before creating new one
+      // This prevents old closures from holding component references
+      component.scheduleUpdate = () {}; // Clear first
       component.scheduleUpdate = () => _scheduleComponentUpdate(component);
       EngineDebugLogger.log('COMPONENT_REGISTER',
           'Registered StatefulComponent: ${component.instanceId}');
@@ -455,125 +270,21 @@ class DCFEngine {
     }
   }
 
-  /// O(1) - Handle a native event by finding the appropriate component
-  /// Handles native events received from the platform bridge.
+  /// O(1) - Handle a native event using centralized EventRegistry
   ///
-  /// Looks up the node associated with the viewId and executes the appropriate
-  /// event handler. If the node is a component instead of an element, it fixes
-  /// the mapping to point to the rendered element.
+  /// 🔥 NEW: Uses EventRegistry instead of fragile prop lookup
+  /// Events are registered automatically when views are rendered
   void _handleNativeEvent(
       int viewId, String eventType, Map<dynamic, dynamic> eventData) {
-    print(
-        '🦁 DCFEngine: _handleNativeEvent called for view $viewId, event $eventType');
-
-    EngineDebugLogger.log(
-        'NATIVE_EVENT', 'Received event: $eventType for view: $viewId',
-        extra: {
-          'EventData': eventData.toString(),
-          'TotalMappings': _nodesByViewId.length,
-          'AvailableViewIds': _nodesByViewId.keys.take(20).toList()
-        });
-
-    final node = _nodesByViewId[viewId]; // O(1) lookup
-    if (node == null) {
-      print('🦁 DCFEngine: ❌ No node found for view ID: $viewId');
-      EngineDebugLogger.log(
-          'NATIVE_EVENT_ERROR', 'No node found for view ID: $viewId',
-          extra: {
-            'AvailableViewIds': _nodesByViewId.keys.take(20).toList(),
-            'TotalMappings': _nodesByViewId.length
-          });
-      return;
-    }
-    print('🦁 DCFEngine: ✅ Found node for view $viewId: ${node.runtimeType}');
-
-    EngineDebugLogger.log('NATIVE_EVENT_NODE_FOUND', 'Found node for view ID',
-        extra: {
-          'ViewId': viewId,
-          'NodeType': node.runtimeType.toString(),
-          'IsElement': node is DCFElement,
-          'IsComponent':
-              node is DCFStatefulComponent || node is DCFStatelessComponent
-        });
-
-    if (node is DCFElement) {
-      final eventHandlerKeys = [
-        eventType,
-        'on${eventType.substring(0, 1).toUpperCase()}${eventType.substring(1)}',
-        eventType.toLowerCase(),
-        'on${eventType.toLowerCase().substring(0, 1).toUpperCase()}${eventType.toLowerCase().substring(1)}'
-      ];
-
-      EngineDebugLogger.log(
-          'NATIVE_EVENT_ELEMENT_PROPS', 'Element props for event lookup',
-          extra: {
-            'ElementType': node.type,
-            'AllProps': node.elementProps.keys.toList(),
-            'EventType': eventType,
-            'HandlerKeys': eventHandlerKeys
-          });
-
-      for (final key in eventHandlerKeys) {
-        if (node.elementProps.containsKey(key) &&
-            node.elementProps[key] is Function) {
-          EngineDebugLogger.log('EVENT_HANDLER_FOUND',
-              'Found handler for $eventType using key: $key');
-          _executeEventHandler(node.elementProps[key], eventData);
-          return;
-        } else if (node.elementProps.containsKey(key)) {
-          EngineDebugLogger.log('EVENT_HANDLER_WRONG_TYPE',
-              'Handler exists but is not a Function', extra: {
-            'Key': key,
-            'ValueType': node.elementProps[key].runtimeType.toString()
-          });
-        }
-      }
-
-      EngineDebugLogger.log(
-          'EVENT_HANDLER_NOT_FOUND', 'No handler found for event: $eventType',
-          extra: {
-            'AvailableProps': node.elementProps.keys.toList(),
-            'TriedKeys': eventHandlerKeys,
-            'ElementType': node.type
-          });
-    } else {
-      if (node is DCFStatefulComponent || node is DCFStatelessComponent) {
-        if (node.renderedNode is DCFElement) {
-          final renderedElement = node.renderedNode as DCFElement;
-
-          // Fix the mapping if we find a component instead of element.
-          // This can happen when SafeArea re-renders and Button components
-          // get mapped instead of their rendered elements.
-          final elementViewId =
-              renderedElement.nativeViewId ?? node.contentViewId;
-          if (elementViewId == viewId || node.contentViewId == viewId) {
-            _nodesByViewId[viewId] = renderedElement;
-            // Also ensure the rendered element has the viewId set
-            if (renderedElement.nativeViewId != viewId) {
-              renderedElement.nativeViewId = viewId;
-            }
-            // Retry handler lookup
-            final handlerKeys = [
-              eventType,
-              'on${eventType.substring(0, 1).toUpperCase()}${eventType.substring(1)}',
-              eventType.toLowerCase(),
-              'on${eventType.toLowerCase().substring(0, 1).toUpperCase()}${eventType.toLowerCase().substring(1)}'
-            ];
-            for (final key in handlerKeys) {
-              if (renderedElement.elementProps.containsKey(key) &&
-                  renderedElement.elementProps[key] is Function) {
-                print('✅ EVENT: Found handler in rendered element, executing');
-                _executeEventHandler(
-                    renderedElement.elementProps[key]!, eventData);
-                return;
-              }
-            }
-          }
-        }
-      }
-      EngineDebugLogger.log('NATIVE_EVENT_WRONG_NODE_TYPE',
-          'Node is not a DCFElement, cannot handle events',
-          extra: {'NodeType': node.runtimeType.toString(), 'ViewId': viewId});
+    // 🔥 NEW: Use centralized EventRegistry - clean, no fallbacks
+    final registry = EventRegistry();
+    final handled = registry.handleEvent(viewId, eventType, Map<String, dynamic>.from(eventData));
+    
+    if (!handled) {
+      // Event not registered - this is expected for views without handlers
+      // Fail-fast: no fallback, no error - just ignore
+      EngineDebugLogger.log('EVENT_NOT_REGISTERED', 
+          'Event $eventType for view $viewId not registered - ignoring (fail-fast)');
     }
   }
 
@@ -877,6 +588,47 @@ class DCFEngine {
 
     final priority = PriorityUtils.getComponentPriority(component);
     _componentPriorities[component.instanceId] = priority;
+    
+    // 🔥 CRITICAL FIX: Throttle rapid updates to prevent freeze
+    // If component is already in queue, don't add again (deduplicate)
+    // This prevents queue from growing unbounded during rapid button presses
+    if (_pendingUpdates.contains(component.instanceId)) {
+      EngineDebugLogger.log('UPDATE_ALREADY_QUEUED',
+          'Component ${component.instanceId} already in queue, skipping duplicate');
+      return; // Already queued, skip duplicate
+    }
+    
+    // 🔥 NESTED LOOP FIX: If reconciliation depth is too high, skip this update
+    // This prevents queueing up updates that will cause nested loops and UI freeze
+    if (_reconciliationDepth >= _maxReconciliationDepth) {
+      EngineDebugLogger.log('UPDATE_SKIPPED_DEPTH',
+          'Skipping update - reconciliation depth too high (${_reconciliationDepth})');
+      return; // Skip to prevent nested loops
+    }
+    
+    // 🔥 UI FREEZE FIX: If UI work is paused (rapid reconciliation), skip this update
+    // This prevents queueing up updates during rapid state changes that will cause UI freeze
+    if (_uiWorkPaused) {
+      EngineDebugLogger.log('UPDATE_SKIPPED_PAUSED',
+          'Skipping update - UI work is paused due to rapid reconciliation');
+      return; // Skip to prevent UI freeze
+    }
+    
+    // 🔥 CRITICAL FIX: Aggressive throttling to keep CPU < 50% during stress testing
+    // Lower queue size for normal stress testing (only allow large queues for extreme cases)
+    const maxQueueSize = 10; // Maximum updates queued at once (lowered from 20 for better CPU control)
+    if (_pendingUpdates.length >= maxQueueSize) {
+      EngineDebugLogger.log('UPDATE_QUEUE_FULL',
+          'Update queue full (${_pendingUpdates.length}), clearing old updates');
+      // Clear all old updates and priorities - only keep the current one
+      // This prevents queue from growing unbounded during rapid button presses
+      final oldUpdates = _pendingUpdates.toList();
+      _pendingUpdates.clear();
+      for (final id in oldUpdates) {
+        _componentPriorities.remove(id);
+      }
+    }
+    
     final wasEmpty = _pendingUpdates.isEmpty;
     _pendingUpdates.add(component.instanceId);
 
@@ -935,6 +687,43 @@ class DCFEngine {
           'BATCH_SKIP', 'Batch already in progress, skipping');
       return;
     }
+    
+    // 🔥 UI FREEZE FIX: Detect rapid reconciliation and pause ALL UI thread work IMMEDIATELY
+    // Universal solution - works for animations, worklets, or any future UI thread work
+    // Pause BEFORE processing to prevent animations from consuming CPU during reconciliation
+    final now = DateTime.now();
+    if (_lastReconciliationTime != null) {
+      final timeSinceLastReconciliation = now.difference(_lastReconciliationTime!);
+      if (timeSinceLastReconciliation < _rapidReconciliationWindow) {
+        _rapidReconciliationCount++;
+        // 🔥 AGGRESSIVE: Pause immediately on 2nd rapid update (not 3rd) to prevent freeze
+        if (_rapidReconciliationCount >= 2 && !_uiWorkPaused) {
+          // Rapid reconciliation detected - pause ALL UI thread work IMMEDIATELY
+          print('🛑 RAPID_RECONCILIATION: Detected rapid updates (${_rapidReconciliationCount}), pausing ALL UI thread work IMMEDIATELY');
+          await _pauseAllUIWork();
+          _uiWorkPaused = true;
+        }
+      } else {
+        // Reset counter if outside window
+        _rapidReconciliationCount = 1;
+      }
+    } else {
+      _rapidReconciliationCount = 1;
+    }
+    _lastReconciliationTime = now;
+    
+    // 🔥 CPU THROTTLING: Rate limit batch processing to keep CPU < 50%
+    // Enforce minimum cooldown between batches to prevent CPU spikes
+    if (_lastBatchProcessTime != null) {
+      final timeSinceLastBatch = now.difference(_lastBatchProcessTime!);
+      if (timeSinceLastBatch < _minBatchCooldown) {
+        final remainingCooldown = _minBatchCooldown - timeSinceLastBatch;
+        EngineDebugLogger.log('BATCH_RATE_LIMIT',
+            'Rate limiting batch processing, waiting ${remainingCooldown.inMilliseconds}ms');
+        await Future.delayed(remainingCooldown);
+      }
+    }
+    _lastBatchProcessTime = now;
 
     _batchUpdateInProgress = true;
     _updateTimer?.cancel();
@@ -950,7 +739,8 @@ class DCFEngine {
       final updateCount = _pendingUpdates.length;
       final startTime = DateTime.now();
 
-      if (_concurrentEnabled && updateCount >= _concurrentThreshold) {
+      // Use worker_manager for concurrent processing if available
+      if (_workerManagerInitialized && updateCount >= 5) {
         await _processPendingUpdatesConcurrently();
       } else {
         await _processPendingUpdatesSerially();
@@ -958,7 +748,7 @@ class DCFEngine {
 
       final processingTime = DateTime.now().difference(startTime);
       _updatePerformanceStats(
-          updateCount >= _concurrentThreshold, processingTime);
+          updateCount >= 5, processingTime);
 
       if (_pendingUpdates.isNotEmpty) {
         EngineDebugLogger.log('BATCH_NEW_UPDATES',
@@ -980,8 +770,57 @@ class DCFEngine {
       // 🔥 CRITICAL: Clear render cycle counts after batch completes
       _renderCycleCount.clear();
       _nodesBeingRendered.clear(); // Clear rendering set after batch completes
+      
+      // 🔥 UI FREEZE FIX: Resume ALL UI thread work after reconciliation completes
+      // Universal solution - resumes all frame callbacks/display links
+      if (_uiWorkPaused) {
+        // Wait longer to ensure all reconciliation is fully complete and UI is stable
+        // This prevents animations from restarting too early and causing freeze
+        await Future.delayed(Duration(milliseconds: 200));
+        
+        // 🔥 AGGRESSIVE: Check if more updates are queued - if so, keep paused
+        if (_pendingUpdates.isNotEmpty) {
+          print('⏸️ RAPID_RECONCILIATION: More updates queued (${_pendingUpdates.length}), keeping UI work paused');
+          // Don't resume yet - wait for next batch
+        } else {
+          print('▶️ RAPID_RECONCILIATION: Reconciliation complete, resuming ALL UI thread work');
+          await _resumeAllUIWork();
+          _uiWorkPaused = false;
+          _rapidReconciliationCount = 0;
+        }
+      }
+      
+      // 🔥 NESTED LOOP FIX: Ensure reconciliation depth is reset after batch completes
+      if (_reconciliationDepth > 0) {
+        print('⚠️ RAPID_RECONCILIATION: Resetting reconciliation depth (was: $_reconciliationDepth)');
+        _reconciliationDepth = 0;
+        _skipWorkerManagerForThisReconciliation = false;
+      }
     } finally {
       _batchUpdateInProgress = false;
+    }
+  }
+  
+  /// 🔥 UI FREEZE FIX: Pause ALL UI thread work globally (universal solution)
+  /// This pauses ALL frame callbacks, display links, and any other UI thread work
+  /// Works for animations, worklets, or any future UI thread operations
+  Future<void> _pauseAllUIWork() async {
+    try {
+      await _nativeBridge.tunnel('ReanimatedView', 'pauseAllUIWork', {});
+    } catch (e) {
+      // Ignore errors - method might not exist or no UI work running
+      EngineDebugLogger.log('UI_WORK_PAUSE_ERROR', 'Failed to pause UI work: $e');
+    }
+  }
+  
+  /// 🔥 UI FREEZE FIX: Resume ALL UI thread work globally (universal solution)
+  /// This resumes ALL frame callbacks, display links, and any other UI thread work
+  Future<void> _resumeAllUIWork() async {
+    try {
+      await _nativeBridge.tunnel('ReanimatedView', 'resumeAllUIWork', {});
+    } catch (e) {
+      // Ignore errors - method might not exist
+      EngineDebugLogger.log('UI_WORK_RESUME_ERROR', 'Failed to resume UI work: $e');
     }
   }
 
@@ -1010,8 +849,7 @@ class DCFEngine {
     }
 
     try {
-      final batchSize =
-          (_maxWorkers * 2); // Process more than workers to keep them busy
+      final batchSize = 4; // Process in batches to keep workers busy
       for (int i = 0; i < sortedUpdates.length; i += batchSize) {
         final batchEnd = (i + batchSize < sortedUpdates.length)
             ? i + batchSize
@@ -1101,7 +939,7 @@ class DCFEngine {
 
     // Determine priority based on update count
     final priority =
-        sortedUpdates.length > 200 ? WorkPriority.low : WorkPriority.high;
+        sortedUpdates.length > 200 ? WorkPriority.low : WorkPriority.high; // This is frame_scheduler WorkPriority, not worker_manager
 
     final completer = Completer<void>();
     bool hasError = false;
@@ -1148,8 +986,13 @@ class DCFEngine {
   Future<void> _processUpdatesWithDeadline(List<String> sortedUpdates,
       Deadline deadline, Completer<void> completer) async {
     int processed = 0;
+    
+    // 🔥 CPU THROTTLING: Process updates in smaller chunks with micro-delays
+    // This prevents CPU from spiking during large batch processing
+    const chunkSize = 5; // Process 5 updates at a time
+    const chunkDelay = Duration(milliseconds: 1); // 1ms delay between chunks
 
-    for (final componentId in sortedUpdates) {
+    for (var i = 0; i < sortedUpdates.length; i++) {
       // Check deadline
       if (deadline.timeRemaining() <= 0) {
         // Schedule remaining work for next frame
@@ -1159,8 +1002,14 @@ class DCFEngine {
         });
         return;
       }
+      
+      // 🔥 CPU THROTTLING: Add micro-delay every chunkSize updates
+      // This spreads CPU load over time instead of spiking
+      if (i > 0 && i % chunkSize == 0) {
+        await Future.delayed(chunkDelay);
+      }
 
-      await _updateComponentById(componentId);
+      await _updateComponentById(sortedUpdates[i]);
       processed++;
     }
 
@@ -1231,25 +1080,6 @@ class DCFEngine {
 
       final previousRenderedNode = _previousRenderedNodes[componentId];
       if (previousRenderedNode != null) {
-        // 🔥 CRITICAL: Transfer view IDs BEFORE reconciliation for hot reload
-        // This ensures reconciliation can match old and new nodes properly
-        // Without this, both old and new nodes have null view IDs, causing full re-render
-        final oldViewId = previousRenderedNode.effectiveNativeViewId;
-        if (oldViewId != null && newRenderedNode.effectiveNativeViewId == null) {
-          // Transfer view ID from old to new node before reconciliation
-          if (previousRenderedNode is DCFElement && newRenderedNode is DCFElement) {
-            newRenderedNode.nativeViewId = previousRenderedNode.nativeViewId;
-            newRenderedNode.contentViewId = previousRenderedNode.contentViewId;
-            print('🔥 HOT_RELOAD: Transferred view ID $oldViewId to new rendered node before reconciliation');
-          } else if (previousRenderedNode is DCFStatefulComponent && newRenderedNode is DCFStatefulComponent) {
-            newRenderedNode.nativeViewId = previousRenderedNode.nativeViewId;
-            newRenderedNode.contentViewId = previousRenderedNode.contentViewId;
-            print('🔥 HOT_RELOAD: Transferred view ID $oldViewId to new component before reconciliation');
-          } else if (previousRenderedNode is DCFStatelessComponent && newRenderedNode is DCFStatelessComponent) {
-            newRenderedNode.contentViewId = previousRenderedNode.contentViewId;
-            print('🔥 HOT_RELOAD: Transferred view ID $oldViewId to new stateless component before reconciliation');
-          }
-        }
         // Comprehensive type checking - handle all valid reconciliation cases
         bool canReconcile = false;
         if (previousRenderedNode is DCFElement &&
@@ -1749,13 +1579,32 @@ class DCFEngine {
       EngineDebugLogger.logBridge('ADD_EVENT_LISTENERS', viewId,
           data: {'EventTypes': eventTypes});
       await _nativeBridge.addEventListeners(viewId, eventTypes);
+      
+      // 🔥 NEW: Register events in centralized EventRegistry
+      // No prefix guessing - use exact event names from element props
+      // Native side queries the registry to know what events are available
+      final eventHandlers = element.eventHandlers;
+      
+      if (eventHandlers.isNotEmpty) {
+        final registry = EventRegistry();
+        registry.register(viewId, eventHandlers);
+        EngineDebugLogger.log('EVENT_REGISTRY', 
+            'Registered ${eventHandlers.length} events for view $viewId: ${eventHandlers.keys.join(", ")}');
+      }
     }
 
     final childIds = <int>[];
     EngineDebugLogger.log('ELEMENT_CHILDREN_START',
         'Rendering ${element.children.length} children');
 
+    // 🔥 UI THREAD YIELDING: Yield every 3 children to prevent UI freeze
+    const yieldInterval = 3;
     for (var i = 0; i < element.children.length; i++) {
+      // Yield control back to UI thread every few children
+      if (i > 0 && i % yieldInterval == 0) {
+        await Future.delayed(Duration.zero); // Yield to event loop
+      }
+      
       try {
         final childId = await renderToNative(element.children[i],
             parentViewId: viewId, index: i);
@@ -1782,32 +1631,54 @@ class DCFEngine {
   /// Supports incremental rendering with pause/resume and isolate-based parallel diffing
   Future<void> _reconcile(
       DCFComponentNode oldNode, DCFComponentNode newNode) async {
-    EngineDebugLogger.logReconcile('START', oldNode, newNode,
-        reason: 'Beginning reconciliation');
+    // 🔥 NESTED LOOP FIX: Prevent infinite recursion
+    if (_reconciliationDepth >= _maxReconciliationDepth) {
+      EngineDebugLogger.logReconcile('MAX_DEPTH_REACHED', oldNode, newNode,
+          reason: 'Max reconciliation depth reached, using regular reconciliation');
+      _skipWorkerManagerForThisReconciliation = true;
+    }
+    
+    _reconciliationDepth++;
+    try {
+      EngineDebugLogger.logReconcile('START', oldNode, newNode,
+          reason: 'Beginning reconciliation (depth: $_reconciliationDepth)');
 
-    // Set work in progress tree
-    _workInProgressTree = newNode;
+      // Set work in progress tree
+      _workInProgressTree = newNode;
 
-    // CRITICAL: Only use isolate reconciliation for updates to existing trees
-    // Never use it for initial render - initial render must happen synchronously
-    // on the main thread to ensure proper UI synchronization
-    final isInitialRender = oldNode.effectiveNativeViewId == null;
+      // CRITICAL: Only use isolate reconciliation for updates to existing trees
+      // Never use it for initial render - initial render must happen synchronously
+      // on the main thread to ensure proper UI synchronization
+      final isInitialRender = oldNode.effectiveNativeViewId == null;
 
-    // Use isolate-based reconciliation for large trees (but NOT for initial render)
-    bool usedIsolate = false;
-    if (!isInitialRender &&
-        _concurrentEnabled &&
-        _shouldUseIsolateReconciliation(oldNode, newNode)) {
-      try {
-        await _reconcileWithIsolate(oldNode, newNode);
-        usedIsolate = true;
-      } catch (e) {
-        EngineDebugLogger.logReconcile(
-            'ISOLATE_FALLBACK_ERROR', oldNode, newNode,
-            reason: 'Isolate reconciliation failed, falling back: $e');
-        // Continue with regular reconciliation
-      }
-    } else if (!isInitialRender) {
+      // Use worker_manager for parallel reconciliation (but NOT for initial render)
+      // 🔥 CRITICAL: Disable worker_manager reconciliation during hot reload and nested calls
+      bool usedIsolate = false;
+      final shouldSkipWorkerManager = _skipWorkerManagerForThisReconciliation || _reconciliationDepth > 1;
+      
+      if (!isInitialRender &&
+          !_isHotReloading &&
+          !shouldSkipWorkerManager &&
+          _workerManagerInitialized &&
+          _shouldUseIsolateReconciliation(oldNode, newNode)) {
+        try {
+          // 🔥 NESTED LOOP FIX: Set flag BEFORE calling to prevent nested isolate calls
+          _skipWorkerManagerForThisReconciliation = true;
+          await _reconcileWithIsolate(oldNode, newNode);
+          usedIsolate = true;
+        } catch (e) {
+          EngineDebugLogger.logReconcile(
+              'WORKER_MANAGER_FALLBACK_ERROR', oldNode, newNode,
+              reason: 'Worker_manager reconciliation failed, falling back: $e');
+          // Flag already set, continue with regular reconciliation
+        }
+      } else {
+        // Reset flag only at top level
+        if (_reconciliationDepth == 1) {
+          _skipWorkerManagerForThisReconciliation = false;
+        }
+      
+      if (!isInitialRender) {
       // Log why isolates weren't used (for debugging)
       final nodeCount =
           _countNodeChildren(oldNode) + _countNodeChildren(newNode);
@@ -1815,12 +1686,13 @@ class DCFEngine {
         // Tree too small - this is normal, don't log
       }
       // Note: No need to log about missing workers - they will be spawned on demand
+      }
     }
 
-    // If isolate reconciliation completed, we're done
-    if (usedIsolate) {
-      return;
-    }
+      // If isolate reconciliation completed, we're done
+      if (usedIsolate) {
+        return;
+      }
     
     // 🚀 OPTIMIZATION: For very large trees that are completely different, use direct replace
     // This makes navigation instant instead of slow reconciliation
@@ -2468,32 +2340,36 @@ class DCFEngine {
       return;
     }
 
-    EngineDebugLogger.logReconcile('COMPLETE', oldNode, newNode,
-        reason: 'Reconciliation completed successfully');
+      EngineDebugLogger.logReconcile('COMPLETE', oldNode, newNode,
+          reason: 'Reconciliation completed successfully');
+    } finally {
+      // 🔥 NESTED LOOP FIX: Always decrement depth, even on error
+      _reconciliationDepth--;
+      if (_reconciliationDepth == 0) {
+        // Reset flag only when back at top level
+        _skipWorkerManagerForThisReconciliation = false;
+      }
+    }
   }
 
   /// Check if isolate-based reconciliation should be used
   bool _shouldUseIsolateReconciliation(
       DCFComponentNode oldNode, DCFComponentNode newNode) {
-    // Use isolates for trees with 50+ nodes (workers will be spawned on demand)
+    // Use worker manager for trees with 20+ nodes
     final oldNodeCount = _countNodeChildren(oldNode);
     final newNodeCount = _countNodeChildren(newNode);
     final totalNodes = oldNodeCount + newNodeCount;
 
-    // 🚀 OPTIMIZATION: Lower threshold from 50 to 20 for better performance
-    // Large component structures (like examples screen) benefit from parallel reconciliation
-    // Workers will be spawned inside _reconcileWithIsolate if needed
-    final shouldUse = totalNodes >= 20 && _concurrentEnabled;
+    // 🚀 OPTIMIZATION: Use worker manager for trees with 20+ nodes
+    // Large component structures benefit from parallel reconciliation
+    final shouldUse = totalNodes >= 20 && _workerManagerInitialized && !_isHotReloading;
 
     if (totalNodes >= 20) {
       if (shouldUse) {
         print(
-            '⚡ ISOLATES: Large tree detected ($totalNodes nodes) - Using parallel isolate reconciliation for optimal performance');
+            '⚡ WORKER_MANAGER: Large tree detected ($totalNodes nodes) - Using parallel reconciliation for optimal performance');
         print(
-            '   └─ Workers available: ${_workerPorts.length} | Estimated speedup: ${((totalNodes / 20) * 0.3).toStringAsFixed(1)}x');
-      } else {
-        print(
-            '📊 ISOLATES: Tree size: $totalNodes nodes | Enabled: $_concurrentEnabled | Workers: ${_workerPorts.length} | Will use: $shouldUse');
+            '   └─ Estimated speedup: ${((totalNodes / 20) * 0.3).toStringAsFixed(1)}x');
       }
     }
 
@@ -2516,21 +2392,25 @@ class DCFEngine {
     return count;
   }
 
-  /// Reconcile using isolate-based parallel diffing
+  /// Reconcile using worker_manager for parallel diffing
   Future<void> _reconcileWithIsolate(
       DCFComponentNode oldNode, DCFComponentNode newNode) async {
+    if (!_workerManagerInitialized) {
+      throw Exception('Worker manager not initialized');
+    }
+
     final totalNodes =
         _countNodeChildren(oldNode) + _countNodeChildren(newNode);
     final startTime = DateTime.now();
-    print('🚀 ISOLATES: Starting parallel reconciliation ($totalNodes nodes)');
-    EngineDebugLogger.logReconcile('ISOLATE_START', oldNode, newNode,
-        reason: 'Using isolate-based reconciliation');
+    print('🚀 WORKER_MANAGER: Starting parallel reconciliation ($totalNodes nodes)');
+    EngineDebugLogger.logReconcile('WORKER_MANAGER_START', oldNode, newNode,
+        reason: 'Using worker_manager for parallel reconciliation');
 
     try {
       // Check if oldNode has been rendered - if not, treat as initial render
       final oldNodeRendered = oldNode.effectiveNativeViewId != null;
 
-      // Serialize trees to maps for isolate
+      // Serialize trees to maps for worker
       final serializeStart = DateTime.now();
       final oldTreeData =
           oldNodeRendered ? _serializeNodeForIsolate(oldNode) : null;
@@ -2538,102 +2418,36 @@ class DCFEngine {
       final serializeTime =
           DateTime.now().difference(serializeStart).inMilliseconds;
 
-      // Find available isolate or spawn one if needed
-      int isolateIndex = -1;
-      // Check existing workers - iterate over ports length to ensure we check all
-      // CRITICAL: Only check isolates that have both a port AND are marked as available
-      for (int i = 0; i < _workerPorts.length; i++) {
-        // Ensure availability list is sized correctly
-        if (i >= _workerAvailable.length) {
-          _workerAvailable.add(true);
-        }
-        // Only consider isolate available if it has a port AND is marked available
-        if (i < _workerPorts.length && _workerAvailable[i]) {
-          isolateIndex = i;
-          break;
-        }
-      }
-
-      // If no isolate available, try to spawn one
-      if (isolateIndex == -1 && _workerIsolates.length < _maxWorkers) {
-        print('🔄 ISOLATES: No workers available, spawning on demand...');
-        final spawned = await _spawnWorkerIsolate();
-        if (spawned && _workerPorts.isNotEmpty) {
-          print(
-              '✅ ISOLATES: Worker spawned successfully, finding available isolate...');
-          // Find the newly spawned isolate - check from the end backwards
-          // Make sure the isolate has a port and is marked as available
-          for (int i = _workerPorts.length - 1; i >= 0; i--) {
-            // Ensure availability list is sized correctly
-            if (i >= _workerAvailable.length) {
-              _workerAvailable.add(true);
-            }
-            if (i < _workerPorts.length && 
-                i < _workerAvailable.length && 
-                _workerAvailable[i]) {
-              isolateIndex = i;
-              break;
-            }
-          }
-        }
-      }
-
-      if (isolateIndex == -1) {
-        // Fallback to regular reconciliation if no isolates available
-        print(
-            '⚠️ ISOLATES: No isolates available (${_workerPorts.length} ports, ${_workerAvailable.length} availability flags), falling back to regular reconciliation');
-        EngineDebugLogger.logReconcile('ISOLATE_FALLBACK', oldNode, newNode,
-            reason: 'No isolates available, using regular reconciliation');
-        // Throw to trigger fallback in _reconcile
-        throw Exception('No isolates available for reconciliation');
-      }
-
-      print('✅ ISOLATES: Using worker isolate $isolateIndex');
-      _workerAvailable[isolateIndex] = false;
-      _workerLastUsed[isolateIndex] = DateTime.now();
-
-      final completer = Completer<Map<String, dynamic>>();
-      final taskId =
-          'reconcile_${DateTime.now().millisecondsSinceEpoch}_$isolateIndex';
-      _isolateTasks[taskId] = completer;
-
-      // Send task to isolate
-      final isolateStartTime = DateTime.now();
-      _workerPorts[isolateIndex].send({
-        'type': 'treeReconciliation',
-        'id': taskId,
-        'data': {
+      // Execute reconciliation in worker isolate using worker_manager
+      final workerStartTime = DateTime.now();
+      final result = await worker_manager.workerManager.execute<Map<String, dynamic>>(
+        () => _reconcileTreeInIsolate({
           'oldTree': oldTreeData,
           'newTree': newTreeData,
-        },
-      });
-
-      // Wait for result
-      final result = await completer.future;
-      final isolateProcessingTime =
-          DateTime.now().difference(isolateStartTime).inMilliseconds;
-
-      // Mark isolate as available and update last used time
-      // Ensure lists are properly sized
-      while (isolateIndex >= _workerAvailable.length) {
-        _workerAvailable.add(true);
-      }
-      _workerAvailable[isolateIndex] = true;
-
-      while (isolateIndex >= _workerLastUsed.length) {
-        _workerLastUsed.add(DateTime.now());
-      }
-      _workerLastUsed[isolateIndex] = DateTime.now();
+        }),
+        priority: worker_priority.WorkPriority.immediately,
+      );
+      final workerProcessingTime =
+          DateTime.now().difference(workerStartTime).inMilliseconds;
 
       final changesCount = (result['changes'] as List?)?.length ?? 0;
       final metrics = result['metrics'] as Map<String, dynamic>? ?? {};
-      final isolateProcessingTimeMs =
-          result['processingTimeMs'] as int? ?? isolateProcessingTime;
 
       print(
-          '⚡ ISOLATES: Parallel diff computed in ${isolateProcessingTimeMs}ms (serialization: ${serializeTime}ms)');
+          '⚡ WORKER_MANAGER: Parallel diff computed in ${workerProcessingTime}ms (serialization: ${serializeTime}ms)');
       print(
-          '📊 ISOLATES: Performance - Nodes: $totalNodes | Changes: $changesCount | Complexity: ${metrics['complexity'] ?? 'unknown'}');
+          '📊 WORKER_MANAGER: Performance - Nodes: $totalNodes | Changes: $changesCount | Complexity: ${metrics['complexity'] ?? 'unknown'}');
+
+      // If no changes detected, the diff algorithm might have missed structural changes
+      // Instead of throwing, just return and let regular reconciliation handle it
+      // This prevents infinite loops while still allowing proper reconciliation
+      if (changesCount == 0) {
+        print('⚠️ WORKER_MANAGER: No changes detected by diff algorithm, but structural changes may exist');
+        print('⚠️ WORKER_MANAGER: Falling back to regular reconciliation to ensure changes are applied');
+        // Don't throw - just return false to indicate we need regular reconciliation
+        // The caller will handle the fallback
+        throw Exception('No changes detected - fallback to regular reconciliation');
+      }
 
       // Apply diff results
       final applyStartTime = DateTime.now();
@@ -2649,18 +2463,18 @@ class DCFEngine {
           : 0;
 
       print(
-          '✅ ISOLATES: Diff applied in ${applyTime}ms | Total: ${totalTime}ms');
+          '✅ WORKER_MANAGER: Diff applied in ${applyTime}ms | Total: ${totalTime}ms');
       if (timeSaved > 0) {
         print(
-            '🎯 ISOLATES: Performance boost - Saved ~${timeSaved}ms by offloading to isolate (${((timeSaved / estimatedMainThreadTime) * 100).toStringAsFixed(1)}% faster)');
+            '🎯 WORKER_MANAGER: Performance boost - Saved ~${timeSaved}ms by offloading to worker (${((timeSaved / estimatedMainThreadTime) * 100).toStringAsFixed(1)}% faster)');
       }
-      EngineDebugLogger.logReconcile('ISOLATE_COMPLETE', oldNode, newNode,
-          reason: 'Isolate-based reconciliation completed');
+      EngineDebugLogger.logReconcile('WORKER_MANAGER_COMPLETE', oldNode, newNode,
+          reason: 'Worker_manager-based reconciliation completed');
     } catch (e, stackTrace) {
-      print('❌ ISOLATES: Reconciliation failed with error: $e');
-      print('❌ ISOLATES: Stack trace: $stackTrace');
-      EngineDebugLogger.logReconcile('ISOLATE_ERROR', oldNode, newNode,
-          reason: 'Isolate reconciliation failed: $e');
+      print('❌ WORKER_MANAGER: Reconciliation failed with error: $e');
+      print('❌ WORKER_MANAGER: Stack trace: $stackTrace');
+      EngineDebugLogger.logReconcile('WORKER_MANAGER_ERROR', oldNode, newNode,
+          reason: 'Worker_manager reconciliation failed: $e');
       // CRITICAL: Rethrow to trigger fallback to regular reconciliation
       rethrow;
     }
@@ -2706,10 +2520,7 @@ class DCFEngine {
         continue;
       }
 
-      // Skip ReceivePort and other isolate-specific types
-      if (value is SendPort || value is ReceivePort) {
-        continue;
-      }
+      // Skip non-serializable types (worker_manager handles serialization)
 
       // Recursively serialize nested maps and lists
       if (value is Map) {
@@ -2725,9 +2536,7 @@ class DCFEngine {
           serialized[entry.key] = value.map((item) {
             if (item is Map) {
               return _serializePropsForIsolate(Map<String, dynamic>.from(item));
-            } else if (item is Function ||
-                item is SendPort ||
-                item is ReceivePort) {
+            } else if (item is Function) {
               return null; // Replace non-serializable items with null
             }
             return item;
@@ -2785,7 +2594,33 @@ class DCFEngine {
 
       try {
         print('🔍 ISOLATES: Processing ${changes.length} changes from isolate');
+        
+        // If no changes detected, the diff algorithm might have missed structural changes
+        // Set flag to prevent worker_manager from being used again, then throw to trigger fallback
+        if (changes.isEmpty) {
+          print('⚠️ ISOLATES: No changes detected by diff algorithm, but structural changes may exist');
+          print('⚠️ ISOLATES: Falling back to regular reconciliation (worker_manager will be skipped)');
+          
+          // Set flag to prevent worker_manager from being used in the fallback reconciliation
+          _skipWorkerManagerForThisReconciliation = true;
+          
+          // Commit batch update if we started it
+          if (!wasBatchMode && _batchUpdateInProgress) {
+            await commitBatchUpdate();
+          }
+          
+          // Throw to trigger fallback to regular reconciliation
+          throw Exception('No changes detected - fallback to regular reconciliation');
+        }
+        
+        // 🔥 UI THREAD YIELDING: Yield every 5 changes to prevent UI freeze
+        const yieldInterval = 5;
         for (int i = 0; i < changes.length; i++) {
+          // Yield control back to UI thread every few changes
+          if (i > 0 && i % yieldInterval == 0) {
+            await Future.delayed(Duration.zero); // Yield to event loop
+          }
+          
           final change = changes[i];
           final changeMap = change as Map<String, dynamic>;
           final action = changeMap['action'] as String;
@@ -2919,26 +2754,14 @@ class DCFEngine {
                       newRendered.parent = oldRendered.parent;
                       // Reconcile the rendered elements directly using _reconcileElement
                       // This bypasses _reconcile's component type checks
-                      final wasConcurrentEnabled = _concurrentEnabled;
-                      _concurrentEnabled = false;
-                      try {
                         await _reconcileElement(oldRendered, newRendered);
-                      } finally {
-                        _concurrentEnabled = wasConcurrentEnabled;
-                      }
                     } else if (oldChild is DCFStatelessComponent ||
                         oldChild is DCFStatefulComponent ||
                         newChild is DCFStatelessComponent ||
                         newChild is DCFStatefulComponent) {
                       print(
                           '🔍 ISOLATES: Reconciling component - using regular reconciliation');
-                      final wasConcurrentEnabled = _concurrentEnabled;
-                      _concurrentEnabled = false;
-                      try {
                         await _reconcile(oldChild, newChild);
-                      } finally {
-                        _concurrentEnabled = wasConcurrentEnabled;
-                      }
                     } else if (newChild is DCFElement &&
                         oldChild is DCFElement) {
                       // Direct element match - update props if changed
@@ -3153,13 +2976,7 @@ class DCFEngine {
                       newRendered.parent = oldRendered.parent;
                       // Reconcile the rendered elements directly using _reconcileElement
                       // This bypasses _reconcile's component type checks
-                      final wasConcurrentEnabled = _concurrentEnabled;
-                      _concurrentEnabled = false;
-                      try {
                         await _reconcileElement(oldRendered, newRendered);
-                      } finally {
-                        _concurrentEnabled = wasConcurrentEnabled;
-                      }
                     } else if (newChild is DCFStatelessComponent ||
                         newChild is DCFStatefulComponent) {
                       // Components need reconciliation to update their rendered children
@@ -3167,14 +2984,7 @@ class DCFEngine {
                       // and ensure we actually detect and apply changes
                       print(
                           '🔍 ISOLATES: Reconciling component (props changed: ${propsDiff.isNotEmpty}) - using regular reconciliation');
-                      // Temporarily disable isolate reconciliation for this nested call
-                      final wasConcurrentEnabled = _concurrentEnabled;
-                      _concurrentEnabled = false;
-                      try {
                         await _reconcile(oldChild, newChild);
-                      } finally {
-                        _concurrentEnabled = wasConcurrentEnabled;
-                      }
                     } else if (newChild is DCFElement &&
                         oldChild is DCFElement) {
                       // Elements only need prop updates if props changed
@@ -3217,11 +3027,8 @@ class DCFEngine {
 
         // CRITICAL: Don't reconcile children here if we've already processed changes from isolate
         // The isolate diff should have handled all necessary updates
-        // Only reconcile children if there were no changes from the isolate
-        if (changes.isEmpty && oldNode is DCFElement && newNode is DCFElement) {
-          // No changes from isolate, do regular reconciliation
-          await _reconcileElement(oldNode, newNode);
-        } else if (changes.isNotEmpty) {
+        // Note: If changes.isEmpty, we already handled it above and returned early
+        if (changes.isNotEmpty) {
           // We had changes from isolate - they should have been applied above
           // But we still need to reconcile any children that weren't covered by the diff
           // Actually, the isolate diff should cover all children, so we can skip this
@@ -3846,12 +3653,9 @@ class DCFEngine {
       // This prevents timers and microtasks from firing after cleanup
       cancelAllPendingWork();
 
-      // 🔥 CRITICAL: Shutdown isolates during hot restart to prevent stale state
-      // Isolates will be reinitialized after cleanup
+      // 🔥 CRITICAL: Shutdown worker manager during hot restart to prevent stale state
+      // Worker manager will be reinitialized after cleanup
       await shutdownConcurrentProcessing();
-
-      // Clear isolate task map
-      _isolateTasks.clear();
 
       // Small delay to let any in-flight timers/microtasks drain
       await Future.delayed(Duration(milliseconds: 50));
@@ -3902,12 +3706,12 @@ class DCFEngine {
 
       rootComponent = component;
 
-      // 🔥 CRITICAL: Reinitialize isolates after hot restart cleanup (non-blocking)
-      // This ensures isolates are in a clean state for the new app
+      // 🔥 CRITICAL: Reinitialize worker manager after hot restart cleanup (non-blocking)
+      // This ensures worker manager is in a clean state for the new app
       // Don't await - let it initialize in background, initial render must happen first
-      _initializeConcurrentProcessing().catchError((e) {
-        EngineDebugLogger.log('ISOLATE_INIT_DEFERRED',
-            'Isolate initialization deferred due to error: $e');
+      _initializeWorkerManager().catchError((e) {
+        EngineDebugLogger.log('WORKER_MANAGER_INIT_DEFERRED',
+            'Worker manager initialization deferred due to error: $e');
       });
 
       await _nativeBridge.startBatchUpdate();
@@ -3943,6 +3747,14 @@ class DCFEngine {
 
   /// Delete a view from the native side
   Future<void> deleteView(int viewId) async {
+    // 🔥 NEW: Unregister events when view is deleted (automatic lifecycle management)
+    final registry = EventRegistry();
+    registry.unregister(viewId);
+    EngineDebugLogger.log('EVENT_REGISTRY', 'Unregistered events for deleted view $viewId');
+    
+    // 🔥 CRITICAL FIX: Native side now stops animations automatically in deleteView
+    // No need to call tunnel - native handles cleanup directly using reflection/runtime checks
+    
     await isReady;
     EngineDebugLogger.logBridge('DELETE_VIEW', viewId);
     await _nativeBridge.deleteView(viewId);
@@ -4044,14 +3856,7 @@ class DCFEngine {
 
   /// Force a complete re-render of the entire component tree for hot reload support
   /// This re-executes all render() methods while preserving navigation state
-  /// Uses incremental updates to prevent UI crashes during hot reload
   Future<void> forceFullTreeReRender() async {
-    // Prevent concurrent hot reloads
-    if (_isHotReloading) {
-      print('⚠️ HOT_RELOAD: Already in progress, skipping...');
-      return;
-    }
-
     if (rootComponent == null) {
       print('❌ HOT_RELOAD: No root component to re-render');
       EngineDebugLogger.log(
@@ -4059,109 +3864,373 @@ class DCFEngine {
       return;
     }
 
-    _isHotReloading = true;
-    print('🔥🔥🔥 HOT_RELOAD: Starting incremental tree re-render 🔥🔥🔥');
+    print('🔥🔥🔥 HOT_RELOAD: Starting full tree re-render 🔥🔥🔥');
     EngineDebugLogger.log(
-        'HOT_RELOAD_START', 'Starting incremental tree re-render for hot reload');
+        'HOT_RELOAD_START', 'Starting full tree re-render for hot reload');
 
+    // 🔥 CRITICAL: Set hot reload flag to disable worker_manager during hot reload
+    // This prevents infinite recursion and ensures proper reconciliation
+    _isHotReloading = true;
+    
     try {
-      // Ensure isolates are ready before hot reload
-      // This helps avoid "No isolates available" errors
-      if (_concurrentEnabled && _workerPorts.isEmpty && _workerIsolates.length < _maxWorkers) {
-        print('🔥 HOT_RELOAD: Ensuring isolates are ready...');
-        await _preSpawnIsolates();
-        // Give isolates a moment to send their ports
-        await Future.delayed(Duration(milliseconds: 100));
+      // 🔥 CRITICAL: Clear all viewIds from VDOM after cleanup
+      // After cleanup, native views are deleted, but VDOM still has old viewIds
+      // We need to clear them so reconciliation treats nodes as new views to create
+      // (not existing views to update)
+      print('🔥 HOT_RELOAD: Clearing viewIds from VDOM (views were deleted during cleanup)...');
+      
+      // 🔥 CRITICAL: Save viewIds BEFORE clearing them, so we can remove from _nodesByViewId
+      // We need to track viewIds before clearing, because _disposeOldComponent uses viewId
+      // to remove from _nodesByViewId, but if viewId is null it can't remove them
+      final viewIdsToRemove = <int>{};
+      _collectViewIds(rootComponent!, viewIdsToRemove);
+      
+      // Also collect from stateful components
+      final oldStatefulComponents = List<DCFComponentNode>.from(_statefulComponents.values);
+      for (final component in oldStatefulComponents) {
+        _collectViewIds(component, viewIdsToRemove);
       }
       
-      // 🔥 CRITICAL: Instead of invalidating all components at once, invalidate incrementally
-      // This prevents the entire UI from being invalidated simultaneously, which causes crashes
-      // We invalidate the renderedNode cache but preserve the tree structure
-      final components = _statefulComponents.values.toList();
-      print('🔥 HOT_RELOAD: Invalidating ${components.length} components incrementally...');
+      print('🔥 HOT_RELOAD: Collected ${viewIdsToRemove.length} viewIds to remove from _nodesByViewId');
       
-      // Step 1: Invalidate renderedNode cache for all components (but preserve view IDs)
-      // This allows components to re-render with new code while preserving view IDs for reconciliation
-      for (final component in components) {
-        try {
-          // 🔥 CRITICAL: Preserve view IDs BEFORE invalidating cache
-          // View IDs are stored on rendered nodes, so we need to extract them first
-          final oldRenderedNode = component.renderedNode;
-          if (oldRenderedNode != null) {
-            _previousRenderedNodes[component.instanceId] = oldRenderedNode;
-            
-            // Extract view ID from rendered node and store on component
-            // This ensures reconciliation can match old and new nodes
-            final oldViewId = oldRenderedNode.effectiveNativeViewId;
-            if (oldViewId != null && component.contentViewId == null) {
-              component.contentViewId = oldViewId;
-              print('🔥 HOT_RELOAD: Preserved view ID $oldViewId for component ${component.instanceId}');
-            }
-            
-            // Also preserve view ID on the rendered node itself if it's an element
-            if (oldRenderedNode is DCFElement && oldRenderedNode.nativeViewId != null) {
-              // View ID is already on the element, it will be preserved in _previousRenderedNodes
-            } else if (oldRenderedNode is DCFStatefulComponent || oldRenderedNode is DCFStatelessComponent) {
-              // For nested components, try to get view ID from their rendered node
-              final nestedRenderedNode = oldRenderedNode.renderedNode;
-              if (nestedRenderedNode is DCFElement && nestedRenderedNode.nativeViewId != null) {
-                // View ID is on nested element, will be preserved
-              }
-            }
-          }
-          // Clear cache - this will force render() to be called again
-          // But view IDs are preserved in _previousRenderedNodes and component.contentViewId
-          component.renderedNode = null;
-        } catch (e) {
-          print('⚠️ HOT_RELOAD: Error invalidating component ${component.instanceId}: $e');
-          // Continue with other components even if one fails
+      // Now clear viewIds from tree
+      _clearAllViewIdsFromTree(rootComponent!);
+      for (final component in oldStatefulComponents) {
+        _clearAllViewIdsFromTree(component);
+      }
+      
+      print('🔥 HOT_RELOAD: ViewIds cleared from VDOM tree (root + ${oldStatefulComponents.length} stateful components)');
+      
+      // 🔥 CRITICAL: Remove nodes from _nodesByViewId BEFORE disposal
+      // This ensures old nodes are removed even if disposal can't find them by viewId
+      for (final viewId in viewIdsToRemove) {
+        _nodesByViewId.remove(viewId);
+      }
+      print('🔥 HOT_RELOAD: Removed ${viewIdsToRemove.length} nodes from _nodesByViewId');
+      
+      // 🔥 CRITICAL: Clear EventRegistry for all removed viewIds
+      // Event handlers are closures that capture component instances, preventing GC
+      final registry = EventRegistry();
+      for (final viewId in viewIdsToRemove) {
+        registry.unregister(viewId);
+      }
+      print('🔥 HOT_RELOAD: Unregistered ${viewIdsToRemove.length} views from EventRegistry');
+      
+      // 🔥 CRITICAL: Clear scheduleUpdate closures from old components BEFORE disposal
+      // This breaks reference cycles early, allowing GC to reclaim memory faster
+      // We clear scheduleUpdate closures here because they capture component instances
+      // and prevent garbage collection even after disposal
+      for (final component in oldStatefulComponents) {
+        if (component is DCFStatefulComponent) {
+          component.scheduleUpdate = () {}; // Replace with no-op to break reference
         }
       }
-      
-      // Step 2: Schedule updates incrementally, starting from root
-      // This ensures parent components update before children, maintaining tree structure
-      print('🔥 HOT_RELOAD: Scheduling incremental updates from root...');
-      
-      // Start with root component first
+      // Also clear root component's scheduleUpdate if it's stateful
       if (rootComponent is DCFStatefulComponent) {
-        _scheduleComponentUpdate(rootComponent as DCFStatefulComponent);
+        (rootComponent as DCFStatefulComponent).scheduleUpdate = () {};
+      }
+      print('🔥 HOT_RELOAD: Cleared scheduleUpdate closures from old components');
+      
+      // 🔥 CRITICAL: Dispose root component's old renderedNode tree FIRST
+      // This cleans up the entire old VDOM tree before disposing individual components
+      // The root component itself is preserved, but its old renderedNode must be disposed
+      if (rootComponent != null) {
+        final oldRootRenderedNode = rootComponent!.renderedNode;
+        if (oldRootRenderedNode != null) {
+          print('🔥 HOT_RELOAD: Disposing root component\'s old renderedNode tree...');
+          try {
+            await _disposeOldComponent(oldRootRenderedNode, skipChildrenDisposal: false);
+            rootComponent!.renderedNode = null; // Clear reference after disposal
+          } catch (e) {
+            print('⚠️ HOT_RELOAD: Error disposing root renderedNode: $e');
+          }
+          print('🔥 HOT_RELOAD: Root renderedNode tree disposed');
+        }
       }
       
-      // Then schedule updates for all other components
-      // Process in batches to avoid overwhelming the system
-      const batchSize = 10;
-      for (int i = 0; i < components.length; i += batchSize) {
-        final batch = components.skip(i).take(batchSize).where((c) => c != rootComponent).toList();
-        for (final component in batch) {
-          try {
-            _scheduleComponentUpdate(component);
-          } catch (e) {
-            print('⚠️ HOT_RELOAD: Error scheduling update for component ${component.instanceId}: $e');
-            // Continue with other components even if one fails
-          }
-        }
-        // Small delay between batches to prevent overwhelming the system
-        if (i + batchSize < components.length) {
-          await Future.delayed(Duration(milliseconds: 10));
+      // 🔥 CRITICAL: Dispose old component instances to allow GC
+      // This calls componentWillUnmount and breaks internal references
+      // We do this BEFORE clearing maps so we can still access components
+      // Use skipChildrenDisposal: false to fully clean up component trees
+      print('🔥 HOT_RELOAD: Disposing old component instances...');
+      for (final component in oldStatefulComponents) {
+        try {
+          await _disposeOldComponent(component, skipChildrenDisposal: false);
+        } catch (e) {
+          print('⚠️ HOT_RELOAD: Error disposing component: $e');
         }
       }
+      print('🔥 HOT_RELOAD: Disposed ${oldStatefulComponents.length} old component instances');
+      
+      // 🔥 CRITICAL: Break parent-child references in disposed components
+      // Even though components are disposed, parent-child refs prevent GC
+      // We break them AFTER disposal so componentWillUnmount can still access children
+      print('🔥 HOT_RELOAD: Breaking parent-child references in disposed components...');
+      for (final component in oldStatefulComponents) {
+        try {
+          _breakComponentReferences(component);
+        } catch (e) {
+          print('⚠️ HOT_RELOAD: Error breaking component references: $e');
+        }
+      }
+      // Also break references in root's old renderedNode tree if it wasn't already disposed
+      if (rootComponent != null && rootComponent!.renderedNode != null) {
+        // This shouldn't happen since we disposed it above, but be safe
+        _breakNodeReferences(rootComponent!.renderedNode!);
+        rootComponent!.renderedNode = null;
+      }
+      print('🔥 HOT_RELOAD: Parent-child references broken');
+      
+      // 🔥 CRITICAL: Force clear root component's internal state that might hold references
+      // Even though root component is preserved, its internal state might reference old nodes
+      if (rootComponent != null) {
+        // 🔥 CRITICAL: Dispose root component's hooks to break subscriptions/references
+        // During hot reload, root component is preserved but hooks need to be cleaned up
+        // This ensures StreamSubscriptions and other resources are properly cancelled
+        if (rootComponent is DCFStatefulComponent) {
+          final statefulRoot = rootComponent as DCFStatefulComponent;
+          // Call componentWillUnmount to dispose hooks (subscriptions, etc.)
+          // This is safe because we'll immediately re-render and hooks will be recreated
+          try {
+            statefulRoot.componentWillUnmount();
+            print('🔥 HOT_RELOAD: Root component hooks disposed');
+          } catch (e) {
+            print('⚠️ HOT_RELOAD: Error disposing root component hooks: $e');
+          }
+          statefulRoot.renderedNode = null;
+          statefulRoot.nativeViewId = null;
+          statefulRoot.contentViewId = null;
+        } else if (rootComponent is DCFStatelessComponent) {
+          final statelessRoot = rootComponent as DCFStatelessComponent;
+          try {
+            statelessRoot.componentWillUnmount();
+            print('🔥 HOT_RELOAD: Root component hooks disposed');
+          } catch (e) {
+            print('⚠️ HOT_RELOAD: Error disposing root component hooks: $e');
+          }
+          statelessRoot.renderedNode = null;
+          statelessRoot.nativeViewId = null;
+          statelessRoot.contentViewId = null;
+        }
+        rootComponent!.parent = null; // Break parent reference
+      }
+      print('🔥 HOT_RELOAD: Root component internal state cleared');
+      
+      // 🔥 CRITICAL: Clear all tracking maps to prevent memory leaks
+      // These maps hold references to old components/nodes that prevent GC
+      // During hot reload, old rendered nodes and component instances accumulate if not cleared
+      print('🔥 HOT_RELOAD: Memory tracking before clear:');
+      print('  - _nodesByViewId: ${_nodesByViewId.length} entries (before clearing)');
+      print('  - _previousRenderedNodes: ${_previousRenderedNodes.length} entries');
+      print('  - _componentInstancesByPosition: ${_componentInstancesByPosition.length} entries');
+      print('  - _componentInstancesByProps: ${_componentInstancesByProps.length} entries');
+      print('  - _statefulComponents: ${_statefulComponents.length} entries (already cleared by disposal)');
+      print('  - _pendingUpdates: ${_pendingUpdates.length} entries');
+      print('  - _renderCycleCount: ${_renderCycleCount.length} entries');
+      
+      // 🔥 CRITICAL: _statefulComponents is already cleared by disposal
+      // _disposeOldComponent automatically removes components from _statefulComponents
+      // But we still clear it explicitly to be safe and handle any edge cases
+      final oldStatefulCount = _statefulComponents.length;
+      _statefulComponents.clear();
+      if (oldStatefulCount > 0) {
+        print('🔥 HOT_RELOAD: Cleared _statefulComponents map (was $oldStatefulCount entries)');
+      }
+      
+      // 🔥 CRITICAL: Clear _nodesByViewId AFTER we've already removed entries by viewId
+      // We already removed entries above using collected viewIds, but clear any remaining ones
+      // (e.g., if there were viewIds we missed or if new ones were added during disposal)
+      final nodesByViewIdCount = _nodesByViewId.length;
+      _nodesByViewId.clear();
+      if (nodesByViewIdCount > 0) {
+        print('🔥 HOT_RELOAD: Cleared _nodesByViewId map (was $nodesByViewIdCount entries)');
+      }
+      _previousRenderedNodes.clear(); // Clear previous rendered nodes (holds old renderedNode refs)
+      _componentInstancesByPosition.clear(); // Clear component instance cache
+      _componentInstancesByProps.clear(); // Clear component instance cache by props
+      _similarityCache.clear(); // Clear similarity cache
+      _nodesBeingRendered.clear(); // Clear rendering set to prevent stale state
+      _errorRecovery.clear(); // Clear error recovery state
+      _pendingUpdates.clear(); // Clear pending updates
+      _renderCycleCount.clear(); // Clear render cycle count
+      
+      print('🔥 HOT_RELOAD: Cleared all tracking maps to prevent memory leaks (9 maps cleared)');
+      
+      // Ensure worker manager is ready before hot reload (but won't be used during hot reload)
+      if (!_workerManagerInitialized) {
+        print('🔥 HOT_RELOAD: Initializing worker manager...');
+        await _initializeWorkerManager();
+      }
+      
+      // 🔥 CRITICAL: After cleanup, views are deleted, so we need to render from scratch
+      // Don't reconcile - just render the new tree as if it's the first render
+      // Reconciliation would try to update deleted views, which fails
+      print('🔥 HOT_RELOAD: Rendering from scratch (views were deleted during cleanup)...');
+      
+      // Re-render root component to get new tree
+      DCFComponentNode newRootRendered;
+      if (rootComponent is DCFStatefulComponent) {
+        // Root is stateful - force re-render
+        final statefulRoot = rootComponent as DCFStatefulComponent;
+        newRootRendered = statefulRoot.render();
+        statefulRoot.renderedNode = newRootRendered;
+      } else if (rootComponent is DCFStatelessComponent) {
+        // Root is stateless - re-render
+        final statelessRoot = rootComponent as DCFStatelessComponent;
+        newRootRendered = statelessRoot.render();
+        statelessRoot.renderedNode = newRootRendered;
+      } else {
+        throw Exception('Root component is neither stateful nor stateless');
+      }
+      
+      // Render the entire tree from scratch (like initial render)
+      // renderToNative recursively renders the entire tree, including all stateful components
+      // This creates all views fresh instead of trying to reconcile with deleted views
+      print('🔥 HOT_RELOAD: Rendering new tree from scratch to root view...');
+      await _nativeBridge.startBatchUpdate();
+      await renderToNative(newRootRendered, parentViewId: 0);
+      await _nativeBridge.commitBatchUpdate();
+      print('🔥 HOT_RELOAD: New tree rendered from scratch');
 
-      print('🔥 HOT_RELOAD: Processing pending updates...');
-      await _processPendingUpdates();
+      // 🔥 CRITICAL: After rendering from scratch, ensure layout is calculated
+      // The commitBatchUpdate above should have triggered layout, but we ensure it completes
+      print('🔥 HOT_RELOAD: Waiting for layout calculation to complete...');
+      await Future.delayed(Duration(milliseconds: 100)); // Wait for layout to complete
+      
+      // Trigger one final layout pass to ensure everything is correct
+      print('🔥 HOT_RELOAD: Triggering final layout pass...');
+      await _nativeBridge.startBatchUpdate();
+      await _nativeBridge.commitBatchUpdate();
 
-      print('✅✅✅ HOT_RELOAD: Incremental tree re-render completed successfully ✅✅✅');
+      print('✅✅✅ HOT_RELOAD: Full tree re-render completed successfully ✅✅✅');
       EngineDebugLogger.log(
-          'HOT_RELOAD_COMPLETE', 'Incremental tree re-render completed successfully');
+          'HOT_RELOAD_COMPLETE', 'Full tree re-render completed successfully');
     } catch (e, stackTrace) {
       print('❌❌❌ HOT_RELOAD: Failed to complete hot reload: $e');
       print('❌ HOT_RELOAD: Stack trace: $stackTrace');
       EngineDebugLogger.log(
           'HOT_RELOAD_ERROR', 'Failed to complete hot reload: $e');
-      // Don't rethrow - allow app to continue even if hot reload fails
-      // This prevents crashes during development
-      print('⚠️ HOT_RELOAD: Continuing despite error to prevent app crash');
+      rethrow;
     } finally {
+      // 🔥 CRITICAL: Always reset hot reload flag, even on error
       _isHotReloading = false;
+      print('🔥 HOT_RELOAD: Hot reload flag reset');
+    }
+  }
+
+  /// Break parent-child references in a component to allow GC after disposal
+  /// This is called AFTER disposal so componentWillUnmount can still access children
+  void _breakComponentReferences(DCFComponentNode component) {
+    // Break parent reference
+    component.parent = null;
+    
+    // Break references in renderedNode if it exists
+    if (component is DCFStatefulComponent || component is DCFStatelessComponent) {
+      final renderedNode = component.renderedNode;
+      if (renderedNode != null) {
+        _breakNodeReferences(renderedNode);
+      }
+      // Clear renderedNode reference after breaking its references
+      component.renderedNode = null;
+    }
+  }
+  
+  /// Recursively break all parent-child references in a node tree
+  /// This allows GC to collect the entire tree even if root component holds closure references
+  void _breakNodeReferences(DCFComponentNode node) {
+    // Break parent reference
+    node.parent = null;
+    
+    // Break children references
+    if (node is DCFFragment) {
+      final children = List<DCFComponentNode>.from(node.children);
+      node.children.clear();
+      for (final child in children) {
+        _breakNodeReferences(child);
+      }
+    } else if (node is DCFElement) {
+      final children = List<DCFComponentNode>.from(node.children);
+      node.children.clear();
+      for (final child in children) {
+        _breakNodeReferences(child);
+      }
+    } else if (node is DCFStatefulComponent || node is DCFStatelessComponent) {
+      final renderedNode = node.renderedNode;
+      if (renderedNode != null) {
+        _breakNodeReferences(renderedNode);
+      }
+      // Clear renderedNode reference after breaking its references
+      node.renderedNode = null;
+    }
+  }
+
+  /// Collect all viewIds from a component tree (before clearing them)
+  /// This allows us to remove entries from _nodesByViewId even after clearing viewIds
+  void _collectViewIds(DCFComponentNode node, Set<int> viewIds) {
+    if (node is DCFElement) {
+      if (node.nativeViewId != null) {
+        viewIds.add(node.nativeViewId!);
+      }
+      if (node.contentViewId != null) {
+        viewIds.add(node.contentViewId!);
+      }
+      // Recurse into children
+      for (final child in node.children) {
+        _collectViewIds(child, viewIds);
+      }
+    } else if (node is DCFStatefulComponent || node is DCFStatelessComponent) {
+      final renderedNode = node.renderedNode;
+      if (renderedNode != null) {
+        _collectViewIds(renderedNode, viewIds);
+      }
+    } else if (node is DCFFragment) {
+      for (final child in node.children) {
+        _collectViewIds(child, viewIds);
+      }
+    }
+  }
+
+  /// Clear all viewIds from a component tree (used after hot reload cleanup)
+  /// This ensures reconciliation treats nodes as new views to create, not existing views to update
+  /// Also clears renderedNode so components re-render fresh
+  void _clearAllViewIdsFromTree(DCFComponentNode node) {
+    // Clear viewId from the component itself
+    if (node is DCFStatefulComponent || node is DCFStatelessComponent) {
+      node.nativeViewId = null;
+      node.contentViewId = null;
+      
+      // 🔥 CRITICAL: Clear renderedNode so component re-renders fresh
+      // After cleanup, the old renderedNode might be stale
+      node.renderedNode = null;
+      
+      // Clear viewIds from rendered node if it exists
+      // (But we just cleared it, so this is just for safety)
+    }
+  }
+  
+  /// Recursively clear viewIds from a node and all its children
+  /// Also clears renderedNode from components so they re-render fresh
+  void _clearViewIdsFromNode(DCFComponentNode node) {
+    if (node is DCFElement) {
+      node.nativeViewId = null;
+      node.contentViewId = null;
+    } else if (node is DCFStatefulComponent || node is DCFStatelessComponent) {
+      node.nativeViewId = null;
+      node.contentViewId = null;
+      
+      // 🔥 CRITICAL: Clear renderedNode so component re-renders fresh
+      node.renderedNode = null;
+    }
+    
+    // Clear viewIds from all children
+    if (node is DCFFragment) {
+      for (final child in node.children) {
+        _clearViewIdsFromNode(child);
+      }
+    } else if (node is DCFElement) {
+      for (final child in node.children) {
+        _clearViewIdsFromNode(child);
+      }
     }
   }
 
@@ -4887,7 +4956,14 @@ class DCFEngine {
     final processedOldChildren = <DCFComponentNode>{};
     bool hasStructuralChanges = false;
 
+    // 🔥 UI THREAD YIELDING: Yield every 3 children to prevent UI freeze
+    const yieldInterval = 3;
     for (int i = 0; i < newChildren.length; i++) {
+      // Yield control back to UI thread every few children
+      if (i > 0 && i % yieldInterval == 0) {
+        await Future.delayed(Duration.zero); // Yield to event loop
+      }
+      
       final newChild = newChildren[i];
       final key = _getNodeKey(newChild, i);
       final oldChild = oldChildrenMap[key];
@@ -4927,7 +5003,15 @@ class DCFEngine {
       }
     }
 
+    // 🔥 UI THREAD YIELDING: Yield during removal loop to prevent UI freeze
+    int removeIndex = 0;
     for (var oldChild in oldChildren) {
+      // Yield control back to UI thread every few removals
+      if (removeIndex > 0 && removeIndex % yieldInterval == 0) {
+        await Future.delayed(Duration.zero); // Yield to event loop
+      }
+      removeIndex++;
+      
       if (!processedOldChildren.contains(oldChild)) {
         hasStructuralChanges = true;
         EngineDebugLogger.log('RECONCILE_KEYED_REMOVE', 'Removing old child',
@@ -5053,7 +5137,14 @@ class DCFEngine {
     final processedOldIndices = <int>{};
     final processedNewIndices = <int>{};
 
+    int loopIteration = 0;
     while (oldIndex < oldChildren.length && newIndex < newChildren.length) {
+      // 🔥 UI THREAD YIELDING: Yield every 3 iterations to prevent UI freeze
+      if (loopIteration > 0 && loopIteration % 3 == 0) {
+        await Future.delayed(Duration.zero); // Yield to event loop
+      }
+      loopIteration++;
+      
       final oldChild = oldChildren[oldIndex];
       final newChild = newChildren[newIndex];
 
@@ -5575,7 +5666,14 @@ class DCFEngine {
     }
 
     // Handle remaining old children (removals at the end)
+    int remainingLoopIteration = 0;
     while (oldIndex < oldChildren.length) {
+      // 🔥 UI THREAD YIELDING: Yield every 3 iterations to prevent UI freeze
+      if (remainingLoopIteration > 0 && remainingLoopIteration % 3 == 0) {
+        await Future.delayed(Duration.zero); // Yield to event loop
+      }
+      remainingLoopIteration++;
+      
       final oldChild = oldChildren[oldIndex];
       hasStructuralChanges = true;
 
@@ -5860,14 +5958,7 @@ class DCFEngine {
     _pendingUpdates.clear();
     _componentPriorities.clear();
 
-    // Clear isolate tasks (complete any pending with errors to prevent hanging)
-    final isolateTaskCount = _isolateTasks.length;
-    for (final completer in _isolateTasks.values) {
-      if (!completer.isCompleted) {
-        completer.completeError(Exception('Task cancelled due to hot restart'));
-      }
-    }
-    _isolateTasks.clear();
+    // Worker manager handles task cancellation automatically
 
     // Clear effect queues (these use Future.microtask which can't be cancelled,
     // but clearing the sets prevents them from executing)
@@ -5880,7 +5971,7 @@ class DCFEngine {
         'CANCEL_ALL_WORK_COMPLETE', 'Cancelled all pending async work',
         extra: {
           'PendingUpdates': pendingCount,
-          'IsolateTasks': isolateTaskCount,
+          'WorkerManagerEnabled': _workerManagerInitialized,
           'LayoutEffects': layoutCount,
           'InsertionEffects': insertionCount,
         });
@@ -5919,12 +6010,7 @@ class DCFEngine {
   Map<String, dynamic> getConcurrentStats() {
     return {
       ..._performanceStats,
-      'concurrentEnabled': _concurrentEnabled,
-      'concurrentThreshold': _concurrentThreshold,
-      'maxWorkers': _maxWorkers,
-      'availableWorkers':
-          _workerAvailable.where((available) => available).length,
-      'totalWorkers': _workerIsolates.length,
+      'workerManagerEnabled': _workerManagerInitialized,
     };
   }
 
@@ -5969,97 +6055,26 @@ class DCFEngine {
   /// Check if concurrent processing is beneficial
   bool get isConcurrentProcessingOptimal {
     final efficiency = _performanceStats['concurrentEfficiency'] as double;
-    return _concurrentEnabled && efficiency > 10.0; // 10% improvement threshold
+    return _workerManagerInitialized && efficiency > 10.0; // 10% improvement threshold
   }
 
   /// Shutdown concurrent processing
+  /// Shutdown worker manager
   Future<void> shutdownConcurrentProcessing() async {
-    if (!_concurrentEnabled) return;
+    if (!_workerManagerInitialized) return;
 
     EngineDebugLogger.log(
-        'VDOM_CONCURRENT_SHUTDOWN', 'Shutting down concurrent processing');
+        'WORKER_MANAGER_SHUTDOWN', 'Shutting down worker manager');
 
-    // Cancel cleanup timer
-    _isolateCleanupTimer?.cancel();
-    _isolateCleanupTimer = null;
-
-    // Cancel receive port subscription
-    await _mainIsolateReceivePortSubscription?.cancel();
-    _mainIsolateReceivePortSubscription = null;
-
-    for (final isolate in _workerIsolates) {
-      try {
-        isolate.kill();
+    try {
+      await worker_manager.workerManager.dispose();
+      _workerManagerInitialized = false;
+    EngineDebugLogger.log(
+          'WORKER_MANAGER_SHUTDOWN', 'Worker manager shutdown complete');
       } catch (e) {
-        EngineDebugLogger.log('VDOM_CONCURRENT_SHUTDOWN_ERROR',
-            'Error killing worker isolate: $e');
-      }
+      EngineDebugLogger.log('WORKER_MANAGER_SHUTDOWN_ERROR',
+          'Error disposing worker manager: $e');
     }
-
-    _workerIsolates.clear();
-    _workerPorts.clear();
-    _workerAvailable.clear();
-    _workerLastUsed.clear();
-    _concurrentEnabled = false;
-
-    EngineDebugLogger.log(
-        'VDOM_CONCURRENT_SHUTDOWN', 'Concurrent processing shutdown complete');
-  }
-
-  /// Worker isolate entry point - handles real concurrent processing
-  static void _workerIsolateEntry(SendPort mainSendPort) {
-    final receivePort = ReceivePort();
-    mainSendPort.send(receivePort.sendPort);
-
-    receivePort.listen((message) async {
-      try {
-        final Map<String, dynamic> messageData =
-            message as Map<String, dynamic>;
-        final String taskType = messageData['type'] as String;
-        final String taskId = messageData['id'] as String;
-        final Map<String, dynamic> taskData =
-            messageData['data'] as Map<String, dynamic>;
-
-        Map<String, dynamic> result;
-        final startTime = DateTime.now();
-
-        switch (taskType) {
-          case 'treeReconciliation':
-            result = await _reconcileTreeInIsolate(taskData);
-            break;
-          case 'propsDiff':
-            result = await _computePropsInIsolate(taskData);
-            break;
-          case 'listProcessing':
-            result = await _processLargeListInIsolate(taskData);
-            break;
-          case 'componentSerialization':
-            result = await _serializeComponentInIsolate(taskData);
-            break;
-          default:
-            result = {'error': 'Unknown task type: $taskType'};
-        }
-
-        final processingTime = DateTime.now().difference(startTime);
-
-        mainSendPort.send({
-          'type': 'result',
-          'id': taskId,
-          'success': true,
-          'data': result,
-          'processingTimeMs': processingTime.inMilliseconds,
-        });
-      } catch (e) {
-        final Map<String, dynamic> safeMessageData =
-            message is Map<String, dynamic> ? message : {};
-        mainSendPort.send({
-          'type': 'result',
-          'id': safeMessageData['id'] ?? 'unknown',
-          'success': false,
-          'error': e.toString(),
-        });
-      }
-    });
   }
 
   /// Reconcile tree structure in isolate (heavy algorithmic work)

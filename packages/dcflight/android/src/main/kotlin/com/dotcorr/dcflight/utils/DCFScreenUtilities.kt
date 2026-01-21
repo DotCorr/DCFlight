@@ -36,7 +36,6 @@ object DCFScreenUtilities {
     private var context: Context? = null
     private var activity: Activity? = null
     private var rootView: View? = null
-    private var methodChannel: MethodChannel? = null
     private var displayMetrics: DisplayMetrics = DisplayMetrics()
     private var screenWidth: Float = 0f
     private var screenHeight: Float = 0f
@@ -66,10 +65,8 @@ object DCFScreenUtilities {
             updateDisplayMetrics()
         }
 
-        binaryMessenger?.let {
-            methodChannel = MethodChannel(it, CHANNEL_NAME)
-            setupMethodChannel()
-        }
+        // NO MethodChannel - screen dimensions use JNI callbacks
+        // binaryMessenger no longer needed
 
         Log.d(TAG, "DCFScreenUtilities initialized")
     }
@@ -155,44 +152,6 @@ object DCFScreenUtilities {
         notifyDimensionChange()
     }
 
-    /**
-     * Setup method channel handlers
-     */
-    private fun setupMethodChannel() {
-        methodChannel?.setMethodCallHandler { call, result ->
-            when (call.method) {
-                "getScreenDimensions" -> {
-                    result.success(getScreenDimensions())
-                }
-
-                "getDisplayMetrics" -> {
-                    result.success(getDisplayMetrics())
-                }
-
-                "convertDpToPx" -> {
-                    val dp = call.argument<Double>("dp")?.toFloat()
-                    if (dp != null) {
-                        result.success(convertDpToPx(dp))
-                    } else {
-                        result.error("INVALID_ARGUMENT", "dp value required", null)
-                    }
-                }
-
-                "convertPxToDp" -> {
-                    val px = call.argument<Double>("px")?.toFloat()
-                    if (px != null) {
-                        result.success(convertPxToDp(px))
-                    } else {
-                        result.error("INVALID_ARGUMENT", "px value required", null)
-                    }
-                }
-
-                else -> {
-                    result.notImplemented()
-                }
-            }
-        }
-    }
 
     /**
      * Update screen dimensions
@@ -486,7 +445,15 @@ object DCFScreenUtilities {
      * Notify Flutter about dimension changes
      */
     private fun notifyDimensionChange() {
-        methodChannel?.invokeMethod(
+        // Use JNI callback instead of MethodChannel
+        try {
+            val dimensions = getScreenDimensions()
+            com.dotcorr.dcflight.bridge.DCFlightJni.sendScreenDimensionsChanged(dimensions)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to notify dimension change via JNI", e)
+        }
+        
+        /* methodChannel?.invokeMethod(
             "onDimensionChange",
             getScreenDimensions()
         )
@@ -497,8 +464,7 @@ object DCFScreenUtilities {
      */
     fun cleanup() {
         Log.d(TAG, "Cleaning up DCFScreenUtilities")
-        methodChannel?.setMethodCallHandler(null)
-        methodChannel = null
+        // NO MethodChannel to clean up
         context = null
     }
 

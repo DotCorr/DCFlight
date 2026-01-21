@@ -213,6 +213,19 @@ class WorkletExecutor {
     // Check if compilation was successful
     final isCompiled = compilationResult?.success ?? false;
     
+    // Debug: Log compilation status
+    if (!isCompiled) {
+      print('⚠️ WORKLET: Compilation failed for worklet $workletId');
+      if (compilationResult != null) {
+        print('⚠️ WORKLET: Compilation errors: ${compilationResult.errors}');
+      } else {
+        print('⚠️ WORKLET: No compilation result returned');
+      }
+    } else {
+      print('✅ WORKLET: Compilation successful for worklet $workletId');
+      print('✅ WORKLET: IR available: ${compilationResult?.ir != null}');
+    }
+    
     // Serialize function body for RUNTIME INTERPRETATION (no rebuild needed!)
     final serializedFunction = {
       'source': functionString,
@@ -227,6 +240,10 @@ class WorkletExecutor {
         'swiftCode': compilationResult.swiftCode,
       },
     };
+    
+    // Debug: Log what's being serialized
+    print('🔍 WORKLET: Serialized function keys: ${serializedFunction.keys}');
+    print('🔍 WORKLET: IR included: ${serializedFunction.containsKey('ir')}');
     
     return WorkletConfig(
       id: id,
@@ -283,10 +300,15 @@ class WorkletExecutor {
     }
 
     // Extract function body (between { and })
-    final bodyMatch = RegExp(r'\{([^}]*)\}').firstMatch(functionString);
-    if (bodyMatch != null) {
-      body = bodyMatch.group(1) ?? '';
+    // For closures, toString() only returns the signature, not the body
+    // In this case, we leave body empty - it will be handled by runtime interpreter
+    if (!functionString.contains('Closure:') || !functionString.contains('from Function')) {
+      final bodyMatch = RegExp(r'\{([^}]*)\}').firstMatch(functionString);
+      if (bodyMatch != null) {
+        body = bodyMatch.group(1) ?? '';
+      }
     }
+    // For closures, body is empty - will be extracted from IR or runtime interpretation
 
     return {
       'parameters': parameters,
@@ -415,8 +437,8 @@ class WorkletThreading {
       );
       return result;
     } catch (e) {
-      // Fallback: if WorkletExecutor component doesn't exist, use method channel
-      return await _executeWorkletViaMethodChannel(config, [arg1, arg2, arg3, arg4, arg5]);
+      // Fallback: if WorkletExecutor component doesn't exist, use tunnel (FFI/JNI)
+      return await _executeWorkletViaTunnel(config, [arg1, arg2, arg3, arg4, arg5]);
     }
   }
 
@@ -480,12 +502,12 @@ class WorkletThreading {
     return PlatformInterface.instance;
   }
 
-  /// Execute worklet via method channel (fallback)
-  static Future<dynamic> _executeWorkletViaMethodChannel(
+  /// Execute worklet via tunnel (FFI/JNI)
+  static Future<dynamic> _executeWorkletViaTunnel(
     WorkletConfig config,
     List<dynamic> arguments,
   ) async {
-    // Fallback: use tunnel system with WorkletExecutor component
+    // Use tunnel system (FFI/JNI) with WorkletExecutor component
     // If that doesn't exist, this will throw and caller can handle it
     return await FrameworkTunnel.call(
       'WorkletExecutor',
