@@ -255,6 +255,9 @@ class DCFEngine {
 
     if (component is DCFStatefulComponent) {
       _statefulComponents[component.instanceId] = component;
+      // 🔥 CRITICAL: Clear old scheduleUpdate closure before creating new one
+      // This prevents old closures from holding component references
+      component.scheduleUpdate = () {}; // Clear first
       component.scheduleUpdate = () => _scheduleComponentUpdate(component);
       EngineDebugLogger.log('COMPONENT_REGISTER',
           'Registered StatefulComponent: ${component.instanceId}');
@@ -3875,16 +3878,58 @@ class DCFEngine {
       // We need to clear them so reconciliation treats nodes as new views to create
       // (not existing views to update)
       print('🔥 HOT_RELOAD: Clearing viewIds from VDOM (views were deleted during cleanup)...');
-      _clearAllViewIdsFromTree(rootComponent!);
       
-      // Also clear viewIds from all stateful components
-      // Save components list before clearing (we'll dispose them)
+      // 🔥 CRITICAL: Save viewIds BEFORE clearing them, so we can remove from _nodesByViewId
+      // We need to track viewIds before clearing, because _disposeOldComponent uses viewId
+      // to remove from _nodesByViewId, but if viewId is null it can't remove them
+      final viewIdsToRemove = <int>{};
+      _collectViewIds(rootComponent!, viewIdsToRemove);
+      
+      // Also collect from stateful components
       final oldStatefulComponents = List<DCFComponentNode>.from(_statefulComponents.values);
+      for (final component in oldStatefulComponents) {
+        _collectViewIds(component, viewIdsToRemove);
+      }
+      
+      print('🔥 HOT_RELOAD: Collected ${viewIdsToRemove.length} viewIds to remove from _nodesByViewId');
+      
+      // Now clear viewIds from tree
+      _clearAllViewIdsFromTree(rootComponent!);
       for (final component in oldStatefulComponents) {
         _clearAllViewIdsFromTree(component);
       }
       
       print('🔥 HOT_RELOAD: ViewIds cleared from VDOM tree (root + ${oldStatefulComponents.length} stateful components)');
+      
+      // 🔥 CRITICAL: Remove nodes from _nodesByViewId BEFORE disposal
+      // This ensures old nodes are removed even if disposal can't find them by viewId
+      for (final viewId in viewIdsToRemove) {
+        _nodesByViewId.remove(viewId);
+      }
+      print('🔥 HOT_RELOAD: Removed ${viewIdsToRemove.length} nodes from _nodesByViewId');
+      
+      // 🔥 CRITICAL: Clear EventRegistry for all removed viewIds
+      // Event handlers are closures that capture component instances, preventing GC
+      final registry = EventRegistry();
+      for (final viewId in viewIdsToRemove) {
+        registry.unregister(viewId);
+      }
+      print('🔥 HOT_RELOAD: Unregistered ${viewIdsToRemove.length} views from EventRegistry');
+      
+      // 🔥 CRITICAL: Clear scheduleUpdate closures from old components BEFORE disposal
+      // This breaks reference cycles early, allowing GC to reclaim memory faster
+      // We clear scheduleUpdate closures here because they capture component instances
+      // and prevent garbage collection even after disposal
+      for (final component in oldStatefulComponents) {
+        if (component is DCFStatefulComponent) {
+          component.scheduleUpdate = () {}; // Replace with no-op to break reference
+        }
+      }
+      // Also clear root component's scheduleUpdate if it's stateful
+      if (rootComponent is DCFStatefulComponent) {
+        (rootComponent as DCFStatefulComponent).scheduleUpdate = () {};
+      }
+      print('🔥 HOT_RELOAD: Cleared scheduleUpdate closures from old components');
       
       // 🔥 CRITICAL: Dispose root component's old renderedNode tree FIRST
       // This cleans up the entire old VDOM tree before disposing individual components
@@ -3936,11 +3981,46 @@ class DCFEngine {
       }
       print('🔥 HOT_RELOAD: Parent-child references broken');
       
+      // 🔥 CRITICAL: Force clear root component's internal state that might hold references
+      // Even though root component is preserved, its internal state might reference old nodes
+      if (rootComponent != null) {
+        // 🔥 CRITICAL: Dispose root component's hooks to break subscriptions/references
+        // During hot reload, root component is preserved but hooks need to be cleaned up
+        // This ensures StreamSubscriptions and other resources are properly cancelled
+        if (rootComponent is DCFStatefulComponent) {
+          final statefulRoot = rootComponent as DCFStatefulComponent;
+          // Call componentWillUnmount to dispose hooks (subscriptions, etc.)
+          // This is safe because we'll immediately re-render and hooks will be recreated
+          try {
+            statefulRoot.componentWillUnmount();
+            print('🔥 HOT_RELOAD: Root component hooks disposed');
+          } catch (e) {
+            print('⚠️ HOT_RELOAD: Error disposing root component hooks: $e');
+          }
+          statefulRoot.renderedNode = null;
+          statefulRoot.nativeViewId = null;
+          statefulRoot.contentViewId = null;
+        } else if (rootComponent is DCFStatelessComponent) {
+          final statelessRoot = rootComponent as DCFStatelessComponent;
+          try {
+            statelessRoot.componentWillUnmount();
+            print('🔥 HOT_RELOAD: Root component hooks disposed');
+          } catch (e) {
+            print('⚠️ HOT_RELOAD: Error disposing root component hooks: $e');
+          }
+          statelessRoot.renderedNode = null;
+          statelessRoot.nativeViewId = null;
+          statelessRoot.contentViewId = null;
+        }
+        rootComponent!.parent = null; // Break parent reference
+      }
+      print('🔥 HOT_RELOAD: Root component internal state cleared');
+      
       // 🔥 CRITICAL: Clear all tracking maps to prevent memory leaks
       // These maps hold references to old components/nodes that prevent GC
       // During hot reload, old rendered nodes and component instances accumulate if not cleared
       print('🔥 HOT_RELOAD: Memory tracking before clear:');
-      print('  - _nodesByViewId: ${_nodesByViewId.length} entries');
+      print('  - _nodesByViewId: ${_nodesByViewId.length} entries (before clearing)');
       print('  - _previousRenderedNodes: ${_previousRenderedNodes.length} entries');
       print('  - _componentInstancesByPosition: ${_componentInstancesByPosition.length} entries');
       print('  - _componentInstancesByProps: ${_componentInstancesByProps.length} entries');
@@ -3957,7 +4037,14 @@ class DCFEngine {
         print('🔥 HOT_RELOAD: Cleared _statefulComponents map (was $oldStatefulCount entries)');
       }
       
+      // 🔥 CRITICAL: Clear _nodesByViewId AFTER we've already removed entries by viewId
+      // We already removed entries above using collected viewIds, but clear any remaining ones
+      // (e.g., if there were viewIds we missed or if new ones were added during disposal)
+      final nodesByViewIdCount = _nodesByViewId.length;
       _nodesByViewId.clear();
+      if (nodesByViewIdCount > 0) {
+        print('🔥 HOT_RELOAD: Cleared _nodesByViewId map (was $nodesByViewIdCount entries)');
+      }
       _previousRenderedNodes.clear(); // Clear previous rendered nodes (holds old renderedNode refs)
       _componentInstancesByPosition.clear(); // Clear component instance cache
       _componentInstancesByProps.clear(); // Clear component instance cache by props
@@ -4074,6 +4161,32 @@ class DCFEngine {
       }
       // Clear renderedNode reference after breaking its references
       node.renderedNode = null;
+    }
+  }
+
+  /// Collect all viewIds from a component tree (before clearing them)
+  /// This allows us to remove entries from _nodesByViewId even after clearing viewIds
+  void _collectViewIds(DCFComponentNode node, Set<int> viewIds) {
+    if (node is DCFElement) {
+      if (node.nativeViewId != null) {
+        viewIds.add(node.nativeViewId!);
+      }
+      if (node.contentViewId != null) {
+        viewIds.add(node.contentViewId!);
+      }
+      // Recurse into children
+      for (final child in node.children) {
+        _collectViewIds(child, viewIds);
+      }
+    } else if (node is DCFStatefulComponent || node is DCFStatelessComponent) {
+      final renderedNode = node.renderedNode;
+      if (renderedNode != null) {
+        _collectViewIds(renderedNode, viewIds);
+      }
+    } else if (node is DCFFragment) {
+      for (final child in node.children) {
+        _collectViewIds(child, viewIds);
+      }
     }
   }
 

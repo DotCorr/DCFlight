@@ -403,10 +403,31 @@ import Foundation
         let nonRootViews = views.filter { $0.key != 0 }
         print("🔥 DCFlightNative: Removing \(nonRootViews.count) non-root views from superview")
         for (viewId, view) in nonRootViews {
+            // 🔥 CRITICAL: Clear associated objects (event handlers) before removing view
+            // Associated objects can hold closures that prevent garbage collection
+            // Clearing them explicitly ensures all references are broken
+            objc_setAssociatedObject(
+                view,
+                UnsafeRawPointer(bitPattern: "viewId".hashValue)!,
+                nil,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+            objc_setAssociatedObject(
+                view,
+                UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!,
+                nil,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+            objc_setAssociatedObject(
+                view,
+                UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!,
+                nil,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
             view.removeFromSuperview()
             views.removeValue(forKey: viewId)
         }
-        print("🔥 DCFlightNative: Removed all non-root views from superview")
+        print("🔥 DCFlightNative: Removed all non-root views from superview (cleared associated objects)")
 
         // Clear root view's subviews
         if let rootView = views[0] {
