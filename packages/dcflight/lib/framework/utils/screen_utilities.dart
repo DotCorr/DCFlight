@@ -104,6 +104,8 @@ class ScreenUtilities {
       _notifyDimensionChangeListeners();
     } else if (oldFontScale != newFontScale || safeAreaChanged) {
       // Font scale or safe area changed without dimension change
+      final fontScaleChanged = oldFontScale != newFontScale;
+      
       _fontScale = newFontScale;
       _safeAreaTop = newSafeAreaTop;
       _safeAreaBottom = newSafeAreaBottom;
@@ -114,18 +116,16 @@ class ScreenUtilities {
           'Safe area or font scale changed: safeAreaTop=$_safeAreaTop, fontScale=$_fontScale',
           name: 'ScreenUtilities');
       
-      _notifyDimensionChangeListeners();
-    } else if (oldFontScale != newFontScale) {
-      // Font scale changed without dimension change (system font size change)
-      _fontScale = newFontScale;
-      developer.log(
-          'Font scale changed: $oldFontScale → $newFontScale',
-          name: 'ScreenUtilities');
+      // CRITICAL: Notify SystemStateManager if font scale changed
+      // This triggers CoreWrapper to re-render, which will cause all components
+      // to re-render with new _systemVersion, ensuring font scale changes are reflected
+      if (fontScaleChanged) {
+        SystemStateManager.onSystemChange(fontScale: true);
+        developer.log(
+            'Font scale changed: $oldFontScale → $newFontScale - triggering app re-render',
+            name: 'ScreenUtilities');
+      }
       
-      // Notify SystemStateManager of font scale change
-      SystemStateManager.onSystemChange(fontScale: true);
-      
-      // Notify listeners - SystemChangeListener will trigger re-render
       _notifyDimensionChangeListeners();
     }
   }
