@@ -147,48 +147,77 @@ class ScreenUtilities {
   }
 
   /// Refresh dimensions from native side via FFI/JNI
+  /// Includes retry logic to handle cases where native isn't ready yet
   Future<void> refreshDimensions() async {
-    try {
-      Map<String, dynamic>? result;
-      
-      if (Platform.isIOS) {
-        result = await DCFlightFfiWrapper.getScreenDimensions();
-      } else if (Platform.isAndroid) {
-        result = await DCFlightJniWrapper.getScreenDimensions();
-      }
-      
-      if (result != null) {
-        _previousWidth = _screenWidth;
-        _previousHeight = _screenHeight;
+    const maxRetries = 3;
+    const retryDelays = [100, 300, 500]; // milliseconds
+    
+    for (int attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        Map<String, dynamic>? result;
         
-        _screenWidth = result['width'] as double? ?? 0.0;
-        _screenHeight = result['height'] as double? ?? 0.0;
-        _scaleFactor = result['scale'] as double? ?? 1.0;
-        _fontScale = result['fontScale'] as double? ?? 1.0;
-        _statusBarHeight = result['statusBarHeight'] as double? ?? 0.0;
-        _safeAreaTop = result['safeAreaTop'] as double? ?? 0.0;
-        _safeAreaBottom = result['safeAreaBottom'] as double? ?? 0.0;
-        _safeAreaLeft = result['safeAreaLeft'] as double? ?? 0.0;
-        _safeAreaRight = result['safeAreaRight'] as double? ?? 0.0;
-
-        developer.log(
-            'Screen dimensions refreshed: $_screenWidth x $_screenHeight, safeAreaTop: $_safeAreaTop',
-            name: 'ScreenUtilities');
-
-        if (_previousWidth != _screenWidth || _previousHeight != _screenHeight) {
-          _notifyDimensionChangeListeners();
+        if (Platform.isIOS) {
+          result = await DCFlightFfiWrapper.getScreenDimensions();
+        } else if (Platform.isAndroid) {
+          result = await DCFlightJniWrapper.getScreenDimensions();
         }
-      } else {
-        developer.log('Failed to refresh screen dimensions: result is null', name: 'ScreenUtilities');
+        
+        if (result != null) {
+          _previousWidth = _screenWidth;
+          _previousHeight = _screenHeight;
+          
+          _screenWidth = result['width'] as double? ?? 0.0;
+          _screenHeight = result['height'] as double? ?? 0.0;
+          _scaleFactor = result['scale'] as double? ?? 1.0;
+          _fontScale = result['fontScale'] as double? ?? 1.0;
+          _statusBarHeight = result['statusBarHeight'] as double? ?? 0.0;
+          _safeAreaTop = result['safeAreaTop'] as double? ?? 0.0;
+          _safeAreaBottom = result['safeAreaBottom'] as double? ?? 0.0;
+          _safeAreaLeft = result['safeAreaLeft'] as double? ?? 0.0;
+          _safeAreaRight = result['safeAreaRight'] as double? ?? 0.0;
+
+          developer.log(
+              'Screen dimensions refreshed: $_screenWidth x $_screenHeight, safeAreaTop: $_safeAreaTop',
+              name: 'ScreenUtilities');
+
+          if (_previousWidth != _screenWidth || _previousHeight != _screenHeight) {
+            _notifyDimensionChangeListeners();
+          }
+          return; // Success - exit retry loop
+        } else {
+          // Result is null - retry if we have attempts left
+          if (attempt < maxRetries - 1) {
+            developer.log(
+                'Failed to refresh screen dimensions: result is null (attempt ${attempt + 1}/$maxRetries), retrying in ${retryDelays[attempt]}ms...',
+                name: 'ScreenUtilities');
+            await Future.delayed(Duration(milliseconds: retryDelays[attempt]));
+            continue;
+          } else {
+            developer.log(
+                'Failed to refresh screen dimensions: result is null after $maxRetries attempts',
+                name: 'ScreenUtilities');
+          }
+        }
+      } catch (e) {
+        // Error occurred - retry if we have attempts left
+        if (attempt < maxRetries - 1) {
+          developer.log(
+              'Failed to refresh screen dimensions: $e (attempt ${attempt + 1}/$maxRetries), retrying in ${retryDelays[attempt]}ms...',
+              name: 'ScreenUtilities');
+          await Future.delayed(Duration(milliseconds: retryDelays[attempt]));
+          continue;
+        } else {
+          developer.log('Failed to refresh screen dimensions after $maxRetries attempts: $e', name: 'ScreenUtilities');
+        }
       }
-    } catch (e) {
-      developer.log('Failed to refresh screen dimensions: $e', name: 'ScreenUtilities');
-      
-      if (_screenWidth == 0 || _screenHeight == 0) {
-        _screenWidth = 400;
-        _screenHeight = 800;
-        _scaleFactor = 2.0;
-      }
+    }
+    
+    // If we get here, all retries failed - use fallback values
+    if (_screenWidth == 0 || _screenHeight == 0) {
+      developer.log('Using fallback screen dimensions: 400x800', name: 'ScreenUtilities');
+      _screenWidth = 400;
+      _screenHeight = 800;
+      _scaleFactor = 2.0;
     }
   }
 

@@ -189,14 +189,33 @@ func dcflight_send_screen_dimensions_changed(_ dimensionsJson: UnsafePointer<CCh
         // before initialize() has completed, so we refresh dimensions here
         updateScreenDimensions()
         
+        // CRITICAL: Always return valid values, even if window isn't ready
+        // Use UIScreen.main.bounds as fallback if dimensions are still 0
+        var width = _screenWidth
+        var height = _screenHeight
+        var safeAreaTop = _safeAreaTop
+        var safeAreaBottom = _safeAreaBottom
+        
+        if width == 0 || height == 0 {
+            let screenBounds = UIScreen.main.bounds
+            width = screenBounds.width
+            height = screenBounds.height
+            print("⚠️ DCFScreenUtilities: Using fallback dimensions from UIScreen: \(width)x\(height)")
+        }
+        
+        // Use status bar height as fallback for safe area top if not available
+        if safeAreaTop == 0 {
+            safeAreaTop = UIApplication.shared.statusBarFrame.height
+        }
+        
         return [
-            "width": _screenWidth,
-            "height": _screenHeight,
+            "width": width,
+            "height": height,
             "scale": UIScreen.main.scale,
             "fontScale": _fontScale,
             "statusBarHeight": UIApplication.shared.statusBarFrame.height,
-            "safeAreaTop": _safeAreaTop,
-            "safeAreaBottom": _safeAreaBottom,
+            "safeAreaTop": safeAreaTop,
+            "safeAreaBottom": safeAreaBottom,
             "safeAreaLeft": _safeAreaLeft,
             "safeAreaRight": _safeAreaRight
         ]
