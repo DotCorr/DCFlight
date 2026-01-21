@@ -23,7 +23,8 @@ class StyleSheetExamplesScreen extends DCFStatelessComponent {
       // Padding should be on the content wrapper instead
     ),
     'contentWrapper': DCFLayout(
-      width: '100%',
+      // Don't set width: '100%' - flex children in column naturally fill width
+      // Setting width with padding can cause layout issues
       flexDirection: DCFFlexDirection.column,
       padding: 20,
     ),

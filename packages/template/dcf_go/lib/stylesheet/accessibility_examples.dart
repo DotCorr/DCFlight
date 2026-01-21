@@ -22,7 +22,9 @@ class AccessibilityExamples extends DCFStatelessComponent {
   static final layouts = DCFLayout.create({
     'container': DCFLayout(
       flexDirection: DCFFlexDirection.column,
-      padding: 20,
+      // CRITICAL: Don't set padding here - parent wrapper already provides padding
+      // Setting padding here causes double padding (40px total on each side)
+      width: '100%',
     ),
     'section': DCFLayout(
       flexDirection: DCFFlexDirection.column,
@@ -36,10 +38,12 @@ class AccessibilityExamples extends DCFStatelessComponent {
 
   @override
   DCFComponentNode render() {
-    return DCFScrollView(
+    // CRITICAL: Don't use DCFScrollView here - parent StyleSheetExamplesScreen already has a ScrollView
+    // Just return the content directly to avoid nested ScrollViews
+    return DCFView(
       layout: layouts['container']!,
       styleSheet: DCFStyleSheet(backgroundColor: DCFColors.gray100),
-      scrollContent: [
+      children: [
         DCFText(
           content: 'Accessibility Examples',
           textProps: DCFTextProps(

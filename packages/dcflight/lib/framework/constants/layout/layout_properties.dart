@@ -462,18 +462,37 @@ class DCFLayout extends Equatable {
       map['marginBottom'] = marginVertical;
     }
 
-    if (padding != null) map['padding'] = padding;
+    // CRITICAL: Process padding in correct order to avoid conflicts
+    // 1. Individual side paddings take precedence (if set, use them)
+    // 2. Then apply paddingHorizontal/paddingVertical if individual sides not set
+    // 3. Finally apply general padding if no specific padding is set
     if (paddingTop != null) map['paddingTop'] = paddingTop;
     if (paddingRight != null) map['paddingRight'] = paddingRight;
     if (paddingBottom != null) map['paddingBottom'] = paddingBottom;
     if (paddingLeft != null) map['paddingLeft'] = paddingLeft;
+    
+    // Apply paddingHorizontal only if individual left/right paddings aren't set
     if (paddingHorizontal != null) {
-      map['paddingLeft'] = paddingHorizontal;
-      map['paddingRight'] = paddingHorizontal;
+      if (paddingLeft == null) map['paddingLeft'] = paddingHorizontal;
+      if (paddingRight == null) map['paddingRight'] = paddingHorizontal;
     }
+    
+    // Apply paddingVertical only if individual top/bottom paddings aren't set
     if (paddingVertical != null) {
-      map['paddingTop'] = paddingVertical;
-      map['paddingBottom'] = paddingVertical;
+      if (paddingTop == null) map['paddingTop'] = paddingVertical;
+      if (paddingBottom == null) map['paddingBottom'] = paddingVertical;
+    }
+    
+    // Apply general padding only if no specific paddings are set
+    // This ensures padding applies to all sides uniformly if no overrides exist
+    if (padding != null && 
+        paddingTop == null && 
+        paddingRight == null && 
+        paddingBottom == null && 
+        paddingLeft == null &&
+        paddingHorizontal == null &&
+        paddingVertical == null) {
+      map['padding'] = padding;
     }
 
     if (position != null) map['position'] = position.toString().split('.').last;

@@ -35,6 +35,11 @@ import Foundation
     @objc public func initialize() -> Bool {
         print("🔄 DCFlightNative: initialize() called")
         
+        // CRITICAL: Ensure DCFScreenUtilities is initialized
+        // This is especially important during hot restart when native side persists
+        // but needs to be re-initialized to refresh screen dimensions
+        DCFScreenUtilities.shared.initialize(with: nil)
+        
         if let rootView = views[0] {
             print("✅ DCFlightNative: Root view found (viewId: 0)")
             if YogaShadowTree.shared.nodes["0"] == nil {

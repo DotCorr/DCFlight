@@ -51,7 +51,10 @@ class ScreenUtilities {
   /// Private constructor
   ScreenUtilities._() {
     _setupDimensionCallback();
-    refreshDimensions();
+    // CRITICAL: Don't call refreshDimensions() immediately in constructor
+    // During hot restart, native side might not be ready yet
+    // refreshDimensions() will be called explicitly from DCFlight._initialize()
+    // after bridge.initialize() completes
   }
 
   /// Set up dimension change callback via FFI/JNI
@@ -148,12 +151,19 @@ class ScreenUtilities {
 
   /// Refresh dimensions from native side via FFI/JNI
   /// Includes retry logic to handle cases where native isn't ready yet
+  /// During hot restart, native side may need more time to initialize
   Future<void> refreshDimensions() async {
-    const maxRetries = 3;
-    const retryDelays = [100, 300, 500]; // milliseconds
+    const maxRetries = 5; // Increased from 3 to 5 for hot restart scenarios
+    const retryDelays = [100, 200, 400, 600, 800]; // milliseconds - longer delays for later attempts
     
     for (int attempt = 0; attempt < maxRetries; attempt++) {
       try {
+        // On first attempt, add a small delay to allow native side to initialize
+        // This is especially important during hot restart
+        if (attempt == 0) {
+          await Future.delayed(const Duration(milliseconds: 50));
+        }
+        
         Map<String, dynamic>? result;
         
         if (Platform.isIOS) {
