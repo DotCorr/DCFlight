@@ -668,11 +668,13 @@ extension UIView {
         }
         
         // CRITICAL: Draw borders using filled path difference (outer rounded rect - inner rounded rect)
-        // This ensures borders perfectly follow rounded corners, no rectangular artifacts
-        // Calculate border insets
-        let maxBorderWidth = max(max(topWidth, rightWidth), max(bottomWidth, leftWidth))
+        // Borders are drawn INSIDE the bounds (iOS behavior) - Yoga already accounts for this in layout
+        // The inner path represents the content area (inset by border widths)
         
-        if maxBorderWidth > 0 {
+        // Calculate individual border insets (borders are centered on edges)
+        let hasAnyBorder = topWidth > 0 || rightWidth > 0 || bottomWidth > 0 || leftWidth > 0
+        
+        if hasAnyBorder {
             // Create outer path (full bounds with corner radius)
             let outerPath = createRoundedRectPath(
                 bounds: bounds,
@@ -680,12 +682,22 @@ extension UIView {
                 bottomLeft: bottomLeftRadius, bottomRight: bottomRightRadius
             )
             
-            // Create inner path (inset by border width, with adjusted corner radius)
-            let insetBounds = bounds.insetBy(dx: maxBorderWidth, dy: maxBorderWidth)
-            let innerTopLeft = max(0, topLeftRadius - maxBorderWidth)
-            let innerTopRight = max(0, topRightRadius - maxBorderWidth)
-            let innerBottomLeft = max(0, bottomLeftRadius - maxBorderWidth)
-            let innerBottomRight = max(0, bottomRightRadius - maxBorderWidth)
+            // Create inner path (inset by individual border widths)
+            // This is the content area - children are positioned here by Yoga
+            let insetBounds = bounds.inset(
+                by: UIEdgeInsets(
+                    top: topWidth,
+                    left: leftWidth,
+                    bottom: bottomWidth,
+                    right: rightWidth
+                )
+            )
+            
+            // Adjust corner radii for inner path (subtract border widths)
+            let innerTopLeft = max(0, topLeftRadius - max(leftWidth, topWidth))
+            let innerTopRight = max(0, topRightRadius - max(rightWidth, topWidth))
+            let innerBottomLeft = max(0, bottomLeftRadius - max(leftWidth, bottomWidth))
+            let innerBottomRight = max(0, bottomRightRadius - max(rightWidth, bottomWidth))
             
             let innerPath = createRoundedRectPath(
                 bounds: insetBounds,
@@ -693,7 +705,7 @@ extension UIView {
                 bottomLeft: innerBottomLeft, bottomRight: innerBottomRight
             )
             
-            // Create border layer using even-odd fill rule (outer - inner)
+            // Create border layer using even-odd fill rule (outer - inner = border)
             let borderLayer = CAShapeLayer()
             let borderPath = UIBezierPath()
             borderPath.append(outerPath)
@@ -708,12 +720,9 @@ extension UIView {
             borderLayer.fillColor = borderColor
             borderLayer.name = "borderLayer"
             
-            // Insert border layer before other sublayers (so it's behind content)
-            if let firstSublayer = layer.sublayers?.first {
-                layer.insertSublayer(borderLayer, below: firstSublayer)
-            } else {
-                layer.addSublayer(borderLayer)
-            }
+            // Insert border layer at index 0 (behind all content, including gradient)
+            // This ensures borders are drawn first, then gradient, then content
+            layer.insertSublayer(borderLayer, at: 0)
         }
     }
     
