@@ -44,12 +44,15 @@ class AppRoot extends DCFStatefulComponent {
                 
               )
             else
-              DotCorrLanding(
-                // key: 'landing-screen',
-                onToggleExamples: () {
-                  showExamples.setState(true);
-                },
-              ),
+              // DotCorrLanding(
+              //   // key: 'landing-screen',
+              //   onToggleExamples: () {
+              //     showExamples.setState(true);
+              //   },
+              // ),
+              DCFView(children: [
+                DCFText(content: "Hello, World!"),
+              ])
           ],
         ),
         

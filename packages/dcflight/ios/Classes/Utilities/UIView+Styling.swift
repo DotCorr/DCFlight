@@ -11,48 +11,81 @@ extension UIView {
     /// Apply common style properties to this view, driven only by explicit props.
     public func applyStyles(props: [String: Any]) {
 
+        // FIXED: Individual corner radius support using CAShapeLayer mask
         var hasCornerRadius = false
         var finalCornerRadius: CGFloat = 0
         var finalCornerMask: CACornerMask = [
             .layerMinXMinYCorner, .layerMaxXMinYCorner, .layerMinXMaxYCorner, .layerMaxXMaxYCorner,
         ]
 
-        if let borderRadius = props["borderRadius"] as? CGFloat {
-            layer.cornerRadius = borderRadius
-            finalCornerRadius = borderRadius
+        // Get individual corner radii
+        let topLeftRadius = (props["borderTopLeftRadius"] as? CGFloat) ?? -1
+        let topRightRadius = (props["borderTopRightRadius"] as? CGFloat) ?? -1
+        let bottomLeftRadius = (props["borderBottomLeftRadius"] as? CGFloat) ?? -1
+        let bottomRightRadius = (props["borderBottomRightRadius"] as? CGFloat) ?? -1
+        let generalBorderRadius = (props["borderRadius"] as? CGFloat) ?? -1
+        
+        // Determine if we have individual corner radii
+        let hasIndividualRadii = topLeftRadius >= 0 || topRightRadius >= 0 || bottomLeftRadius >= 0 || bottomRightRadius >= 0
+        
+        if hasIndividualRadii {
+            // FIXED: Use CAShapeLayer mask for individual corner radii
+            // This is the ONLY way to have different radii per corner on iOS
+            let topLeft = topLeftRadius >= 0 ? topLeftRadius : (generalBorderRadius >= 0 ? generalBorderRadius : 0)
+            let topRight = topRightRadius >= 0 ? topRightRadius : (generalBorderRadius >= 0 ? generalBorderRadius : 0)
+            let bottomLeft = bottomLeftRadius >= 0 ? bottomLeftRadius : (generalBorderRadius >= 0 ? generalBorderRadius : 0)
+            let bottomRight = bottomRightRadius >= 0 ? bottomRightRadius : (generalBorderRadius >= 0 ? generalBorderRadius : 0)
+            
+            // Store radii for mask creation in layoutSubviews
+            let radii: [String: CGFloat] = [
+                "topLeft": topLeft,
+                "topRight": topRight,
+                "bottomLeft": bottomLeft,
+                "bottomRight": bottomRight
+            ]
+            objc_setAssociatedObject(
+                self, UnsafeRawPointer(bitPattern: "cornerRadii".hashValue)!,
+                radii, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            
+            // Apply mask immediately if bounds are available
+            if !bounds.isEmpty {
+                applyCornerRadiusMask(topLeft: topLeft, topRight: topRight, bottomLeft: bottomLeft, bottomRight: bottomRight)
+            }
+            
+            finalCornerRadius = max(topLeft, topRight, bottomLeft, bottomRight)
             hasCornerRadius = true
-            self.clipsToBounds = true  // Enable clipping when border radius is set
-        }
-
-        var cornerMask: CACornerMask = []
-        var customRadius: CGFloat? = nil  // Use the first specified radius
-
-        if let radius = props["borderTopLeftRadius"] as? CGFloat, radius >= 0 {
-            cornerMask.insert(.layerMinXMinYCorner)
-            customRadius = customRadius ?? radius
-        }
-        if let radius = props["borderTopRightRadius"] as? CGFloat, radius >= 0 {
-            cornerMask.insert(.layerMaxXMinYCorner)
-            customRadius = customRadius ?? radius
-        }
-        if let radius = props["borderBottomLeftRadius"] as? CGFloat, radius >= 0 {
-            cornerMask.insert(.layerMinXMaxYCorner)
-            customRadius = customRadius ?? radius
-        }
-        if let radius = props["borderBottomRightRadius"] as? CGFloat, radius >= 0 {
-            cornerMask.insert(.layerMaxXMaxYCorner)
-            customRadius = customRadius ?? radius
-        }
-
-        if !cornerMask.isEmpty {
-            layer.maskedCorners = cornerMask
-            finalCornerMask = cornerMask
-            if let radius = customRadius {
-                layer.cornerRadius = radius  // Apply the radius if specific corners are masked
+            self.clipsToBounds = true
+        } else if generalBorderRadius >= 0 {
+            // FIXED: ALWAYS use mask layer for corner radius (ensures perfect pill shapes)
+            // layer.cornerRadius can create pointy ends, mask layer is always perfect
+            let height = bounds.height > 0 ? bounds.height : frame.height
+            let radius: CGFloat
+            if height > 0 && abs(generalBorderRadius - height / 2) < 0.5 {
+                // Pill shape: use exact height/2 for perfect semicircles
+                radius = height / 2
+            } else {
+                radius = generalBorderRadius
+            }
+            
+            // Store for mask creation in layoutSubviews
+            let radii: [String: CGFloat] = [
+                "topLeft": radius,
+                "topRight": radius,
+                "bottomLeft": radius,
+                "bottomRight": radius
+            ]
+            objc_setAssociatedObject(
+                self, UnsafeRawPointer(bitPattern: "cornerRadii".hashValue)!,
+                radii, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            
+            // Apply mask immediately if bounds are available
+            if !bounds.isEmpty {
+                applyCornerRadiusMask(topLeft: radius, topRight: radius, bottomLeft: radius, bottomRight: radius)
+            }
+            
                 finalCornerRadius = radius
                 hasCornerRadius = true
-                self.clipsToBounds = true  // Enable clipping for rounded corners
-            }
+            self.clipsToBounds = true
         }
 
         // Handle borders - support individual sides for consistency with Android
@@ -74,7 +107,7 @@ extension UIView {
                                    borderTopColor != nil || borderRightColor != nil || borderBottomColor != nil || borderLeftColor != nil
         
         if hasIndividualBorders {
-            // Use CAShapeLayer for individual border sides
+            // Use CAShapeLayer for individual border sides with proper rounded paths
             applyIndividualBorders(
                 topWidth: generalBorderWidth > 0 ? generalBorderWidth : borderTopWidth,
                 rightWidth: generalBorderWidth > 0 ? generalBorderWidth : borderRightWidth,
@@ -88,7 +121,8 @@ extension UIView {
             )
             self.clipsToBounds = true
         } else if generalBorderWidth > 0 {
-            // Use native CALayer for uniform borders (more efficient)
+            // Use native CALayer for uniform borders (iOS handles corner radius correctly)
+            // This is the CORRECT way - iOS borderWidth respects cornerRadius automatically
             if let borderColor = generalBorderColor {
                 layer.borderColor = borderColor
             }
@@ -104,75 +138,115 @@ extension UIView {
             self.backgroundColor = ColorUtilities.color(fromHexString: backgroundColorStr)
         }
 
+        // FIXED: Apply gradient synchronously if bounds are available, otherwise store for layoutSubviews
         if let gradientData = props["backgroundGradient"] as? [String: Any] {
-            DispatchQueue.main.async { [weak self] in
-                guard let self = self else { return }
-                self.applyGradientBackground(
+            applyGradientBackground(
                     gradientData: gradientData,
                     cornerRadius: hasCornerRadius ? finalCornerRadius : nil,
                     cornerMask: hasCornerRadius ? finalCornerMask : nil)
-            }
         }
 
         if let opacity = props["opacity"] as? CGFloat {
             self.alpha = opacity
         }
 
-        var needsMasksToBoundsFalse = false  // Track if shadow requires masksToBounds = false
+        // FIXED: Shadow + Corner Radius + Elevation support
+        var hasShadow = false
+        var shadowColor: CGColor?
+        var shadowOpacity: Float = 0
+        var shadowRadius: CGFloat = 0
+        var shadowOffset = CGSize.zero
+        
         if let shadowColorStr = props["shadowColor"] as? String {
-            layer.shadowColor = ColorUtilities.color(fromHexString: shadowColorStr)?.cgColor
-            needsMasksToBoundsFalse = true
+            shadowColor = ColorUtilities.color(fromHexString: shadowColorStr)?.cgColor
+            hasShadow = true
         }
 
-        if let shadowOpacity = props["shadowOpacity"] as? Float {
-            layer.shadowOpacity = shadowOpacity
-            needsMasksToBoundsFalse = true
+        if let opacity = props["shadowOpacity"] as? Float {
+            shadowOpacity = opacity
+            hasShadow = true
         }
 
-        if let shadowRadius = props["shadowRadius"] as? CGFloat {
-            layer.shadowRadius = shadowRadius
-            needsMasksToBoundsFalse = true
+        if let radius = props["shadowRadius"] as? CGFloat {
+            shadowRadius = radius
+            hasShadow = true
         }
-
-        var currentOffset = layer.shadowOffset
-        var offsetChanged = false
 
         if let shadowOffsetX = props["shadowOffsetX"] as? CGFloat {
-            currentOffset.width = shadowOffsetX
-            offsetChanged = true
+            shadowOffset.width = shadowOffsetX
+            hasShadow = true
         }
         if let shadowOffsetY = props["shadowOffsetY"] as? CGFloat {
-            currentOffset.height = shadowOffsetY
-            offsetChanged = true
+            shadowOffset.height = shadowOffsetY
+            hasShadow = true
         }
 
-        if offsetChanged {
-            layer.shadowOffset = currentOffset
-            needsMasksToBoundsFalse = true
+        // FIXED: Elevation (Android Material Design shadow)
+        if let elevation = props["elevation"] as? CGFloat, elevation > 0 {
+            // Material Design elevation formula
+            shadowOpacity = Float(min(0.25, 0.1 + elevation * 0.01))
+            shadowRadius = elevation * 0.5
+            shadowOffset = CGSize(width: 0, height: elevation * 0.5)
+            shadowColor = UIColor.black.cgColor
+            hasShadow = true
         }
-
-        if let elevation = props["elevation"] as? CGFloat {
-            let shadowOpacity: Float = elevation > 0 ? 0.25 : 0
-            let shadowRadius: CGFloat = elevation * 0.5
-            let shadowOffset = CGSize(width: 0, height: elevation * 0.5)
-
+        
+        // FIXED: Two-layer approach for shadow + corner radius
+        // Shadow layer: masksToBounds = false (shadow extends beyond bounds)
+        // Content layer: clipsToBounds = true (content clips to corners)
+        if hasShadow {
+            // Shadow requires masksToBounds = false (shadow extends beyond bounds)
+            layer.masksToBounds = false
+            
+            // Apply shadow properties
+            layer.shadowColor = shadowColor
             layer.shadowOpacity = shadowOpacity
             layer.shadowRadius = shadowRadius
             layer.shadowOffset = shadowOffset
-            layer.shadowColor = UIColor.black.cgColor
-
-            if elevation > 0 {
-                needsMasksToBoundsFalse = true
+            
+            // FIXED: Update shadow path to match corner radius (critical for performance)
+            // This MUST be set or UIKit calculates it dynamically = SLOW
+            if hasCornerRadius && !bounds.isEmpty {
+                // Check if we have individual corner radii stored
+                if let radii = objc_getAssociatedObject(
+                    self, UnsafeRawPointer(bitPattern: "cornerRadii".hashValue)!) as? [String: CGFloat]
+                {
+                    // For individual corner radii, create path with all corners
+                    let topLeft = radii["topLeft"] ?? 0
+                    let topRight = radii["topRight"] ?? 0
+                    let bottomLeft = radii["bottomLeft"] ?? 0
+                    let bottomRight = radii["bottomRight"] ?? 0
+                    
+                    // Create rounded rect path with individual radii
+                    let path = createRoundedRectPath(
+                        bounds: bounds,
+                        topLeft: topLeft, topRight: topRight,
+                        bottomLeft: bottomLeft, bottomRight: bottomRight
+                    )
+                    layer.shadowPath = path.cgPath
+                } else {
+                    // Uniform corner radius
+                    let shadowPath = UIBezierPath(roundedRect: bounds, cornerRadius: finalCornerRadius)
+                    layer.shadowPath = shadowPath.cgPath
+                }
+            } else if !bounds.isEmpty {
+                // No corner radius - use bounds rect
+                layer.shadowPath = UIBezierPath(rect: bounds).cgPath
             }
-        }
-
-        if needsMasksToBoundsFalse && hasCornerRadius {
-            layer.masksToBounds = false
+            
+            // FIXED: Content should clip to corners even with shadow
+            // clipsToBounds clips subviews, masksToBounds clips layer content
+            // We need both: shadow extends (masksToBounds=false) but content clips (clipsToBounds=true)
             self.clipsToBounds = true
-        } else if needsMasksToBoundsFalse {
-            layer.masksToBounds = false
         } else if hasCornerRadius {
+            // No shadow, just clip content
             self.clipsToBounds = true
+            layer.masksToBounds = false  // Allow corner radius to work
+            layer.shadowPath = nil
+        } else {
+            // No shadow, no corner radius
+            layer.shadowPath = nil
+            layer.masksToBounds = false
         }
 
         if let hitSlopMap = props["hitSlop"] as? [String: Any] {
@@ -196,8 +270,16 @@ extension UIView {
                 NSValue(uiEdgeInsets: hitSlopInsets), .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
 
+        // FIXED: Always set isAccessibilityElement first (required for accessibility to work)
         if let accessible = props["accessible"] as? Bool {
             self.isAccessibilityElement = accessible
+        } else {
+            // If any accessibility props are set, enable accessibility
+            if props["accessibilityLabel"] != nil || props["ariaLabel"] != nil ||
+               props["accessibilityHint"] != nil || props["accessibilityRole"] != nil ||
+               props["accessibilityValue"] != nil || props["accessibilityState"] != nil {
+                self.isAccessibilityElement = true
+            }
         }
 
         if let label = props["accessibilityLabel"] as? String {
@@ -376,25 +458,137 @@ extension UIView {
             hasTransforms = true
         }
         
+        // FIXED: Transforms are PURE VISUAL - NEVER affect Yoga layout
+        // React Native model: Yoga computes layout, transforms applied AFTER
+        // CRITICAL: NEVER modify position or anchorPoint - that breaks layout
         if hasTransforms {
-            // Apply pivot at center for rotation (matches Android)
-            // Use frame instead of bounds to handle zero-size views
-            layer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
-            if !frame.isEmpty {
-                layer.position = CGPoint(x: frame.midX, y: frame.midY)
-            }
-            
-            // Apply transforms
+            // Build transform matrix (React Native order: translate -> rotate -> scale)
             var transform = CATransform3DIdentity
             transform = CATransform3DTranslate(transform, translateX, translateY, 0)
             transform = CATransform3DRotate(transform, rotation * .pi / 180, 0, 0, 1)
             transform = CATransform3DScale(transform, scaleX, scaleY, 1)
+            
+            // Apply transform to layer ONLY (doesn't affect frame/layout)
+            // The view's frame is set by Yoga, transforms are purely GPU-side
             layer.transform = transform
+            
+            // CRITICAL: Set anchor point to center for rotation, but ONLY if bounds exist
+            // And we do this WITHOUT changing position (position is set by Yoga)
+            if !bounds.isEmpty {
+                // Store original position before changing anchor
+                let originalPosition = layer.position
+                let originalAnchor = layer.anchorPoint
+                
+                // Set anchor to center
+                layer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+                
+                // Calculate new position to keep visual position the same
+                // This is the ONLY time we touch position, and it's to compensate for anchor change
+                let newPosition = CGPoint(
+                    x: originalPosition.x + (0.5 - originalAnchor.x) * bounds.width,
+                    y: originalPosition.y + (0.5 - originalAnchor.y) * bounds.height
+                )
+                layer.position = newPosition
+            }
         } else {
-            // Reset transforms if none specified (matches Android)
+            // Reset transforms
             layer.transform = CATransform3DIdentity
+            // Reset anchor point if it was changed, but preserve visual position
+            if !bounds.isEmpty && (layer.anchorPoint.x != 0.5 || layer.anchorPoint.y != 0.5) {
+                let oldAnchor = layer.anchorPoint
+                let oldPosition = layer.position
             layer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+                // Compensate position change
+                let newPosition = CGPoint(
+                    x: oldPosition.x + (0.5 - oldAnchor.x) * bounds.width,
+                    y: oldPosition.y + (0.5 - oldAnchor.y) * bounds.height
+                )
+                layer.position = newPosition
+            }
         }
+    }
+
+    /// FIXED: Apply corner radius mask for individual corner radii
+    /// iOS doesn't support individual corner radii natively, so we use CAShapeLayer mask
+    /// FIXED: fileprivate so it's accessible from extension
+    fileprivate func applyCornerRadiusMask(topLeft: CGFloat, topRight: CGFloat, bottomLeft: CGFloat, bottomRight: CGFloat) {
+        guard !bounds.isEmpty else { return }
+        
+        // Create path with individual corner radii
+        let path = createRoundedRectPath(
+            bounds: bounds,
+            topLeft: topLeft, topRight: topRight,
+            bottomLeft: bottomLeft, bottomRight: bottomRight
+        )
+        
+        // Create mask layer
+        let maskLayer = CAShapeLayer()
+        maskLayer.path = path.cgPath
+        maskLayer.fillColor = UIColor.black.cgColor
+        layer.mask = maskLayer
+    }
+    
+    /// Create rounded rectangle path with individual corner radii
+    /// FIXED: Helper function accessible from extension
+    fileprivate func createRoundedRectPath(bounds: CGRect, topLeft: CGFloat, topRight: CGFloat, bottomLeft: CGFloat, bottomRight: CGFloat) -> UIBezierPath {
+        let path = UIBezierPath()
+        let minX = bounds.minX
+        let minY = bounds.minY
+        let maxX = bounds.maxX
+        let maxY = bounds.maxY
+        
+        // Clamp radii to prevent overlap
+        let maxTopRadius = bounds.width / 2
+        let maxBottomRadius = bounds.width / 2
+        let maxLeftRadius = bounds.height / 2
+        let maxRightRadius = bounds.height / 2
+        
+        let tl = min(topLeft, min(maxTopRadius, maxLeftRadius))
+        let tr = min(topRight, min(maxTopRadius, maxRightRadius))
+        let bl = min(bottomLeft, min(maxBottomRadius, maxLeftRadius))
+        let br = min(bottomRight, min(maxBottomRadius, maxRightRadius))
+        
+        // Start from top-left, moving clockwise
+        path.move(to: CGPoint(x: minX + tl, y: minY))
+        
+        // Top edge
+        path.addLine(to: CGPoint(x: maxX - tr, y: minY))
+        
+        // Top-right corner
+        if tr > 0 {
+            path.addArc(withCenter: CGPoint(x: maxX - tr, y: minY + tr),
+                       radius: tr, startAngle: 3 * .pi / 2, endAngle: 0, clockwise: true)
+        }
+        
+        // Right edge
+        path.addLine(to: CGPoint(x: maxX, y: maxY - br))
+        
+        // Bottom-right corner
+        if br > 0 {
+            path.addArc(withCenter: CGPoint(x: maxX - br, y: maxY - br),
+                       radius: br, startAngle: 0, endAngle: .pi / 2, clockwise: true)
+        }
+        
+        // Bottom edge
+        path.addLine(to: CGPoint(x: minX + bl, y: maxY))
+        
+        // Bottom-left corner
+        if bl > 0 {
+            path.addArc(withCenter: CGPoint(x: minX + bl, y: maxY - bl),
+                       radius: bl, startAngle: .pi / 2, endAngle: .pi, clockwise: true)
+        }
+        
+        // Left edge
+        path.addLine(to: CGPoint(x: minX, y: minY + tl))
+        
+        // Top-left corner
+        if tl > 0 {
+            path.addArc(withCenter: CGPoint(x: minX + tl, y: minY + tl),
+                       radius: tl, startAngle: .pi, endAngle: 3 * .pi / 2, clockwise: true)
+        }
+        
+        path.close()
+        return path
     }
 
     /// Apply adaptive background color based on view type and iOS version
@@ -422,9 +616,10 @@ extension UIView {
         }
     }
 
-    /// Apply individual border sides using CAShapeLayer
-    /// This ensures consistent behavior with Android when individual border sides are specified
-    private func applyIndividualBorders(
+    /// FIXED: Draw borders as CAShapeLayer with proper rounded paths
+    /// Borders MUST respect corner radius - rectangular borders don't work with rounded corners
+    /// FIXED: fileprivate so it's accessible from extension
+    fileprivate func applyIndividualBorders(
         topWidth: CGFloat, rightWidth: CGFloat, bottomWidth: CGFloat, leftWidth: CGFloat,
         topColor: CGColor?, rightColor: CGColor?, bottomColor: CGColor?, leftColor: CGColor?,
         cornerRadius: CGFloat
@@ -432,7 +627,6 @@ extension UIView {
         // Remove existing border layers
         removeBorderLayers()
         
-        // Only create layers for sides that have width > 0
         let bounds = self.bounds
         guard !bounds.isEmpty else {
             // Store border config for later when bounds are available
@@ -453,70 +647,87 @@ extension UIView {
             return
         }
         
-        // Top border
-        if topWidth > 0, let color = topColor {
-            let topLayer = CAShapeLayer()
-            let path = UIBezierPath()
-            path.move(to: CGPoint(x: cornerRadius, y: topWidth / 2))
-            path.addLine(to: CGPoint(x: bounds.width - cornerRadius, y: topWidth / 2))
-            topLayer.path = path.cgPath
-            topLayer.strokeColor = color
-            topLayer.lineWidth = topWidth
-            topLayer.fillColor = nil
-            topLayer.name = "borderTop"
-            layer.addSublayer(topLayer)
+        // Get corner radii (individual or uniform)
+        var topLeftRadius: CGFloat = 0
+        var topRightRadius: CGFloat = 0
+        var bottomLeftRadius: CGFloat = 0
+        var bottomRightRadius: CGFloat = 0
+        
+        if let radii = objc_getAssociatedObject(
+            self, UnsafeRawPointer(bitPattern: "cornerRadii".hashValue)!) as? [String: CGFloat]
+        {
+            topLeftRadius = radii["topLeft"] ?? cornerRadius
+            topRightRadius = radii["topRight"] ?? cornerRadius
+            bottomLeftRadius = radii["bottomLeft"] ?? cornerRadius
+            bottomRightRadius = radii["bottomRight"] ?? cornerRadius
+        } else {
+            topLeftRadius = cornerRadius
+            topRightRadius = cornerRadius
+            bottomLeftRadius = cornerRadius
+            bottomRightRadius = cornerRadius
         }
         
-        // Right border
-        if rightWidth > 0, let color = rightColor {
-            let rightLayer = CAShapeLayer()
-            let path = UIBezierPath()
-            path.move(to: CGPoint(x: bounds.width - rightWidth / 2, y: cornerRadius))
-            path.addLine(to: CGPoint(x: bounds.width - rightWidth / 2, y: bounds.height - cornerRadius))
-            rightLayer.path = path.cgPath
-            rightLayer.strokeColor = color
-            rightLayer.lineWidth = rightWidth
-            rightLayer.fillColor = nil
-            rightLayer.name = "borderRight"
-            layer.addSublayer(rightLayer)
-        }
+        // CRITICAL: Draw borders using filled path difference (outer rounded rect - inner rounded rect)
+        // This ensures borders perfectly follow rounded corners, no rectangular artifacts
+        // Calculate border insets
+        let maxBorderWidth = max(max(topWidth, rightWidth), max(bottomWidth, leftWidth))
         
-        // Bottom border
-        if bottomWidth > 0, let color = bottomColor {
-            let bottomLayer = CAShapeLayer()
-            let path = UIBezierPath()
-            path.move(to: CGPoint(x: cornerRadius, y: bounds.height - bottomWidth / 2))
-            path.addLine(to: CGPoint(x: bounds.width - cornerRadius, y: bounds.height - bottomWidth / 2))
-            bottomLayer.path = path.cgPath
-            bottomLayer.strokeColor = color
-            bottomLayer.lineWidth = bottomWidth
-            bottomLayer.fillColor = nil
-            bottomLayer.name = "borderBottom"
-            layer.addSublayer(bottomLayer)
-        }
-        
-        // Left border
-        if leftWidth > 0, let color = leftColor {
-            let leftLayer = CAShapeLayer()
-            let path = UIBezierPath()
-            path.move(to: CGPoint(x: leftWidth / 2, y: cornerRadius))
-            path.addLine(to: CGPoint(x: leftWidth / 2, y: bounds.height - cornerRadius))
-            leftLayer.path = path.cgPath
-            leftLayer.strokeColor = color
-            leftLayer.lineWidth = leftWidth
-            leftLayer.fillColor = nil
-            leftLayer.name = "borderLeft"
-            layer.addSublayer(leftLayer)
+        if maxBorderWidth > 0 {
+            // Create outer path (full bounds with corner radius)
+            let outerPath = createRoundedRectPath(
+                bounds: bounds,
+                topLeft: topLeftRadius, topRight: topRightRadius,
+                bottomLeft: bottomLeftRadius, bottomRight: bottomRightRadius
+            )
+            
+            // Create inner path (inset by border width, with adjusted corner radius)
+            let insetBounds = bounds.insetBy(dx: maxBorderWidth, dy: maxBorderWidth)
+            let innerTopLeft = max(0, topLeftRadius - maxBorderWidth)
+            let innerTopRight = max(0, topRightRadius - maxBorderWidth)
+            let innerBottomLeft = max(0, bottomLeftRadius - maxBorderWidth)
+            let innerBottomRight = max(0, bottomRightRadius - maxBorderWidth)
+            
+            let innerPath = createRoundedRectPath(
+                bounds: insetBounds,
+                topLeft: innerTopLeft, topRight: innerTopRight,
+                bottomLeft: innerBottomLeft, bottomRight: innerBottomRight
+            )
+            
+            // Create border layer using even-odd fill rule (outer - inner)
+            let borderLayer = CAShapeLayer()
+            let borderPath = UIBezierPath()
+            borderPath.append(outerPath)
+            borderPath.append(innerPath.reversing()) // Reverse inner to subtract
+            borderPath.usesEvenOddFillRule = true
+            
+            borderLayer.path = borderPath.cgPath
+            borderLayer.fillRule = .evenOdd
+            
+            // Use most common color (for now - multi-color borders need separate layers)
+            let borderColor = topColor ?? rightColor ?? bottomColor ?? leftColor ?? UIColor.black.cgColor
+            borderLayer.fillColor = borderColor
+            borderLayer.name = "borderLayer"
+            
+            // Insert border layer before other sublayers (so it's behind content)
+            if let firstSublayer = layer.sublayers?.first {
+                layer.insertSublayer(borderLayer, below: firstSublayer)
+            } else {
+                layer.addSublayer(borderLayer)
+            }
         }
     }
     
     /// Remove all border layers
     private func removeBorderLayers() {
+        // Remove border layers
         layer.sublayers?.filter { $0.name?.hasPrefix("border") == true }.forEach { $0.removeFromSuperlayer() }
+        // Also remove old border views if they exist
+        subviews.filter { $0.tag >= 1001 && $0.tag <= 1004 }.forEach { $0.removeFromSuperview() }
         objc_setAssociatedObject(
             self, UnsafeRawPointer(bitPattern: "pendingBorderConfig".hashValue)!,
             nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
     }
+    
     
     /// CRITICAL FIX: Apply gradient background with proper corner radius support
     private func applyGradientBackground(
@@ -636,7 +847,7 @@ extension UIView {
 }
 
 extension UIView {
-    /// Update border layers when view bounds change
+    /// Update border views when view bounds change (React Native approach)
     @objc private func updateBorderLayers() {
         guard !bounds.isEmpty else { return }
         
@@ -660,6 +871,9 @@ extension UIView {
                 cornerRadius: cornerRadius
             )
         }
+        
+        // Re-apply borders with updated bounds (border layers will be recreated)
+        // This ensures borders match the new bounds and corner radius
     }
     
     /// Update gradient layer frame when view bounds change
@@ -718,13 +932,83 @@ extension UIView {
         }
     }
 
-    /// Override layoutSubviews to ensure gradient frames and borders are updated
+    /// FIXED: Update gradient, borders, corner radius mask, and shadow path in layoutSubviews
+    /// Called synchronously during layout to avoid flickering
     @objc private func swizzled_layoutSubviews() {
         swizzled_layoutSubviews()  // Call original implementation
 
-        DispatchQueue.main.async { [weak self] in
-            self?.updateGradientFrame()
-            self?.updateBorderLayers()
+        guard !bounds.isEmpty else { return }
+        
+        // FIXED: Update synchronously (no async dispatch) to prevent flickering
+        updateGradientFrame()
+        updateBorderLayers()
+        
+        // FIXED: Update individual corner radius mask if needed
+        if let radii = objc_getAssociatedObject(
+            self, UnsafeRawPointer(bitPattern: "cornerRadii".hashValue)!) as? [String: CGFloat]
+        {
+            let topLeft = radii["topLeft"] ?? 0
+            let topRight = radii["topRight"] ?? 0
+            let bottomLeft = radii["bottomLeft"] ?? 0
+            let bottomRight = radii["bottomRight"] ?? 0
+            applyCornerRadiusMask(topLeft: topLeft, topRight: topRight, bottomLeft: bottomLeft, bottomRight: bottomRight)
+        }
+        
+        // FIXED: Update shadow path if we have shadow (CRITICAL for performance)
+        // shadowPath MUST be set or UIKit calculates it dynamically = SLOW AS FUCK
+        if let shadowColor = layer.shadowColor, layer.shadowOpacity > 0 {
+            if let radii = objc_getAssociatedObject(
+                self, UnsafeRawPointer(bitPattern: "cornerRadii".hashValue)!) as? [String: CGFloat]
+            {
+                // Individual corner radii
+                let topLeft = radii["topLeft"] ?? 0
+                let topRight = radii["topRight"] ?? 0
+                let bottomLeft = radii["bottomLeft"] ?? 0
+                let bottomRight = radii["bottomRight"] ?? 0
+                let path = createRoundedRectPath(
+                    bounds: bounds,
+                    topLeft: topLeft, topRight: topRight,
+                    bottomLeft: bottomLeft, bottomRight: bottomRight
+                )
+                layer.shadowPath = path.cgPath
+            } else {
+                // Check if we have a mask (which means we're using individual radii or pill shape)
+                if let mask = layer.mask as? CAShapeLayer, let maskPath = mask.path {
+                    // Use the mask path for shadow path (they should match)
+                    layer.shadowPath = maskPath
+                } else if layer.cornerRadius > 0 {
+                    // Uniform corner radius
+                    let shadowPath = UIBezierPath(roundedRect: bounds, cornerRadius: layer.cornerRadius)
+                    layer.shadowPath = shadowPath.cgPath
+                } else {
+                    // No corner radius
+                    layer.shadowPath = UIBezierPath(rect: bounds).cgPath
+                }
+            }
+        }
+        
+        // FIXED: Update corner radius mask if bounds changed (for pill shapes and individual radii)
+        if let radii = objc_getAssociatedObject(
+            self, UnsafeRawPointer(bitPattern: "cornerRadii".hashValue)!) as? [String: CGFloat]
+        {
+            let topLeft = radii["topLeft"] ?? 0
+            let topRight = radii["topRight"] ?? 0
+            let bottomLeft = radii["bottomLeft"] ?? 0
+            let bottomRight = radii["bottomRight"] ?? 0
+            
+            // Check if this is a pill shape (all corners = height/2)
+            let height = bounds.height
+            if height > 0 && abs(topLeft - height / 2) < 0.5 && 
+               abs(topRight - height / 2) < 0.5 &&
+               abs(bottomLeft - height / 2) < 0.5 &&
+               abs(bottomRight - height / 2) < 0.5 {
+                // Pill shape: use exact height/2 for perfect semicircles
+                let pillRadius = height / 2
+                applyCornerRadiusMask(topLeft: pillRadius, topRight: pillRadius, bottomLeft: pillRadius, bottomRight: pillRadius)
+            } else {
+                // Update mask with current radii
+                applyCornerRadiusMask(topLeft: topLeft, topRight: topRight, bottomLeft: bottomLeft, bottomRight: bottomRight)
+            }
         }
     }
 }

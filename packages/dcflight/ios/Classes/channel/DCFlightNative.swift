@@ -35,6 +35,9 @@ import Foundation
     @objc public func initialize() -> Bool {
         print("🔄 DCFlightNative: initialize() called")
         
+        // CRITICAL: Initialize styling swizzling for gradient/border updates
+        UIView.performSwizzling()
+        
         // CRITICAL: Ensure DCFScreenUtilities is initialized
         // This is especially important during hot restart when native side persists
         // but needs to be re-initialized to refresh screen dimensions
