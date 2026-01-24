@@ -270,6 +270,14 @@ class DCFViewPropertyMapper {
             return
         }
         
+        // 🔥 PERFORMANCE FIX: Check if gradient data has actually changed
+        // This prevents destroying and recreating layers 60 times a second during typing
+        let lastProps = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "lastGradientProps".hashValue)!) as? [String: Any]
+        if let last = lastProps, NSDictionary(dictionary: last).isEqual(to: gradientData) {
+            return // Data hasn't changed, skip expensive work
+        }
+        objc_setAssociatedObject(view, UnsafeRawPointer(bitPattern: "lastGradientProps".hashValue)!, gradientData, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        
         // Clear backgroundColor when gradient exists
         view.backgroundColor = .clear
         let isDCFView = view.responds(to: NSSelectorFromString("setDcfBackgroundColor:"))
