@@ -619,7 +619,7 @@ extension UIView {
     /// ```swift
     /// view.applyProperties(props: ["borderRadius": 8.0, "borderWidth": 2.0])
     /// ```
-    func applyProperties(props: [String: Any]) {
+    public func applyProperties(props: [String: Any]) {
         DCFViewPropertyMapper.applyProperties(to: self, props: props)
         
         // Update gradient frame if gradient layer exists

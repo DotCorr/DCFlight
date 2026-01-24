@@ -32,6 +32,7 @@ import 'package:dcflight/framework/events/event_registry.dart';
 import 'package:dcflight/framework/utils/flutter_widget_renderer.dart';
 import 'package:dcflight/framework/utils/widget_to_dcf_adaptor.dart';
 import 'package:dcflight/framework/utils/system_state_manager.dart';
+import 'package:dcflight/framework/constants/style/style_wrapper_util.dart';
 
 /// Enhanced Virtual DOM with priority-based update scheduling
 class DCFEngine {
@@ -1549,8 +1550,11 @@ class DCFEngine {
       'Props': element.elementProps.keys.toList()
     });
     try {
+      // 🔥 FIX: Inflate padding to account for border width in Yoga layout
+      final processedProps = StyleWrapperUtil.wrapIfNeeded(element.elementProps);
+      
       final success = await _nativeBridge
-          .createView(viewId, element.type, element.elementProps)
+          .createView(viewId, element.type, processedProps)
           .timeout(
         const Duration(seconds: 5),
         onTimeout: () {
@@ -3073,7 +3077,9 @@ class DCFEngine {
   Future<void> _updateElementProps(DCFElement element) async {
     final viewId = element.effectiveNativeViewId;
     if (viewId != null) {
-      await _nativeBridge.updateView(viewId, element.elementProps);
+      // 🔥 FIX: Inflate padding to account for border width in Yoga layout
+      final processedProps = StyleWrapperUtil.wrapIfNeeded(element.elementProps);
+      await _nativeBridge.updateView(viewId, processedProps);
     }
   }
 
@@ -4427,22 +4433,28 @@ class DCFEngine {
 
 
       if (propsToSend.isNotEmpty) {
+        // 🔥 FIX: Inflate padding to account for border width in Yoga layout
+        final processedProps = StyleWrapperUtil.wrapIfNeeded(propsToSend);
+        
         EngineDebugLogger.logBridge('UPDATE_VIEW', oldElement.nativeViewId!,
             data: {
-              'ChangedProps': propsToSend.keys.toList(),
+              'ChangedProps': processedProps.keys.toList(),
               'StructuralShock': _isStructuralShock,
               'SendAllProps': _isStructuralShock
             });
         final updateSuccess = await _nativeBridge.updateView(
-            oldElement.nativeViewId!, propsToSend);
+            oldElement.nativeViewId!, processedProps);
         if (!updateSuccess) {
           EngineDebugLogger.log('UPDATE_VIEW_FAILED',
               'updateView failed, falling back to createView',
               extra: {'ViewId': oldElement.nativeViewId});
+          
+          // 🔥 FIX: Also wrap fallback createView props
+          final processedFullProps = StyleWrapperUtil.wrapIfNeeded(newElement.elementProps);
           final createSuccess = await _nativeBridge.createView(
               oldElement.nativeViewId!,
               oldElement.type,
-              newElement.elementProps);
+              processedFullProps);
           if (!createSuccess) {
             EngineDebugLogger.log('CREATE_VIEW_FALLBACK_FAILED',
                 'createView fallback also failed',

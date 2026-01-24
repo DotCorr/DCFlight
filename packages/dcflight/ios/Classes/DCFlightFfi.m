@@ -320,24 +320,41 @@ bool dcflight_tunnel(const char* componentType, const char* method, const char* 
     if (result == nil) {
         strncpy(resultJson, "null", resultSize - 1);
         resultJson[resultSize - 1] = '\0';
-        return false;
+        return true;
     }
     
-    NSData* resultData = [NSJSONSerialization dataWithJSONObject:result options:0 error:&error];
-    if (error != nil) {
-        NSLog(@"❌ DCFlightFfi: Failed to serialize result: %@", error);
-        return false;
+    NSString* resultStr = nil;
+    
+    // NSJSONSerialization only allows NSArray or NSDictionary as top-level objects.
+    // We must handle simple types (NSString, NSNumber) separately.
+    if ([result isKindOfClass:[NSDictionary class]] || [result isKindOfClass:[NSArray class]]) {
+        NSError* error = nil;
+        NSData* resultData = [NSJSONSerialization dataWithJSONObject:result options:0 error:&error];
+        if (error == nil) {
+            resultStr = [[NSString alloc] initWithData:resultData encoding:NSUTF8StringEncoding];
+        } else {
+            NSLog(@"❌ DCFlightFfi: Failed to serialize complex result: %@", error);
+        }
+    } else if ([result isKindOfClass:[NSString class]]) {
+        // Escape the string and wrap in quotes to make it a valid JSON string fragment
+        // This is safe for FFI transmission
+        resultStr = [NSString stringWithFormat:@"\"%@\"", result];
+    } else if ([result isKindOfClass:[NSNumber class]]) {
+        // Numbers are valid JSON as-is
+        resultStr = [result stringValue];
     }
     
-    NSString* resultStr = [[NSString alloc] initWithData:resultData encoding:NSUTF8StringEncoding];
     if (resultStr == nil) {
+        strncpy(resultJson, "null", resultSize - 1);
+        resultJson[resultSize - 1] = '\0';
         return false;
     }
     
     const char* resultCStr = [resultStr UTF8String];
     size_t resultLen = strlen(resultCStr);
     if (resultLen >= (size_t)resultSize) {
-        return false; // Buffer too small
+        NSLog(@"❌ DCFlightFfi: Result buffer too small (%zu >= %d)", resultLen, resultSize);
+        return false; 
     }
     
     strncpy(resultJson, resultCStr, resultSize - 1);

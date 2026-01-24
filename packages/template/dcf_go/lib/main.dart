@@ -15,6 +15,7 @@ class AppRoot extends DCFStatefulComponent {
 
   @override
   DCFComponentNode render() {
+    final textInputValue = useState<String>("");
     final showExamples = useState<bool>(false);
     final showScreenUtilsTest = useState<bool>(false);
     final screenUtils = ScreenUtilities.instance;
@@ -52,8 +53,11 @@ class AppRoot extends DCFStatefulComponent {
               // ),
               DCFView(children: [
                 DCFTextInput(placeholder: "Enter your name",
+                onChangeText: (text) {
+                  textInputValue.setState(text);
+                },
                 styleSheet: DCFStyleSheet(backgroundColor: DCFColors.gray100,borderRadius: 8,borderWidth: 10,borderColor: DCFColors.amber)),
-                DCFText(content: "Hello, World!"),
+                DCFText(content: "Hello, World ${textInputValue.state}!"),
               ])
           ],
         ),

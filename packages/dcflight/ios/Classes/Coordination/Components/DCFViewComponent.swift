@@ -19,30 +19,21 @@ class DCFViewComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         // Use DCFView for proper border rendering (matches standard model)
         let view = DCFView()
-        
-        // Apply properties using direct property mapping (standard model approach)
-        // This will trigger the overflow/clipping logic in updateView
-        view.applyProperties(props: props)
-        
         updateView(view, withProps: props)
-        
         return view
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let view = view as? UIView else { return false }
         
-        // Get overflow property from props (sent as string from Dart)
+        // Match React Native default: overflow is 'visible' (clipsToBounds = false)
+        // This ensures transforms and absolute positioning work correctly without slicing
         let overflow = props["overflow"] as? String
+        view.clipsToBounds = (overflow == "hidden" || overflow == "scroll")
         
-        // CRITICAL: Handle clipping based on 'overflow' prop
-        // React Native/Web default is 'visible' (no clipping)
-        if overflow == "hidden" || overflow == "scroll" {
-            view.clipsToBounds = true
-        } else {
-            // Default to 'visible' (clipsToBounds = false)
-            // This ensures transforms and absolute positioning work correctly without slicing
-            view.clipsToBounds = false
+        // Handle absolutely positioned child (disable parent clipping)
+        if (props["position"] as? String) == "absolute", let parent = view.superview {
+            parent.clipsToBounds = false
         }
         
         // Apply properties using direct property mapping (standard model approach)
@@ -50,7 +41,7 @@ class DCFViewComponent: NSObject, DCFComponent {
         
         return true
     }
-    
+
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
         // CRITICAL: Preserve transform when setting frame
         let frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
