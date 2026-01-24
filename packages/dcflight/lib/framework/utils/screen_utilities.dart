@@ -123,7 +123,7 @@ class ScreenUtilities {
       // This triggers CoreWrapper to re-render, which will cause all components
       // to re-render with new _systemVersion, ensuring font scale changes are reflected
       if (fontScaleChanged) {
-        SystemStateManager.onSystemChange(fontScale: true);
+      SystemStateManager.onSystemChange(fontScale: true);
         developer.log(
             'Font scale changed: $oldFontScale → $newFontScale - triggering app re-render',
             name: 'ScreenUtilities');
@@ -164,35 +164,35 @@ class ScreenUtilities {
           await Future.delayed(const Duration(milliseconds: 50));
         }
         
-        Map<String, dynamic>? result;
+      Map<String, dynamic>? result;
+      
+      if (Platform.isIOS) {
+        result = await DCFlightFfiWrapper.getScreenDimensions();
+      } else if (Platform.isAndroid) {
+        result = await DCFlightJniWrapper.getScreenDimensions();
+      }
+      
+      if (result != null) {
+        _previousWidth = _screenWidth;
+        _previousHeight = _screenHeight;
         
-        if (Platform.isIOS) {
-          result = await DCFlightFfiWrapper.getScreenDimensions();
-        } else if (Platform.isAndroid) {
-          result = await DCFlightJniWrapper.getScreenDimensions();
-        }
-        
-        if (result != null) {
-          _previousWidth = _screenWidth;
-          _previousHeight = _screenHeight;
-          
-          _screenWidth = result['width'] as double? ?? 0.0;
-          _screenHeight = result['height'] as double? ?? 0.0;
-          _scaleFactor = result['scale'] as double? ?? 1.0;
-          _fontScale = result['fontScale'] as double? ?? 1.0;
-          _statusBarHeight = result['statusBarHeight'] as double? ?? 0.0;
-          _safeAreaTop = result['safeAreaTop'] as double? ?? 0.0;
-          _safeAreaBottom = result['safeAreaBottom'] as double? ?? 0.0;
-          _safeAreaLeft = result['safeAreaLeft'] as double? ?? 0.0;
-          _safeAreaRight = result['safeAreaRight'] as double? ?? 0.0;
+        _screenWidth = result['width'] as double? ?? 0.0;
+        _screenHeight = result['height'] as double? ?? 0.0;
+        _scaleFactor = result['scale'] as double? ?? 1.0;
+        _fontScale = result['fontScale'] as double? ?? 1.0;
+        _statusBarHeight = result['statusBarHeight'] as double? ?? 0.0;
+        _safeAreaTop = result['safeAreaTop'] as double? ?? 0.0;
+        _safeAreaBottom = result['safeAreaBottom'] as double? ?? 0.0;
+        _safeAreaLeft = result['safeAreaLeft'] as double? ?? 0.0;
+        _safeAreaRight = result['safeAreaRight'] as double? ?? 0.0;
 
-          developer.log(
+        developer.log(
               'Screen dimensions refreshed: $_screenWidth x $_screenHeight, safeAreaTop: $_safeAreaTop',
-              name: 'ScreenUtilities');
+            name: 'ScreenUtilities');
 
-          if (_previousWidth != _screenWidth || _previousHeight != _screenHeight) {
-            _notifyDimensionChangeListeners();
-          }
+        if (_previousWidth != _screenWidth || _previousHeight != _screenHeight) {
+          _notifyDimensionChangeListeners();
+        }
           return; // Success - exit retry loop
         } else {
           // Result is null - retry if we have attempts left
@@ -223,11 +223,11 @@ class ScreenUtilities {
     }
     
     // If we get here, all retries failed - use fallback values
-    if (_screenWidth == 0 || _screenHeight == 0) {
+      if (_screenWidth == 0 || _screenHeight == 0) {
       developer.log('Using fallback screen dimensions: 400x800', name: 'ScreenUtilities');
-      _screenWidth = 400;
-      _screenHeight = 800;
-      _scaleFactor = 2.0;
+        _screenWidth = 400;
+        _screenHeight = 800;
+        _scaleFactor = 2.0;
     }
   }
 

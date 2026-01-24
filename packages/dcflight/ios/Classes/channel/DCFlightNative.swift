@@ -35,8 +35,8 @@ import Foundation
     @objc public func initialize() -> Bool {
         print("🔄 DCFlightNative: initialize() called")
         
-        // CRITICAL: Initialize styling swizzling for gradient/border updates
-        UIView.performSwizzling()
+        // NOTE: Styling swizzling removed - no longer needed with direct property mapping
+        // DCFView handles border/gradient updates via displayLayer: and reactSetFrame:
         
         // CRITICAL: Ensure DCFScreenUtilities is initialized
         // This is especially important during hot restart when native side persists

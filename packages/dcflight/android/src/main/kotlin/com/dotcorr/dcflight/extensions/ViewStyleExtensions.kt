@@ -34,11 +34,33 @@ private fun applyStyleDensityScaling(value: Float): Float {
 }
 
 /**
- * View extension for style application
- * Apply common style properties to views
+ * View extension for style application.
+ *
+ * Automatically resolves style IDs to full style maps before applying.
+ * If props contain a "styleId" key, it's resolved using DCFStyleRegistry.
+ *
+ * **Usage:**
+ * ```kotlin
+ * // Direct style props
+ * view.applyStyles(mapOf("backgroundColor" to "dcf:#0000ff", "borderRadius" to 8))
+ *
+ * // Style ID (resolved automatically)
+ * view.applyStyles(mapOf("styleId" to 1))
+ * ```
  */
-
 fun View.applyStyles(props: Map<String, Any>) {
+    // Resolve style ID to full style map if present
+    val resolvedProps = resolveStyleProps(props)
+    
+    // Apply resolved style properties
+    applyResolvedStyles(resolvedProps)
+}
+
+/**
+ * Internal function that applies resolved style properties (without ID resolution).
+ * This is called after style IDs have been resolved to full style maps.
+ */
+private fun View.applyResolvedStyles(props: Map<String, Any>) {
     var hasCornerRadius = false
     var finalCornerRadius = 0f
 

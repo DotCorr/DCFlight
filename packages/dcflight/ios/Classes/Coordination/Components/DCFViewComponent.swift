@@ -8,13 +8,17 @@
 import UIKit
 import dcflight
 
+// DCFView is defined in Objective-C (DCFView.h/DCFView.m)
+// It's automatically available to Swift via the bridging header
+
 class DCFViewComponent: NSObject, DCFComponent {
     required override init() {
         super.init()
     }
     
     func createView(props: [String: Any]) -> UIView {
-        let view = UIView()
+        // Use DCFView for proper border rendering (matches standard model)
+        let view = DCFView()
         
         // Check if this view is absolutely positioned
         let isAbsolutelyPositioned = (props["position"] as? String) == "absolute" || props["absoluteLayout"] != nil
@@ -27,10 +31,8 @@ class DCFViewComponent: NSObject, DCFComponent {
             view.clipsToBounds = true
         }
         
-        if let gradientData = props["backgroundGradient"] as? [String: Any] {
-        }
-        
-        view.applyStyles(props: props)
+        // Apply properties using direct property mapping (standard model approach)
+        view.applyProperties(props: props)
         
         updateView(view, withProps: props)
         
@@ -60,11 +62,8 @@ class DCFViewComponent: NSObject, DCFComponent {
             view.clipsToBounds = true
         }
         
-        if let gradientData = props["backgroundGradient"] as? [String: Any] {
-            view.applyStyles(props: ["backgroundGradient": gradientData])
-        }
-        
-        view.applyStyles(props: props)
+        // Apply properties using direct property mapping (standard model approach)
+        view.applyProperties(props: props)
         
         return true
     }

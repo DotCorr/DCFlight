@@ -59,7 +59,8 @@ class DCFViewportComponent: NSObject, DCFComponent {
             // Viewport detection will be handled in viewRegisteredWithShadowTree after the view is laid out
         }
         
-        view.applyStyles(props: mergedProps.compactMapValues { $0 })
+        // Apply properties using direct property mapping (standard model approach)
+        view.applyProperties(props: mergedProps.compactMapValues { $0 })
         return true
     }
     

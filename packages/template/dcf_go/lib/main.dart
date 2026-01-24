@@ -119,7 +119,7 @@ class AppRoot extends DCFStatefulComponent {
             showScreenUtilsTest.setState(!showScreenUtilsTest.state);
           },
           styleSheet: DCFStyleSheet(
-            backgroundColor: DCFColors.blue,
+            backgroundColor: DCFColors.red,
             borderRadius: 8,
             shadowColor: DCFColors.black,
             shadowOpacity: 0.3,

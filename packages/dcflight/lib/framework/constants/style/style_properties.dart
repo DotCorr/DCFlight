@@ -10,6 +10,9 @@ import 'package:equatable/equatable.dart';
 import 'gradient.dart';
 export 'gradient.dart'; // Export DCFGradient for use in examples
 import 'hit_slop.dart';
+import 'style_processors.dart';
+export 'style_flatten.dart'; // Export flattenStyle for public API
+export 'style_processors.dart' show processColor, processTransform, processShadow, processAspectRatio, normalizeColor;
 import '../../theme/dcf_theme.dart';
 
 /// StyleSheet for visual styling properties
@@ -26,27 +29,45 @@ import '../../theme/dcf_theme.dart';
 ///   backgroundColor: DCFTheme.surfaceColor,
 /// )
 /// ```
-/// Style registry for StyleSheet.create() pattern
-/// Caches styles and assigns IDs for efficient bridge communication
+/// Style registry for StyleSheet.create() pattern.
+///
+/// Caches styles and assigns numeric IDs for efficient bridge communication.
+/// Registered styles can be referenced by ID instead of sending full objects.
+///
+/// Usage:
+/// ```dart
+/// final styles = DCFStyleSheet.create({
+///   'container': DCFStyleSheet(backgroundColor: Colors.blue),
+/// });
+/// // styles.container has an internal numeric ID
+/// ```
 class _DCFStyleRegistry {
   static final _DCFStyleRegistry instance = _DCFStyleRegistry._();
   _DCFStyleRegistry._();
 
-  final Map<String, DCFStyleSheet> _styles =
-      {}; // Maps ID -> original style (without ID)
-  final Map<DCFStyleSheet, String> _styleToId = {};
+  /// Maps numeric ID -> original style object (without ID)
+  final Map<int, DCFStyleSheet> _styles = {};
+  
+  /// Maps style object -> numeric ID (for deduplication)
+  final Map<DCFStyleSheet, int> _styleToId = {};
+  
+  /// Next available numeric ID
   int _nextId = 1;
 
-  /// Register a style and return its ID
-  /// Stores the ORIGINAL style (without ID) to avoid recursion in toMap()
-  String register(String name, DCFStyleSheet style) {
+  /// Register a style and return its numeric ID.
+  ///
+  /// If the same style instance is already registered, returns the existing ID.
+  /// This enables style deduplication and reduces memory usage.
+  ///
+  /// The original style (without ID) is stored to avoid recursion in toMap().
+  int register(String name, DCFStyleSheet style) {
     // Check if this exact style instance is already registered
     if (_styleToId.containsKey(style)) {
       return _styleToId[style]!;
     }
 
-    // Generate new ID
-    final id = 'dcf_style_$_nextId';
+    // Generate new numeric ID
+    final id = _nextId;
     _nextId++;
 
     // Store ORIGINAL style (without ID) to avoid recursion when resolving
@@ -56,22 +77,26 @@ class _DCFStyleRegistry {
     return id;
   }
 
-  /// Get style by ID
-  DCFStyleSheet? get(String id) {
+  /// Get style by numeric ID.
+  ///
+  /// Returns null if ID is not found in registry.
+  DCFStyleSheet? get(int id) {
     return _styles[id];
   }
 
-  /// Get ID for a style (if registered)
-  String? getId(DCFStyleSheet style) {
+  /// Get numeric ID for a style (if registered).
+  ///
+  /// Returns null if style is not registered.
+  int? getId(DCFStyleSheet style) {
     return _styleToId[style];
   }
 
-  /// Check if style is registered
+  /// Check if style is registered in the registry.
   bool isRegistered(DCFStyleSheet style) {
     return _styleToId.containsKey(style);
   }
 
-  /// Clear all registered styles (for testing/debugging)
+  /// Clear all registered styles (for testing/debugging).
   void clear() {
     _styles.clear();
     _styleToId.clear();
@@ -79,10 +104,72 @@ class _DCFStyleRegistry {
   }
 }
 
+/// StyleSheet defines visual styling properties for components.
+///
+/// StyleSheet provides a type-safe way to define styles that are processed
+/// and sent to native platforms for rendering. Styles can be registered
+/// via `DCFStyleSheet.create()` for better performance, or used inline.
+///
+/// **Basic Usage:**
+/// ```dart
+/// // Inline style
+/// DCFView(
+///   style: DCFStyleSheet(
+///     backgroundColor: Colors.blue,
+///     borderRadius: 8,
+///     padding: EdgeInsets.all(16),
+///   ),
+/// )
+/// ```
+///
+/// **Registered Styles (Recommended):**
+/// ```dart
+/// final styles = DCFStyleSheet.create({
+///   'container': DCFStyleSheet(
+///     backgroundColor: Colors.white,
+///     borderRadius: 12,
+///   ),
+///   'button': DCFStyleSheet(
+///     backgroundColor: Colors.blue,
+///     padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+///   ),
+/// });
+///
+/// // Use registered styles
+/// DCFView(style: styles.container)
+/// DCFButton(style: styles.button)
+/// ```
+///
+/// **Merging Styles:**
+/// ```dart
+/// final base = DCFStyleSheet(backgroundColor: Colors.white);
+/// final override = DCFStyleSheet(backgroundColor: Colors.blue);
+/// final merged = base.merge(override); // backgroundColor is blue
+/// ```
+///
+/// **Style Arrays (Flattening):**
+/// ```dart
+/// final flattened = flattenStyle([
+///   DCFStyleSheet(backgroundColor: Colors.white),
+///   DCFStyleSheet(backgroundColor: Colors.blue), // Overrides white
+/// ]);
+/// ```
+///
+/// **Semantic Colors:**
+/// Use semantic colors for theme-aware styling:
+/// ```dart
+/// DCFStyleSheet(
+///   primaryColor: DCFTheme.textColor,      // Main text color
+///   secondaryColor: DCFTheme.secondaryTextColor,  // Secondary text
+///   backgroundColor: DCFTheme.surfaceColor,
+/// )
+/// ```
 class DCFStyleSheet extends Equatable {
-  /// Internal style ID if registered via StyleSheet.create()
-  /// Null for non-registered styles (backward compatibility)
-  final String? _styleId;
+  /// Internal numeric style ID if registered via StyleSheet.create().
+  ///
+  /// Null for non-registered styles (backward compatibility).
+  /// Registered styles can be referenced by ID to reduce bridge traffic.
+  final int? _styleId;
 
   final dynamic borderRadius;
   final dynamic borderTopLeftRadius;
@@ -101,6 +188,23 @@ class DCFStyleSheet extends Equatable {
   final dynamic borderRightWidth;
   final dynamic borderBottomWidth;
   final dynamic borderLeftWidth;
+  
+  /// Border style: 'solid', 'dotted', or 'dashed'.
+  ///
+  /// Controls how borders are rendered:
+  /// - 'solid': Continuous line (default)
+  /// - 'dotted': Dotted line
+  /// - 'dashed': Dashed line
+  ///
+  /// Example:
+  /// ```dart
+  /// DCFStyleSheet(
+  ///   borderWidth: 2,
+  ///   borderColor: Colors.black,
+  ///   borderStyle: 'dashed',
+  /// )
+  /// ```
+  final String? borderStyle;
 
   final Color? backgroundColor;
   final DCFGradient? backgroundGradient;
@@ -165,9 +269,12 @@ class DCFStyleSheet extends Equatable {
   /// Accent color - typically used for highlights, links, etc.
   final Color? accentColor;
 
-  /// Internal factory constructor for registered styles (non-const)
+  /// Internal factory constructor for registered styles (non-const).
+  ///
+  /// Used by StyleSheet.create() to create styles with numeric IDs.
+  /// This allows native platforms to cache styles and reference them by ID.
   DCFStyleSheet._withId(
-    String styleId, {
+    int styleId, {
     this.borderRadius,
     this.borderTopLeftRadius,
     this.borderTopRightRadius,
@@ -183,6 +290,7 @@ class DCFStyleSheet extends Equatable {
     this.borderRightWidth,
     this.borderBottomWidth,
     this.borderLeftWidth,
+    this.borderStyle,
     this.backgroundColor,
     this.backgroundGradient,
     this.opacity,
@@ -249,6 +357,7 @@ class DCFStyleSheet extends Equatable {
     this.borderRightWidth,
     this.borderBottomWidth,
     this.borderLeftWidth,
+    this.borderStyle,
     this.backgroundColor,
     this.backgroundGradient,
     this.opacity,
@@ -295,32 +404,41 @@ class DCFStyleSheet extends Equatable {
     this.accentColor,
   }) : _styleId = null;
 
-  /// Create a StyleSheet registry (React Native StyleSheet.create() pattern)
+  /// Create a StyleSheet registry for efficient style management.
   ///
-  /// This optimizes bridge communication by caching styles and sending IDs instead of full objects.
+  /// This optimizes bridge communication by caching styles and assigning numeric IDs.
+  /// Registered styles can be referenced by ID, reducing serialization overhead.
   ///
-  /// Example with Map (string keys):
+  /// **Basic Usage:**
   /// ```dart
   /// final styles = DCFStyleSheet.create({
   ///   'container': DCFStyleSheet(backgroundColor: Colors.blue),
   ///   'text': DCFStyleSheet(primaryColor: Colors.black),
   /// });
+  ///
+  /// // Use registered styles
+  /// DCFView(style: styles.container)
+  /// DCFText(style: styles.text)
   /// ```
   ///
-  /// Example with class (type-safe):
+  /// **Type-Safe Pattern:**
   /// ```dart
-  /// class MyStyles {
+  /// class AppStyles {
   ///   static final container = DCFStyleSheet(backgroundColor: Colors.blue);
   ///   static final text = DCFStyleSheet(primaryColor: Colors.black);
   /// }
-  /// final styles = DCFStyleSheet.createFromClass(MyStyles());
-  /// // Use: styles.container, styles.text (fully type-safe)
+  ///
+  /// final styles = DCFStyleSheet.create({
+  ///   'container': AppStyles.container,
+  ///   'text': AppStyles.text,
+  /// });
   /// ```
   ///
-  /// Benefits:
-  /// - Bridge efficiency: Sends style IDs instead of full objects
-  /// - Memory optimization: Styles cached and reused
-  /// - Early validation: Catches style errors at creation time
+  /// **Benefits:**
+  /// - **Performance**: Styles are cached and referenced by numeric ID
+  /// - **Memory**: Duplicate styles are deduplicated automatically
+  /// - **Validation**: Style errors are caught at creation time
+  /// - **Type Safety**: Full IDE autocomplete and type checking
   static DCFStyleSheetRegistry create(Map<String, DCFStyleSheet> styles) {
     final registry = DCFStyleSheetRegistry._();
     for (final entry in styles.entries) {
@@ -429,14 +547,49 @@ class DCFStyleSheet extends Equatable {
     return create(styles);
   }
 
-  /// Convert style properties to a map for serialization
-  /// CRITICAL FIX: Ensure proper precedence order when both backgroundColor and backgroundGradient are present
-  /// Semantic colors are included for component-level resolution
+  /// Convert style properties to a map for serialization to native platforms.
   ///
-  /// If style is registered via StyleSheet.create(), resolves ID to full object for native compatibility
-  Map<String, dynamic> toMap() {
-    // If registered, resolve ID to full style object (native side doesn't support IDs yet)
-    if (_styleId != null) {
+  /// Processes all style values through style processors (colors, transforms, etc.)
+  /// and returns a map ready for native consumption.
+  ///
+  /// **Precedence Rules:**
+  /// - backgroundGradient overrides backgroundColor
+  /// - Specific border properties override general ones (borderTopWidth overrides borderWidth)
+  /// - Specific corner radii override general borderRadius
+  ///
+  /// **Semantic Colors:**
+  /// Semantic colors are always included with theme fallbacks to ensure
+  /// native components always receive explicit color values.
+  ///
+  /// **Style IDs:**
+  /// If this style is registered via StyleSheet.create(), the method can send
+  /// either the style ID or the full style object. When `sendId: true`, only
+  /// the numeric ID is sent, allowing native platforms to cache and reuse styles.
+  ///
+  /// Example:
+  /// ```dart
+  /// final style = DCFStyleSheet(
+  ///   backgroundColor: Colors.blue,
+  ///   borderRadius: 8,
+  /// );
+  /// final map = style.toMap();
+  /// // Returns: {'backgroundColor': 'dcf:#0000ff', 'borderRadius': 8}
+  ///
+  /// // For registered styles:
+  /// final registeredStyle = DCFStyleSheet.create({'container': style}).container;
+  /// final mapWithId = registeredStyle.toMap(sendId: true);
+  /// // Returns: {'styleId': 1} (native resolves to full style)
+  /// ```
+  Map<String, dynamic> toMap({bool sendId = false}) {
+    // If registered and sendId is true, send only the numeric ID
+    // Native platforms will resolve it to the full style object
+    if (_styleId != null && sendId) {
+      return {'styleId': _styleId};
+    }
+    
+    // If registered but sendId is false, resolve numeric ID to full style object
+    // This is the default behavior for backward compatibility
+    if (_styleId != null && !sendId) {
       final resolvedStyle = _DCFStyleRegistry.instance.get(_styleId);
       if (resolvedStyle != null) {
         // Return the resolved style's full map
@@ -461,29 +614,51 @@ class DCFStyleSheet extends Equatable {
     if (borderBottomRightRadius != null) {
       map['borderBottomRightRadius'] = borderBottomRightRadius;
     }
+    // Process border colors through color processor
     if (borderColor != null) {
-      map['borderColor'] = _colorToString(borderColor!);
+      final processedColor = processColor(borderColor);
+      if (processedColor != null) {
+        map['borderColor'] = _intColorToString(processedColor);
+      }
     }
     if (borderTopColor != null) {
-      map['borderTopColor'] = _colorToString(borderTopColor!);
+      final processedColor = processColor(borderTopColor);
+      if (processedColor != null) {
+        map['borderTopColor'] = _intColorToString(processedColor);
+      }
     }
     if (borderRightColor != null) {
-      map['borderRightColor'] = _colorToString(borderRightColor!);
+      final processedColor = processColor(borderRightColor);
+      if (processedColor != null) {
+        map['borderRightColor'] = _intColorToString(processedColor);
+      }
     }
     if (borderBottomColor != null) {
-      map['borderBottomColor'] = _colorToString(borderBottomColor!);
+      final processedColor = processColor(borderBottomColor);
+      if (processedColor != null) {
+        map['borderBottomColor'] = _intColorToString(processedColor);
+      }
     }
     if (borderLeftColor != null) {
-      map['borderLeftColor'] = _colorToString(borderLeftColor!);
+      final processedColor = processColor(borderLeftColor);
+      if (processedColor != null) {
+        map['borderLeftColor'] = _intColorToString(processedColor);
+      }
     }
     if (borderWidth != null) map['borderWidth'] = borderWidth;
     if (borderTopWidth != null) map['borderTopWidth'] = borderTopWidth;
     if (borderRightWidth != null) map['borderRightWidth'] = borderRightWidth;
     if (borderBottomWidth != null) map['borderBottomWidth'] = borderBottomWidth;
     if (borderLeftWidth != null) map['borderLeftWidth'] = borderLeftWidth;
+    if (borderStyle != null) map['borderStyle'] = borderStyle;
 
-    if (backgroundColor != null) {
-      map['backgroundColor'] = _colorToString(backgroundColor!);
+    // Process backgroundColor through color processor
+    // Note: backgroundGradient takes precedence if both are set
+    if (backgroundColor != null && backgroundGradient == null) {
+      final processedColor = processColor(backgroundColor);
+      if (processedColor != null) {
+        map['backgroundColor'] = _intColorToString(processedColor);
+      }
     }
 
     if (backgroundGradient != null) {
@@ -492,8 +667,12 @@ class DCFStyleSheet extends Equatable {
 
     if (opacity != null) map['opacity'] = opacity;
 
+    // Process shadow color through color processor
     if (shadowColor != null) {
-      map['shadowColor'] = _colorToString(shadowColor!);
+      final processedColor = processColor(shadowColor);
+      if (processedColor != null) {
+        map['shadowColor'] = _intColorToString(processedColor);
+      }
     }
     if (shadowOpacity != null) map['shadowOpacity'] = shadowOpacity;
     if (shadowRadius != null) map['shadowRadius'] = shadowRadius;
@@ -560,6 +739,7 @@ class DCFStyleSheet extends Equatable {
 
     // Semantic colors - ALWAYS provide values (use DCFTheme fallbacks if not specified)
     // This ensures native components always receive explicit colors - NO native fallbacks needed
+    // Process semantic colors through color processor
     final finalPrimaryColor = primaryColor ?? DCFTheme.textColor;
     final finalSecondaryColor =
         secondaryColor ?? DCFTheme.current.secondaryTextColor;
@@ -568,18 +748,52 @@ class DCFStyleSheet extends Equatable {
     final finalAccentColor = accentColor ?? DCFTheme.accentColor;
     final finalBackgroundColor = backgroundColor ?? DCFTheme.backgroundColor;
 
-    map['primaryColor'] = _colorToString(finalPrimaryColor);
-    map['secondaryColor'] = _colorToString(finalSecondaryColor);
-    map['tertiaryColor'] = _colorToString(finalTertiaryColor);
-    map['accentColor'] = _colorToString(finalAccentColor);
-    map['backgroundColor'] = _colorToString(finalBackgroundColor);
+    final processedPrimary = processColor(finalPrimaryColor);
+    if (processedPrimary != null) {
+      map['primaryColor'] = _intColorToString(processedPrimary);
+    }
+    final processedSecondary = processColor(finalSecondaryColor);
+    if (processedSecondary != null) {
+      map['secondaryColor'] = _intColorToString(processedSecondary);
+    }
+    final processedTertiary = processColor(finalTertiaryColor);
+    if (processedTertiary != null) {
+      map['tertiaryColor'] = _intColorToString(processedTertiary);
+    }
+    final processedAccent = processColor(finalAccentColor);
+    if (processedAccent != null) {
+      map['accentColor'] = _intColorToString(processedAccent);
+    }
+    final processedBg = processColor(finalBackgroundColor);
+    if (processedBg != null) {
+      map['backgroundColor'] = _intColorToString(processedBg);
+    }
     return map;
   }
 
-  /// CRITICAL FIX: Centralized color conversion to ensure consistency
-  /// Uses "dcf:" prefix to distinguish black from transparent on native platforms
-  String _colorToString(Color color) {
-    final alpha = (color.a * 255.0).round() & 0xff;
+  /// Converts processed color integers (ARGB format) to platform-specific color strings.
+  ///
+  /// Uses "dcf:" prefix format to distinguish special cases (transparent, black)
+  /// and ensure consistent parsing on native platforms.
+  ///
+  /// **Format:**
+  /// - Transparent: `'dcf:transparent'`
+  /// - Black: `'dcf:black'`
+  /// - Opaque colors: `'dcf:#RRGGBB'` (6-digit hex)
+  /// - Colors with alpha: `'dcf:#AARRGGBB'` (8-digit hex, ARGB format)
+  ///
+  /// Native platforms parse this format and convert to platform-specific color types.
+  ///
+  /// Example:
+  /// ```dart
+  /// _intColorToString(0x00000000)  // 'dcf:transparent'
+  /// _intColorToString(0xFF000000)  // 'dcf:black'
+  /// _intColorToString(0xFF0000FF)  // 'dcf:#0000ff'
+  /// _intColorToString(0x800000FF)  // 'dcf:#800000ff'
+  /// ```
+  String _intColorToString(int colorValue) {
+    final alpha = (colorValue >> 24) & 0xFF;
+    final rgb = colorValue & 0xFFFFFF;
 
     // Transparent - explicitly marked
     if (alpha == 0) {
@@ -587,17 +801,15 @@ class DCFStyleSheet extends Equatable {
     }
 
     // Black - explicitly marked to distinguish from transparent
-    if (color.value == 0xFF000000) {
+    if (colorValue == 0xFF000000) {
       return 'dcf:black';
     }
 
     // Other colors - use dcf: prefix with hex
     if (alpha == 255) {
-      final hexValue = color.toARGB32() & 0xFFFFFF;
-      return 'dcf:#${hexValue.toRadixString(16).padLeft(6, '0')}';
+      return 'dcf:#${rgb.toRadixString(16).padLeft(6, '0')}';
     } else {
-      final argbValue = color.toARGB32();
-      return 'dcf:#${argbValue.toRadixString(16).padLeft(8, '0')}';
+      return 'dcf:#${colorValue.toRadixString(16).padLeft(8, '0')}';
     }
   }
 
@@ -693,6 +905,7 @@ class DCFStyleSheet extends Equatable {
     dynamic borderRightWidth,
     dynamic borderBottomWidth,
     dynamic borderLeftWidth,
+    String? borderStyle,
     Color? backgroundColor,
     DCFGradient? backgroundGradient,
     double? opacity,
@@ -756,6 +969,7 @@ class DCFStyleSheet extends Equatable {
       borderRightWidth: borderRightWidth ?? this.borderRightWidth,
       borderBottomWidth: borderBottomWidth ?? this.borderBottomWidth,
       borderLeftWidth: borderLeftWidth ?? this.borderLeftWidth,
+      borderStyle: borderStyle ?? this.borderStyle,
       backgroundColor: backgroundColor ?? this.backgroundColor,
       backgroundGradient: backgroundGradient ?? this.backgroundGradient,
       opacity: opacity ?? this.opacity,
@@ -891,6 +1105,7 @@ class DCFStyleSheet extends Equatable {
     'borderRightWidth',
     'borderBottomWidth',
     'borderLeftWidth',
+    'borderStyle',
     'backgroundColor',
     'backgroundGradient',
     'opacity',
@@ -982,6 +1197,7 @@ class DCFStyleSheet extends Equatable {
         borderRightWidth,
         borderBottomWidth,
         borderLeftWidth,
+        borderStyle,
         backgroundColor,
         backgroundGradient,
         opacity,
