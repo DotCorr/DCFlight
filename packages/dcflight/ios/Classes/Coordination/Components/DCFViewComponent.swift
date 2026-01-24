@@ -32,42 +32,21 @@ class DCFViewComponent: NSObject, DCFComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let view = view as? UIView else { return false }
         
-        // Check if this view is absolutely positioned
-        let isAbsolutelyPositioned = (props["position"] as? String) == "absolute" || props["absoluteLayout"] != nil
-        
-        // Check if this view has transforms that could cause overflow
-        let hasRotation = (props["rotateInDegrees"] as? CGFloat) != nil
-        let hasScale = (props["scale"] as? CGFloat) != nil ||
-                      (props["scaleX"] as? CGFloat) != nil ||
-                      (props["scaleY"] as? CGFloat) != nil
-        let hasTranslation = (props["translateX"] as? CGFloat) != nil ||
-                            (props["translateY"] as? CGFloat) != nil
-        let hasOverflowCausingTransforms = hasRotation || hasScale || hasTranslation
-        
-        // Check overflow prop (explicitly set from Dart side)
+        // Get overflow property from props (sent as string from Dart)
         let overflow = props["overflow"] as? String
         
-        // CRITICAL: Handle clipping based on 'overflow' prop or detected transforms
-        if let overflow = overflow {
-            view.clipsToBounds = (overflow != "visible")
-        } else if isAbsolutelyPositioned || hasOverflowCausingTransforms {
-            // Disable clipping for transformed or absolutely positioned views by default
-            view.clipsToBounds = false
-        } else {
-            // Default to clipping for normal views (to respect borderRadius, etc.)
+        // CRITICAL: Handle clipping based on 'overflow' prop
+        // React Native/Web default is 'visible' (no clipping)
+        if overflow == "hidden" || overflow == "scroll" {
             view.clipsToBounds = true
+        } else {
+            // Default to 'visible' (clipsToBounds = false)
+            // This ensures transforms and absolute positioning work correctly without slicing
+            view.clipsToBounds = false
         }
         
-        // Apply properties using direct property mapping
+        // Apply properties using direct property mapping (standard model approach)
         view.applyProperties(props: props)
-        
-        // After applying properties, if we detect overflow potential, 
-        // we must ensure the parent doesn't clip us either.
-        if !view.clipsToBounds || isAbsolutelyPositioned || hasOverflowCausingTransforms {
-            if let parent = view.superview {
-                parent.clipsToBounds = false
-            }
-        }
         
         return true
     }
@@ -87,14 +66,6 @@ class DCFViewComponent: NSObject, DCFComponent {
         // Restore transform and anchorPoint
         view.layer.anchorPoint = currentAnchorPoint
         view.layer.transform = currentTransform
-        
-        // If the view is meant to be visible outside its bounds (due to transforms or absolute position),
-        // ensure its parent doesn't clip it during the layout pass.
-        if !view.clipsToBounds {
-            if let parent = view.superview {
-                parent.clipsToBounds = false
-            }
-        }
     }
     
     func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {

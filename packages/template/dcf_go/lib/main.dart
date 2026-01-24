@@ -51,6 +51,8 @@ class AppRoot extends DCFStatefulComponent {
               //   },
               // ),
               DCFView(children: [
+                DCFTextInput(placeholder: "Enter your name",
+                styleSheet: DCFStyleSheet(backgroundColor: DCFColors.gray100,borderRadius: 8,borderWidth: 10,borderColor: DCFColors.amber)),
                 DCFText(content: "Hello, World!"),
               ])
           ],
