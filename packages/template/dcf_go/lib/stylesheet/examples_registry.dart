@@ -20,7 +20,7 @@ import 'package:dcflight/dcflight.dart';
 class StyleSheetExamplesRegistry {
   static final Map<String, DCFComponentNode Function()> examples = {
     'Borders': () => BorderExamples(),
-    'Shadows': () => ShadowExamples(),
+    'Shadows': () => ShadowExamples(),   
     'Gradients': () => GradientExamples(),
     'Transforms': () => TransformExamples(),
     'Corner Radius': () => CornerRadiusExamples(),

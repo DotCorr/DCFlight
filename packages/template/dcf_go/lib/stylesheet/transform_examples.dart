@@ -22,7 +22,7 @@ class TransformExamples extends DCFStatelessComponent {
   static final layouts = DCFLayout.create({
     'container': DCFLayout(
       flexDirection: DCFFlexDirection.column,
-      // CRITICAL: Don't set padding here - parent wrapper already provides padding
+    
       // Setting padding here causes double padding (40px total on each side)
       width: '100%',
     ),
