@@ -15,7 +15,6 @@ import dcflight
     }
 
     @objc public static func registerComponents() {
-        UIView.performSwizzling()
         DCFSvgComponent.initializeSVGKit()
 
         // NOTE: View, Text, ScrollView, and ScrollContentView are CORE framework components

@@ -48,31 +48,83 @@ class DCFViewPropertyMapper {
         applyTransform(to: view, props: resolvedProps)
     }
     
+    /// Helper to safely set a property on DCFView using runtime
+    private static func safeSetValue(_ value: Any, forKey key: String, on view: UIView) {
+        // Check if view responds to the setter selector before calling it
+        let setterName = "set\(key.prefix(1).uppercased())\(key.dropFirst()):"
+        let setter = NSSelectorFromString(setterName)
+        
+        guard view.responds(to: setter) else {
+            // Property doesn't exist - ignore
+            return
+        }
+        
+        // Use Objective-C runtime to call the setter directly
+        // This avoids KVC issues with CGColorRef and other non-object types
+        let method = class_getInstanceMethod(type(of: view), setter)
+        guard let methodImp = method else {
+            return
+        }
+        
+        // Get the method implementation
+        let implementation = method_getImplementation(methodImp)
+        
+        // Call the setter based on the value type
+        // Check if value is CGColor - suppress warning since we handle different types
+        if type(of: value) == CGColor.self {
+            // For CGColorRef properties - use objc_msgSend directly
+            let cgColor = value as! CGColor // Safe: we just checked the type
+            typealias CGColorSetter = @convention(c) (AnyObject, Selector, CGColor) -> Void
+            let setterFunc = unsafeBitCast(implementation, to: CGColorSetter.self)
+            setterFunc(view, setter, cgColor)
+        } else if let number = value as? NSNumber {
+            // For CGFloat properties
+            let cgFloatValue = CGFloat(truncating: number)
+            typealias CGFloatSetter = @convention(c) (AnyObject, Selector, CGFloat) -> Void
+            let setterFunc = unsafeBitCast(implementation, to: CGFloatSetter.self)
+            setterFunc(view, setter, cgFloatValue)
+        } else if let string = value as? String {
+            // For NSString properties
+            typealias StringSetter = @convention(c) (AnyObject, Selector, String) -> Void
+            let setterFunc = unsafeBitCast(implementation, to: StringSetter.self)
+            setterFunc(view, setter, string)
+        } else if let color = value as? UIColor {
+            // For UIColor properties
+            typealias ColorSetter = @convention(c) (AnyObject, Selector, UIColor) -> Void
+            let setterFunc = unsafeBitCast(implementation, to: ColorSetter.self)
+            setterFunc(view, setter, color)
+        } else {
+            // Fallback: try KVC (but this might fail for non-KVC-compliant properties)
+            // We've already checked the setter exists, so this should work for most cases
+            view.setValue(value, forKey: key)
+        }
+    }
+    
     // MARK: - Border Radius
     
     /// Apply border radius properties directly to view.
     ///
     /// Maps borderRadius and individual corner radii to native properties.
     private static func applyBorderRadius(to view: UIView, props: [String: Any]) {
-        // Check if view is DCFView (Objective-C class)
-        let isDCFView = type(of: view).description() == "DCFView"
+        // Check if view is DCFView by checking if it responds to DCFView setters
+        let isDCFView = view.responds(to: NSSelectorFromString("setBorderRadius:"))
         
         if isDCFView {
-            // Use runtime to set properties (DCFView is Objective-C)
+            // Use safe property setting
             if let borderRadius = props["borderRadius"] as? CGFloat {
-                view.setValue(borderRadius, forKey: "borderRadius")
+                safeSetValue(borderRadius, forKey: "borderRadius", on: view)
             }
             if let topLeft = props["borderTopLeftRadius"] as? CGFloat {
-                view.setValue(topLeft, forKey: "borderTopLeftRadius")
+                safeSetValue(topLeft, forKey: "borderTopLeftRadius", on: view)
             }
             if let topRight = props["borderTopRightRadius"] as? CGFloat {
-                view.setValue(topRight, forKey: "borderTopRightRadius")
+                safeSetValue(topRight, forKey: "borderTopRightRadius", on: view)
             }
             if let bottomLeft = props["borderBottomLeftRadius"] as? CGFloat {
-                view.setValue(bottomLeft, forKey: "borderBottomLeftRadius")
+                safeSetValue(bottomLeft, forKey: "borderBottomLeftRadius", on: view)
             }
             if let bottomRight = props["borderBottomRightRadius"] as? CGFloat {
-                view.setValue(bottomRight, forKey: "borderBottomRightRadius")
+                safeSetValue(bottomRight, forKey: "borderBottomRightRadius", on: view)
             }
         } else {
             // Fallback for regular UIView - use layer properties
@@ -89,24 +141,24 @@ class DCFViewPropertyMapper {
     ///
     /// Maps borderWidth and individual side widths to native properties.
     private static func applyBorderWidth(to view: UIView, props: [String: Any]) {
-        let isDCFView = type(of: view).description() == "DCFView"
+        let isDCFView = view.responds(to: NSSelectorFromString("setBorderWidth:"))
         
         if isDCFView {
-            // Use runtime to set properties
+            // Use safe property setting
             if let borderWidth = props["borderWidth"] as? CGFloat {
-                view.setValue(borderWidth, forKey: "borderWidth")
+                safeSetValue(borderWidth, forKey: "borderWidth", on: view)
             }
             if let topWidth = props["borderTopWidth"] as? CGFloat {
-                view.setValue(topWidth, forKey: "borderTopWidth")
+                safeSetValue(topWidth, forKey: "borderTopWidth", on: view)
             }
             if let rightWidth = props["borderRightWidth"] as? CGFloat {
-                view.setValue(rightWidth, forKey: "borderRightWidth")
+                safeSetValue(rightWidth, forKey: "borderRightWidth", on: view)
             }
             if let bottomWidth = props["borderBottomWidth"] as? CGFloat {
-                view.setValue(bottomWidth, forKey: "borderBottomWidth")
+                safeSetValue(bottomWidth, forKey: "borderBottomWidth", on: view)
             }
             if let leftWidth = props["borderLeftWidth"] as? CGFloat {
-                view.setValue(leftWidth, forKey: "borderLeftWidth")
+                safeSetValue(leftWidth, forKey: "borderLeftWidth", on: view)
             }
         } else {
             // Fallback for regular UIView
@@ -122,29 +174,29 @@ class DCFViewPropertyMapper {
     ///
     /// Maps borderColor and individual side colors to native properties.
     private static func applyBorderColor(to view: UIView, props: [String: Any]) {
-        let isDCFView = type(of: view).description() == "DCFView"
+        let isDCFView = view.responds(to: NSSelectorFromString("setBorderColor:"))
         
         if isDCFView {
-            // Use runtime to set properties
+            // Use safe property setting with CGColorRef
             if let borderColorStr = props["borderColor"] as? String,
                let color = ColorUtilities.color(fromHexString: borderColorStr) {
-                view.setValue(color.cgColor, forKey: "borderColor")
+                safeSetValue(color.cgColor, forKey: "borderColor", on: view)
             }
             if let topColorStr = props["borderTopColor"] as? String,
                let color = ColorUtilities.color(fromHexString: topColorStr) {
-                view.setValue(color.cgColor, forKey: "borderTopColor")
+                safeSetValue(color.cgColor, forKey: "borderTopColor", on: view)
             }
             if let rightColorStr = props["borderRightColor"] as? String,
                let color = ColorUtilities.color(fromHexString: rightColorStr) {
-                view.setValue(color.cgColor, forKey: "borderRightColor")
+                safeSetValue(color.cgColor, forKey: "borderRightColor", on: view)
             }
             if let bottomColorStr = props["borderBottomColor"] as? String,
                let color = ColorUtilities.color(fromHexString: bottomColorStr) {
-                view.setValue(color.cgColor, forKey: "borderBottomColor")
+                safeSetValue(color.cgColor, forKey: "borderBottomColor", on: view)
             }
             if let leftColorStr = props["borderLeftColor"] as? String,
                let color = ColorUtilities.color(fromHexString: leftColorStr) {
-                view.setValue(color.cgColor, forKey: "borderLeftColor")
+                safeSetValue(color.cgColor, forKey: "borderLeftColor", on: view)
             }
         } else {
             // Fallback for regular UIView
@@ -159,10 +211,10 @@ class DCFViewPropertyMapper {
     
     /// Apply border style property directly to view.
     private static func applyBorderStyle(to view: UIView, props: [String: Any]) {
-        let isDCFView = type(of: view).description() == "DCFView"
+        let isDCFView = view.responds(to: NSSelectorFromString("setBorderStyle:"))
         
         if isDCFView, let borderStyle = props["borderStyle"] as? String {
-            view.setValue(borderStyle, forKey: "borderStyle")
+            safeSetValue(borderStyle, forKey: "borderStyle", on: view)
         }
     }
     
@@ -176,9 +228,9 @@ class DCFViewPropertyMapper {
         guard props["backgroundGradient"] == nil else {
             // Gradient exists - clear backgroundColor to prevent edge aliasing
             view.backgroundColor = .clear
-            let isDCFView = type(of: view).description() == "DCFView"
+            let isDCFView = view.responds(to: NSSelectorFromString("setDcfBackgroundColor:"))
             if isDCFView {
-                view.setValue(UIColor.clear, forKey: "dcfBackgroundColor")
+                safeSetValue(UIColor.clear, forKey: "dcfBackgroundColor", on: view)
             }
             return
         }
@@ -199,9 +251,9 @@ class DCFViewPropertyMapper {
         if let colorStr = backgroundColorStr,
            let color = ColorUtilities.color(fromHexString: colorStr) {
             view.backgroundColor = color
-            let isDCFView = type(of: view).description() == "DCFView"
+            let isDCFView = view.responds(to: NSSelectorFromString("setDcfBackgroundColor:"))
             if isDCFView {
-                view.setValue(color, forKey: "dcfBackgroundColor")
+                safeSetValue(color, forKey: "dcfBackgroundColor", on: view)
             }
         }
     }
@@ -218,9 +270,9 @@ class DCFViewPropertyMapper {
         
         // Clear backgroundColor when gradient exists
         view.backgroundColor = .clear
-        let isDCFView = type(of: view).description() == "DCFView"
+        let isDCFView = view.responds(to: NSSelectorFromString("setDcfBackgroundColor:"))
         if isDCFView {
-            view.setValue(UIColor.clear, forKey: "dcfBackgroundColor")
+            safeSetValue(UIColor.clear, forKey: "dcfBackgroundColor", on: view)
         }
         
         // Apply gradient - create CAGradientLayer
