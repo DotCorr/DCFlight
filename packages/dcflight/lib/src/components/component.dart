@@ -94,7 +94,7 @@ abstract class DCFStatefulComponent extends DCFComponentNode {
       hook.dispose();
     }
     _hooks.clear();
-    
+
     // 🔥 CRITICAL: Clear scheduleUpdate closure to break reference cycle
     // The scheduleUpdate closure captures 'this' (component instance), preventing GC
     // Clearing it ensures the component can be garbage collected

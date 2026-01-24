@@ -70,8 +70,9 @@ class DCFViewPropertyMapper {
         let implementation = method_getImplementation(methodImp)
         
         // Call the setter based on the value type
-        // Check if value is CGColor - suppress warning since we handle different types
-        if type(of: value) == CGColor.self {
+        // Check for CGColor - use type check to avoid conditional downcast warning
+        // When value is already CGColor (from color.cgColor), the cast will always succeed
+        if value is CGColor {
             // For CGColorRef properties - use objc_msgSend directly
             let cgColor = value as! CGColor // Safe: we just checked the type
             typealias CGColorSetter = @convention(c) (AnyObject, Selector, CGColor) -> Void
@@ -94,9 +95,10 @@ class DCFViewPropertyMapper {
             let setterFunc = unsafeBitCast(implementation, to: ColorSetter.self)
             setterFunc(view, setter, color)
         } else {
-            // Fallback: try KVC (but this might fail for non-KVC-compliant properties)
-            // We've already checked the setter exists, so this should work for most cases
-            view.setValue(value, forKey: key)
+            // Don't use KVC fallback for CGColorRef properties - they're not KVC-compliant
+            // If we get here, the property type is unknown and we should skip it
+            let valueTypeName = String(describing: type(of: value))
+            print("⚠️ DCFViewPropertyMapper: Unknown value type '\(valueTypeName)' for key '\(key)' - skipping")
         }
     }
     
@@ -275,59 +277,110 @@ class DCFViewPropertyMapper {
             safeSetValue(UIColor.clear, forKey: "dcfBackgroundColor", on: view)
         }
         
-        // Apply gradient - create CAGradientLayer
-        let gradientLayer = CAGradientLayer()
-        gradientLayer.frame = view.bounds
-        
-        // Parse gradient data
-        if let type = gradientData["type"] as? String,
-           let colors = gradientData["colors"] as? [String] {
-            
-            // Convert color strings to CGColor
-            let cgColors = colors.compactMap { colorStr -> CGColor? in
-                return ColorUtilities.color(fromHexString: colorStr)?.cgColor
-            }
-            gradientLayer.colors = cgColors
-            
-            // Handle gradient direction
-            if type == "linear" {
-                let startX = (gradientData["startX"] as? CGFloat) ?? 0.0
-                let startY = (gradientData["startY"] as? CGFloat) ?? 0.0
-                let endX = (gradientData["endX"] as? CGFloat) ?? 1.0
-                let endY = (gradientData["endY"] as? CGFloat) ?? 1.0
-                
-                gradientLayer.startPoint = CGPoint(x: startX, y: startY)
-                gradientLayer.endPoint = CGPoint(x: endX, y: endY)
-            } else if type == "radial" {
-                // Radial gradient - use diagonal for proper fill
-                let centerX = (gradientData["centerX"] as? CGFloat) ?? 0.5
-                let centerY = (gradientData["centerY"] as? CGFloat) ?? 0.5
-                let radius = (gradientData["radius"] as? CGFloat) ?? 0.5
-                
-                // Calculate endPoint based on diagonal (Pythagorean theorem)
-                let diagonal = sqrt(view.bounds.width * view.bounds.width + view.bounds.height * view.bounds.height)
-                let scale = diagonal / min(view.bounds.width, view.bounds.height)
-                
-                gradientLayer.startPoint = CGPoint(x: centerX, y: centerY)
-                gradientLayer.endPoint = CGPoint(
-                    x: centerX + radius * scale,
-                    y: centerY + radius * scale
-                )
-            }
-            
-            // Handle color stops
-            if let stops = gradientData["stops"] as? [CGFloat] {
-                gradientLayer.locations = stops.map { NSNumber(value: Float($0)) }
-            }
-        }
-        
-        // Insert gradient layer at bottom
+        // Remove existing gradient layer if present
         if let existingGradient = view.layer.sublayers?.first(where: { $0 is CAGradientLayer }) {
             existingGradient.removeFromSuperlayer()
         }
+        
+        // Parse gradient data
+        guard let type = gradientData["type"] as? String,
+              let colors = gradientData["colors"] as? [String],
+              !colors.isEmpty else {
+            return
+        }
+        
+        // Convert color strings to CGColor
+        let cgColors = colors.compactMap { colorStr -> CGColor? in
+            return ColorUtilities.color(fromHexString: colorStr)?.cgColor
+        }
+        
+        guard !cgColors.isEmpty else {
+            return
+        }
+        
+        // Create gradient layer
+        let gradientLayer = CAGradientLayer()
+        gradientLayer.colors = cgColors
+        gradientLayer.frame = view.bounds
+        
+        // Handle gradient direction
+        if type == "linear" {
+            let startX = (gradientData["startX"] as? CGFloat) ?? 0.0
+            let startY = (gradientData["startY"] as? CGFloat) ?? 0.0
+            let endX = (gradientData["endX"] as? CGFloat) ?? 1.0
+            let endY = (gradientData["endY"] as? CGFloat) ?? 1.0
+            
+            gradientLayer.startPoint = CGPoint(x: startX, y: startY)
+            gradientLayer.endPoint = CGPoint(x: endX, y: endY)
+        } else if type == "radial" {
+            // Radial gradient - calculate endPoint to reach furthest corner
+            let centerX = (gradientData["centerX"] as? CGFloat) ?? 0.5
+            let centerY = (gradientData["centerY"] as? CGFloat) ?? 0.5
+            let radius = (gradientData["radius"] as? CGFloat) ?? 0.5
+            
+            // Calculate endPoint based on diagonal (Pythagorean theorem)
+            // For a radius of 0.5, the gradient should reach the furthest corner
+            let width = max(view.bounds.width, 1.0) // Avoid division by zero
+            let height = max(view.bounds.height, 1.0)
+            
+            // Calculate distance from center to furthest corner
+            let centerXInPixels = centerX * width
+            let centerYInPixels = centerY * height
+            
+            // Find furthest corner distance
+            let corners = [
+                CGPoint(x: 0, y: 0),
+                CGPoint(x: width, y: 0),
+                CGPoint(x: 0, y: height),
+                CGPoint(x: width, y: height)
+            ]
+            let maxDistance = corners.map { corner in
+                let dx = corner.x - centerXInPixels
+                let dy = corner.y - centerYInPixels
+                return sqrt(dx * dx + dy * dy)
+            }.max() ?? sqrt(width * width + height * height)
+            
+            // Scale radius to reach furthest corner
+            // If radius is 0.5, it should reach 50% of maxDistance
+            // For a full fill, radius of 0.5 should reach the edge
+            let radiusInPixels = radius * maxDistance * 2.0
+            
+            // Convert to unit coordinates (normalized 0-1)
+            let endX = centerX + (radiusInPixels / width)
+            let endY = centerY + (radiusInPixels / height)
+            
+            gradientLayer.startPoint = CGPoint(x: centerX, y: centerY)
+            gradientLayer.endPoint = CGPoint(x: endX, y: endY)
+        }
+        
+        // Handle color stops
+        if let stops = gradientData["stops"] as? [CGFloat], stops.count == cgColors.count {
+            gradientLayer.locations = stops.map { NSNumber(value: Float($0)) }
+        }
+        
+        // Insert gradient layer at bottom (index 0)
         view.layer.insertSublayer(gradientLayer, at: 0)
         
-        // Update gradient frame when view bounds change
+        // Store gradient layer reference for frame updates
+        // Use a stable key that can be retrieved in layoutSubviews
+        let gradientKey = UnsafeRawPointer(bitPattern: "gradientLayer".hashValue)!
+        objc_setAssociatedObject(
+            view,
+            gradientKey,
+            gradientLayer,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        
+        // Also store using a string key for easier retrieval in Objective-C
+        let stringKey = "gradientLayer" as NSString
+        objc_setAssociatedObject(
+            view,
+            Unmanaged.passUnretained(stringKey).toOpaque(),
+            gradientLayer,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        
+        // Update frame immediately
         gradientLayer.frame = view.bounds
     }
     
@@ -470,6 +523,7 @@ class DCFViewPropertyMapper {
     /// Apply transform properties directly to view layer.
     ///
     /// Maps transform properties to CATransform3D matrix.
+    /// Matches React Native's transform order: Scale -> Rotate -> Translate
     private static func applyTransform(to view: UIView, props: [String: Any]) {
         var hasTransforms = false
         var rotation: CGFloat = 0
@@ -511,15 +565,29 @@ class DCFViewPropertyMapper {
         
         if hasTransforms {
             // Build transform matrix
+            // Order: Scale -> Rotate -> Translate (standard CSS/React Native order)
+            // This ensures scaling and rotation happen around center, then translation moves the result
             var transform = CATransform3DIdentity
-            transform = CATransform3DTranslate(transform, translateX, translateY, 0)
-            transform = CATransform3DRotate(transform, rotation * .pi / 180, 0, 0, 1)
+            
+            // Step 1: Scale (around center)
             transform = CATransform3DScale(transform, scaleX, scaleY, 1)
             
-            // Keep anchorPoint at center
+            // Step 2: Rotate (around center)
+            transform = CATransform3DRotate(transform, rotation * .pi / 180, 0, 0, 1)
+            
+            // Step 3: Translate (moves the scaled/rotated view)
+            transform = CATransform3DTranslate(transform, translateX, translateY, 0)
+            
+            // Set anchorPoint to center for proper rotation/scale around center
+            // Store center to prevent view shifting when anchorPoint changes
+            let oldCenter = view.center
             view.layer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+            view.center = oldCenter // Restore center after anchorPoint change
+            
+            // Apply transform
             view.layer.transform = transform
         } else {
+            // Reset transform and anchorPoint when no transforms are present
             view.layer.transform = CATransform3DIdentity
             view.layer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
         }
@@ -539,5 +607,10 @@ extension UIView {
     /// ```
     func applyProperties(props: [String: Any]) {
         DCFViewPropertyMapper.applyProperties(to: self, props: props)
+        
+        // Update gradient frame if gradient layer exists
+        if let gradientLayer = objc_getAssociatedObject(self, UnsafeRawPointer(bitPattern: "gradientLayer".hashValue)!) as? CAGradientLayer {
+            gradientLayer.frame = self.bounds
+        }
     }
 }

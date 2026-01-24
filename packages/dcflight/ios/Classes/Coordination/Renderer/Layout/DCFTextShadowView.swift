@@ -438,7 +438,7 @@ public class DCFTextShadowView: DCFShadowView {
         let childCount = YGNodeGetChildCount(self.yogaNode)
         if childCount == 0 {
             // Safe to mark dirty - node is a leaf (no children)
-            YGNodeMarkDirty(self.yogaNode)
+        YGNodeMarkDirty(self.yogaNode)
         } else {
             // Node has children - don't mark dirty, let parent handle it
             // This prevents the "Only leaf nodes with custom measure functions should manually mark themselves as dirty" crash

@@ -42,27 +42,27 @@ class StyleSheetExamplesScreen extends DCFStatelessComponent {
         DCFView(
           layout: layouts['contentWrapper'],
           children: [
-            DCFText(
-              content: 'StyleSheet Examples',
-              textProps: DCFTextProps(
-                fontSize: 32,
-                fontWeight: DCFFontWeight.bold,
-              ),
-              styleSheet: DCFStyleSheet(primaryColor: DCFColors.black),
-              layout: DCFLayout(marginBottom: 8, paddingTop: 20),
-            ),
-            DCFText(
-              content: 'Explore all StyleSheet properties and best practices',
-              textProps: DCFTextProps(fontSize: 16),
-              styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray600),
+        DCFText(
+          content: 'StyleSheet Examples',
+          textProps: DCFTextProps(
+            fontSize: 32,
+            fontWeight: DCFFontWeight.bold,
+          ),
+          styleSheet: DCFStyleSheet(primaryColor: DCFColors.black),
+          layout: DCFLayout(marginBottom: 8, paddingTop: 20),
+        ),
+        DCFText(
+          content: 'Explore all StyleSheet properties and best practices',
+          textProps: DCFTextProps(fontSize: 16),
+          styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray600),
               layout: DCFLayout(marginBottom: 24),
-            ),
-            ...exampleNames.map((name) {
-              final example = StyleSheetExamplesRegistry.getExample(name);
-              if (example == null) return DCFView(layout: DCFLayout(), children: []);
-              
-              return example; // Render the example directly
-            }).toList(),
+        ),
+        ...exampleNames.map((name) {
+          final example = StyleSheetExamplesRegistry.getExample(name);
+          if (example == null) return DCFView(layout: DCFLayout(), children: []);
+          
+          return example; // Render the example directly
+        }).toList(),
           ],
         ),
       ],

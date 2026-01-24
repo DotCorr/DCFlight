@@ -7,6 +7,7 @@
 
 #import "DCFView.h"
 #import "DCFBorderDrawing.h"
+#import <objc/runtime.h>
 
 @implementation DCFView {
     // Border properties (using -1 as unset value, matching standard model)
@@ -290,12 +291,34 @@
 #pragma mark - Border Drawing (Standard Model Approach)
 
 - (DCFCornerRadii)cornerRadii {
+    // Get corner radii (matching React Native's approach)
     const CGFloat radius = MAX(0, _borderRadius >= 0 ? _borderRadius : 0);
+    CGFloat topLeftRadius = _borderTopLeftRadius >= 0 ? _borderTopLeftRadius : radius;
+    CGFloat topRightRadius = _borderTopRightRadius >= 0 ? _borderTopRightRadius : radius;
+    CGFloat bottomLeftRadius = _borderBottomLeftRadius >= 0 ? _borderBottomLeftRadius : radius;
+    CGFloat bottomRightRadius = _borderBottomRightRadius >= 0 ? _borderBottomRightRadius : radius;
+    
+    // Clamp radii to prevent self-intersection (matching React Native's cornerRadii method)
+    const CGSize size = self.bounds.size;
+    if (size.width > 0 && size.height > 0) {
+        // Calculate scale factors to prevent radii from overlapping
+        const CGFloat topScaleFactor = MIN(1, size.width / MAX(1, topLeftRadius + topRightRadius));
+        const CGFloat bottomScaleFactor = MIN(1, size.width / MAX(1, bottomLeftRadius + bottomRightRadius));
+        const CGFloat rightScaleFactor = MIN(1, size.height / MAX(1, topRightRadius + bottomRightRadius));
+        const CGFloat leftScaleFactor = MIN(1, size.height / MAX(1, topLeftRadius + bottomLeftRadius));
+        
+        // Apply scale factors
+        topLeftRadius = topLeftRadius * MIN(topScaleFactor, leftScaleFactor);
+        topRightRadius = topRightRadius * MIN(topScaleFactor, rightScaleFactor);
+        bottomLeftRadius = bottomLeftRadius * MIN(bottomScaleFactor, leftScaleFactor);
+        bottomRightRadius = bottomRightRadius * MIN(bottomScaleFactor, rightScaleFactor);
+    }
+    
     return (DCFCornerRadii){
-        _borderTopLeftRadius >= 0 ? _borderTopLeftRadius : radius,
-        _borderTopRightRadius >= 0 ? _borderTopRightRadius : radius,
-        _borderBottomLeftRadius >= 0 ? _borderBottomLeftRadius : radius,
-        _borderBottomRightRadius >= 0 ? _borderBottomRightRadius : radius,
+        topLeftRadius,
+        topRightRadius,
+        bottomLeftRadius,
+        bottomRightRadius,
     };
 }
 
@@ -434,6 +457,34 @@
     
     layer.cornerRadius = cornerRadius;
     layer.mask = mask;
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    
+    // Update gradient layer frame when bounds change
+    // Try string key first (most reliable)
+    id gradientLayerObj = objc_getAssociatedObject(self, (__bridge const void *)(@"gradientLayer"));
+    CAGradientLayer *gradientLayer = nil;
+    if ([gradientLayerObj isKindOfClass:[CAGradientLayer class]]) {
+        gradientLayer = (CAGradientLayer *)gradientLayerObj;
+    } else {
+        // Try hash-based key (matching DCFViewPropertyMapper)
+        // Calculate hash the same way Swift does
+        NSString *keyString = @"gradientLayer";
+        NSUInteger hash = [keyString hash];
+        void *gradientKey = (void *)(uintptr_t)hash;
+        id gradientLayerObj2 = objc_getAssociatedObject(self, gradientKey);
+        if ([gradientLayerObj2 isKindOfClass:[CAGradientLayer class]]) {
+            gradientLayer = (CAGradientLayer *)gradientLayerObj2;
+        }
+    }
+    if (gradientLayer) {
+        gradientLayer.frame = self.bounds;
+    }
+    
+    // Update shadow path when bounds change
+    [self updateShadowPath];
 }
 
 - (void)reactSetFrame:(CGRect)frame {
