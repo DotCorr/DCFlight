@@ -303,6 +303,10 @@ class DCFViewPropertyMapper {
         gradientLayer.colors = cgColors
         gradientLayer.frame = view.bounds
         
+        // Ensure gradient layer is visible and properly configured
+        gradientLayer.isHidden = false
+        gradientLayer.opacity = 1.0
+        
         // Handle gradient direction
         if type == "linear" {
             let startX = (gradientData["startX"] as? CGFloat) ?? 0.0
@@ -359,7 +363,12 @@ class DCFViewPropertyMapper {
         }
         
         // Insert gradient layer at bottom (index 0)
+        // CRITICAL: Insert before any other sublayers to ensure it's behind content
         view.layer.insertSublayer(gradientLayer, at: 0)
+        
+        // CRITICAL: Ensure the gradient layer is behind all subviews
+        // Set zPosition to be behind everything
+        gradientLayer.zPosition = -1
         
         // Store gradient layer reference for frame updates
         // Use a stable key that can be retrieved in layoutSubviews
@@ -380,8 +389,13 @@ class DCFViewPropertyMapper {
             .OBJC_ASSOCIATION_RETAIN_NONATOMIC
         )
         
-        // Update frame immediately
-        gradientLayer.frame = view.bounds
+        // Update frame immediately - but if bounds are zero, it will be updated in layoutSubviews
+        if !view.bounds.isEmpty {
+            gradientLayer.frame = view.bounds
+        } else {
+            // Bounds are zero - set a placeholder frame that will be updated in layoutSubviews
+            gradientLayer.frame = CGRect(x: 0, y: 0, width: 100, height: 100)
+        }
     }
     
     // MARK: - Opacity
@@ -609,8 +623,26 @@ extension UIView {
         DCFViewPropertyMapper.applyProperties(to: self, props: props)
         
         // Update gradient frame if gradient layer exists
+        // Try hash-based key first
         if let gradientLayer = objc_getAssociatedObject(self, UnsafeRawPointer(bitPattern: "gradientLayer".hashValue)!) as? CAGradientLayer {
-            gradientLayer.frame = self.bounds
+            if !self.bounds.isEmpty {
+                gradientLayer.frame = self.bounds
+            }
+        } else {
+            // Try string key
+            let stringKey = "gradientLayer" as NSString
+            if let gradientLayer = objc_getAssociatedObject(self, Unmanaged.passUnretained(stringKey).toOpaque()) as? CAGradientLayer {
+                if !self.bounds.isEmpty {
+                    gradientLayer.frame = self.bounds
+                }
+            } else {
+                // Fallback: find gradient layer in sublayers
+                if let gradientLayer = self.layer.sublayers?.first(where: { $0 is CAGradientLayer }) as? CAGradientLayer {
+                    if !self.bounds.isEmpty {
+                        gradientLayer.frame = self.bounds
+                    }
+                }
+            }
         }
     }
 }

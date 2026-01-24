@@ -479,8 +479,23 @@
             gradientLayer = (CAGradientLayer *)gradientLayerObj2;
         }
     }
-    if (gradientLayer) {
+    
+    // Also try finding gradient layer in sublayers if not found via associated object
+    if (!gradientLayer) {
+        for (CALayer *sublayer in self.layer.sublayers) {
+            if ([sublayer isKindOfClass:[CAGradientLayer class]]) {
+                gradientLayer = (CAGradientLayer *)sublayer;
+                break;
+            }
+        }
+    }
+    
+    if (gradientLayer && !CGRectIsEmpty(self.bounds)) {
+        // Update frame to match view bounds
         gradientLayer.frame = self.bounds;
+        // Ensure gradient layer is visible
+        gradientLayer.hidden = NO;
+        gradientLayer.opacity = 1.0;
     }
     
     // Update shadow path when bounds change
