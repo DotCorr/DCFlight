@@ -52,12 +52,14 @@ class AppRoot extends DCFStatefulComponent {
               //     showExamples.setState(true);
               //   },
               // ),
-              DCFScrollView(scrollContent: [
+              DCFScrollView(
+                layout: DCFLayout(width: '100%',height: '80%', margin: 50),
+                scrollContent: [
                 DCFTextInput(placeholder: "Enter your name",
                 onChangeText: (text) {
                   textInputValue.setState(text);
                 },
-                
+
                 styleSheet: DCFStyleSheet(backgroundColor: DCFColors.gray100,borderRadius: 8,borderWidth: 10,borderColor: DCFColors.amber)),
                 DCFText(content: "Hello, World ${textInputValue.state}!"),
               ])

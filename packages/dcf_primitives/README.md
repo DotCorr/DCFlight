@@ -1,7 +1,7 @@
 # DCF Primitives
 
 [![pub package](https://img.shields.io/pub/v/dcf_primitives.svg)](https://pub.com/packages/dcf_primitives)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: PolyForm Noncommercial](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue.svg)](https://polyformproject.org/licenses/noncommercial/1.0.0/)
 
 The official primitive component library for the DCFlight framework. This package provides a comprehensive set of cross-platform UI components that work seamlessly across iOS, Android, and other platforms supported by DCFlight.
 
@@ -179,7 +179,8 @@ We welcome contributions! Please see our [Contributing Guide](https://github.com
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](https://github.com/dotcorr/dcflight/blob/main/LICENSE) file for details.
+Licensed under the PolyForm Noncommercial License 1.0.0.
+Commercial use requires a license from DotCorr.
 
 ## About DCFlight
 

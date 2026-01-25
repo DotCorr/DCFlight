@@ -13,7 +13,7 @@
 
 A cross-platform mobile framework that renders **actual native UI** using a declarative component architecture. Built on the Flutter engine for Dart runtime, DCFlight provides direct native rendering - **no platform views and no absurd abstractions**.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: PolyForm Noncommercial](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue.svg)](https://polyformproject.org/licenses/noncommercial/1.0.0/)
 
 ## 🚀 What is DCFlight?
 
@@ -176,7 +176,24 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+DCFlight is dual-licensed.
+
+### Open Use (Noncommercial)
+Licensed under the PolyForm Noncommercial License 1.0.0.
+
+You may use DCFlight for:
+- Personal projects
+- Education
+- Research
+- Open-source software
+- Non-profit and government use
+
+### Commercial Use
+Any commercial or revenue-generating use requires a paid
+Commercial License. This includes SaaS, mobile apps, internal tools,
+and embedded products.
+
+Contact: licensing@dotcorr.com
 
 ## ☕ Support
 

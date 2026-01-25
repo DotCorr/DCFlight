@@ -1,8 +1,8 @@
 /*
  * Copyright (c) Dotcorr Studio. and affiliates.
  *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
+ * Licensed under the PolyForm Noncommercial License 1.0.0.
+ * Commercial use requires a license from DotCorr.
  */
 
 import 'dart:async';
@@ -590,29 +590,43 @@ class DCFEngine {
     final priority = PriorityUtils.getComponentPriority(component);
     _componentPriorities[component.instanceId] = priority;
     
-    // 🔥 CRITICAL FIX: Throttle rapid updates to prevent freeze
-    // If component is already in queue, don't add again (deduplicate)
-    // This prevents queue from growing unbounded during rapid button presses
-    if (_pendingUpdates.contains(component.instanceId)) {
-      EngineDebugLogger.log('UPDATE_ALREADY_QUEUED',
-          'Component ${component.instanceId} already in queue, skipping duplicate');
-      return; // Already queued, skip duplicate
-    }
-    
-    // 🔥 NESTED LOOP FIX: If reconciliation depth is too high, skip this update
-    // This prevents queueing up updates that will cause nested loops and UI freeze
-    if (_reconciliationDepth >= _maxReconciliationDepth) {
-      EngineDebugLogger.log('UPDATE_SKIPPED_DEPTH',
-          'Skipping update - reconciliation depth too high (${_reconciliationDepth})');
-      return; // Skip to prevent nested loops
+    // 🔥 CRITICAL FIX: For immediate priority (TextInput), always allow updates
+    // TextInput typing must be responsive - don't deduplicate or skip
+    // For other priorities, throttle rapid updates to prevent freeze
+    if (priority != ComponentPriority.immediate) {
+      // If component is already in queue, don't add again (deduplicate)
+      // This prevents queue from growing unbounded during rapid button presses
+      if (_pendingUpdates.contains(component.instanceId)) {
+        EngineDebugLogger.log('UPDATE_ALREADY_QUEUED',
+            'Component ${component.instanceId} already in queue, skipping duplicate');
+        return; // Already queued, skip duplicate
+      }
+      
+      // 🔥 NESTED LOOP FIX: If reconciliation depth is too high, skip this update
+      // This prevents queueing up updates that will cause nested loops and UI freeze
+      if (_reconciliationDepth >= _maxReconciliationDepth) {
+        EngineDebugLogger.log('UPDATE_SKIPPED_DEPTH',
+            'Skipping update - reconciliation depth too high (${_reconciliationDepth})');
+        return; // Skip to prevent nested loops
+      }
+    } else {
+      // For immediate priority: Remove from queue if already there, then re-add
+      // This ensures the latest state is always processed
+      if (_pendingUpdates.contains(component.instanceId)) {
+        EngineDebugLogger.log('UPDATE_IMMEDIATE_REPLACE',
+            'Replacing existing immediate update in queue for component ${component.instanceId}');
+        // Keep it in queue but update priority - it will be processed with latest state
+      }
     }
     
     // 🔥 UI FREEZE FIX: If UI work is paused (rapid reconciliation), skip this update
+    // EXCEPT for immediate priority updates (TextInput) - they must always process
     // This prevents queueing up updates during rapid state changes that will cause UI freeze
-    if (_uiWorkPaused) {
+    // But TextInput typing must always be responsive, even during rapid reconciliation
+    if (_uiWorkPaused && priority != ComponentPriority.immediate) {
       EngineDebugLogger.log('UPDATE_SKIPPED_PAUSED',
-          'Skipping update - UI work is paused due to rapid reconciliation');
-      return; // Skip to prevent UI freeze
+          'Skipping update - UI work is paused due to rapid reconciliation (priority: ${priority.name})');
+      return; // Skip to prevent UI freeze (except immediate priority)
     }
     
     // 🔥 CRITICAL FIX: Aggressive throttling to keep CPU < 50% during stress testing
@@ -642,6 +656,20 @@ class DCFEngine {
           'WasEmpty': wasEmpty
         });
 
+    // 🔥 STRATEGIC FAST-PATH: If this is an 'immediate' update (TextInput), 
+    // bypass the timer and trigger via microtask for zero-latency typing.
+    // CRITICAL: Always schedule a new microtask for immediate updates, even if one is already scheduled
+    // This ensures every keystroke is processed immediately
+    if (priority == ComponentPriority.immediate) {
+      // Always add to queue (already done above)
+      // Always schedule processing - even if already scheduled, schedule another microtask
+      // This ensures rapid typing gets processed in sequence
+      _isUpdateScheduled = true;
+      EngineDebugLogger.log('BATCH_SCHEDULE_IMMEDIATE', 'Scheduling immediate update via microtask (queue size: ${_pendingUpdates.length})');
+      scheduleMicrotask(_processPendingUpdates);
+      return;
+    }
+    
     if (!_isUpdateScheduled) {
       _isUpdateScheduled = true;
       EngineDebugLogger.log(
@@ -683,46 +711,66 @@ class DCFEngine {
           'BatchInProgress': _batchUpdateInProgress
         });
 
+    // 🔥 CRITICAL: Check if we have immediate priority updates
+    // If so, process them immediately even if batch is in progress
+    final hasImmediateUpdates = _pendingUpdates.any((id) => 
+      _componentPriorities[id] == ComponentPriority.immediate);
+    
     if (_batchUpdateInProgress) {
-      EngineDebugLogger.log(
-          'BATCH_SKIP', 'Batch already in progress, skipping');
-      return;
+      // If we have immediate updates, don't skip - process them
+      if (hasImmediateUpdates) {
+        EngineDebugLogger.log('BATCH_IMMEDIATE_OVERRIDE', 
+            'Batch in progress but immediate updates detected, processing immediately');
+        // Continue processing immediate updates
+      } else {
+        EngineDebugLogger.log(
+            'BATCH_SKIP', 'Batch already in progress, skipping');
+        return;
+      }
     }
     
     // 🔥 UI FREEZE FIX: Detect rapid reconciliation and pause ALL UI thread work IMMEDIATELY
     // Universal solution - works for animations, worklets, or any future UI thread work
     // Pause BEFORE processing to prevent animations from consuming CPU during reconciliation
+    // BUT: Skip pause for immediate priority updates (TextInput typing)
     final now = DateTime.now();
-    if (_lastReconciliationTime != null) {
-      final timeSinceLastReconciliation = now.difference(_lastReconciliationTime!);
-      if (timeSinceLastReconciliation < _rapidReconciliationWindow) {
-        _rapidReconciliationCount++;
-        // 🔥 AGGRESSIVE: Pause immediately on 2nd rapid update (not 3rd) to prevent freeze
-        if (_rapidReconciliationCount >= 2 && !_uiWorkPaused) {
-          // Rapid reconciliation detected - pause ALL UI thread work IMMEDIATELY
-          print('🛑 RAPID_RECONCILIATION: Detected rapid updates (${_rapidReconciliationCount}), pausing ALL UI thread work IMMEDIATELY');
-          await _pauseAllUIWork();
-          _uiWorkPaused = true;
+    if (!hasImmediateUpdates) {
+      if (_lastReconciliationTime != null) {
+        final timeSinceLastReconciliation = now.difference(_lastReconciliationTime!);
+        if (timeSinceLastReconciliation < _rapidReconciliationWindow) {
+          _rapidReconciliationCount++;
+          // 🔥 AGGRESSIVE: Pause immediately on 2nd rapid update (not 3rd) to prevent freeze
+          if (_rapidReconciliationCount >= 2 && !_uiWorkPaused) {
+            // Rapid reconciliation detected - pause ALL UI thread work IMMEDIATELY
+            print('🛑 RAPID_RECONCILIATION: Detected rapid updates (${_rapidReconciliationCount}), pausing ALL UI thread work IMMEDIATELY');
+            await _pauseAllUIWork();
+            _uiWorkPaused = true;
+          }
+        } else {
+          // Reset counter if outside window
+          _rapidReconciliationCount = 1;
         }
       } else {
-        // Reset counter if outside window
         _rapidReconciliationCount = 1;
       }
-    } else {
-      _rapidReconciliationCount = 1;
     }
     _lastReconciliationTime = now;
     
     // 🔥 CPU THROTTLING: Rate limit batch processing to keep CPU < 50%
-    // Enforce minimum cooldown between batches to prevent CPU spikes
-    if (_lastBatchProcessTime != null) {
-      final timeSinceLastBatch = now.difference(_lastBatchProcessTime!);
-      if (timeSinceLastBatch < _minBatchCooldown) {
-        final remainingCooldown = _minBatchCooldown - timeSinceLastBatch;
-        EngineDebugLogger.log('BATCH_RATE_LIMIT',
-            'Rate limiting batch processing, waiting ${remainingCooldown.inMilliseconds}ms');
-        await Future.delayed(remainingCooldown);
+    // BUT: Skip cooldown for immediate priority updates (TextInput typing must be instant)
+    if (!hasImmediateUpdates) {
+      if (_lastBatchProcessTime != null) {
+        final timeSinceLastBatch = now.difference(_lastBatchProcessTime!);
+        if (timeSinceLastBatch < _minBatchCooldown) {
+          final remainingCooldown = _minBatchCooldown - timeSinceLastBatch;
+          EngineDebugLogger.log('BATCH_RATE_LIMIT',
+              'Rate limiting batch processing, waiting ${remainingCooldown.inMilliseconds}ms');
+          await Future.delayed(remainingCooldown);
+        }
       }
+    } else {
+      EngineDebugLogger.log('BATCH_IMMEDIATE_SKIP_COOLDOWN',
+          'Skipping batch cooldown for immediate priority updates');
     }
     _lastBatchProcessTime = now;
 
@@ -740,11 +788,50 @@ class DCFEngine {
       final updateCount = _pendingUpdates.length;
       final startTime = DateTime.now();
 
-      // Use worker_manager for concurrent processing if available
-      if (_workerManagerInitialized && updateCount >= 5) {
-        await _processPendingUpdatesConcurrently();
-      } else {
+      // 🔥 CRITICAL: Split immediate and non-immediate updates
+      // Process immediate updates FIRST and immediately, then process others
+      final immediateUpdates = <String>[];
+      final otherUpdates = <String>[];
+      
+      for (final id in _pendingUpdates) {
+        if (_componentPriorities[id] == ComponentPriority.immediate) {
+          immediateUpdates.add(id);
+        } else {
+          otherUpdates.add(id);
+        }
+      }
+      
+      // Process immediate updates FIRST (TextInput typing)
+      if (immediateUpdates.isNotEmpty) {
+        EngineDebugLogger.log('BATCH_IMMEDIATE_FIRST',
+            'Processing ${immediateUpdates.length} immediate updates first');
+        _pendingUpdates.clear();
+        _pendingUpdates.addAll(immediateUpdates);
+        _componentPriorities.removeWhere((id, _) => !immediateUpdates.contains(id));
+        
+        // Process immediate updates immediately (no worker manager, no incremental)
         await _processPendingUpdatesSerially();
+        
+        // Clear immediate updates from queue
+        for (final id in immediateUpdates) {
+          _componentPriorities.remove(id);
+        }
+      }
+      
+      // Then process other updates if any
+      if (otherUpdates.isNotEmpty) {
+        EngineDebugLogger.log('BATCH_OTHER_UPDATES',
+            'Processing ${otherUpdates.length} other updates');
+        _pendingUpdates.clear();
+        _pendingUpdates.addAll(otherUpdates);
+        _componentPriorities.removeWhere((id, _) => !otherUpdates.contains(id));
+        
+        // Use worker_manager for concurrent processing if available
+        if (_workerManagerInitialized && otherUpdates.length >= 5) {
+          await _processPendingUpdatesConcurrently();
+        } else {
+          await _processPendingUpdatesSerially();
+        }
       }
 
       final processingTime = DateTime.now().difference(startTime);
