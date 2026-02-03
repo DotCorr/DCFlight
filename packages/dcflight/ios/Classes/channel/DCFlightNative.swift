@@ -1,8 +1,8 @@
 /*
  * Copyright (c) Dotcorr Studio. and affiliates.
  *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
+ * Licensed under the PolyForm Noncommercial License 1.0.0.
+ * Commercial use requires a license from DotCorr.
  */
 
 import UIKit
@@ -34,6 +34,14 @@ import Foundation
     /// Initialize the framework
     @objc public func initialize() -> Bool {
         print("🔄 DCFlightNative: initialize() called")
+        
+        // NOTE: Styling swizzling removed - no longer needed with direct property mapping
+        // DCFView handles border/gradient updates via displayLayer: and reactSetFrame:
+        
+        // CRITICAL: Ensure DCFScreenUtilities is initialized
+        // This is especially important during hot restart when native side persists
+        // but needs to be re-initialized to refresh screen dimensions
+        DCFScreenUtilities.shared.initialize(with: nil)
         
         if let rootView = views[0] {
             print("✅ DCFlightNative: Root view found (viewId: 0)")

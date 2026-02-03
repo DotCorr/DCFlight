@@ -1,8 +1,8 @@
 /*
  * Copyright (c) Dotcorr Studio. and affiliates.
  *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
+ * Licensed under the PolyForm Noncommercial License 1.0.0.
+ * Commercial use requires a license from DotCorr.
  */
 
 import UIKit
@@ -438,7 +438,7 @@ public class DCFTextShadowView: DCFShadowView {
         let childCount = YGNodeGetChildCount(self.yogaNode)
         if childCount == 0 {
             // Safe to mark dirty - node is a leaf (no children)
-            YGNodeMarkDirty(self.yogaNode)
+        YGNodeMarkDirty(self.yogaNode)
         } else {
             // Node has children - don't mark dirty, let parent handle it
             // This prevents the "Only leaf nodes with custom measure functions should manually mark themselves as dirty" crash

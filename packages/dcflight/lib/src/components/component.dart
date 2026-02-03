@@ -1,8 +1,8 @@
 /*
  * Copyright (c) Dotcorr Studio. and affiliates.
  *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
+ * Licensed under the PolyForm Noncommercial License 1.0.0.
+ * Commercial use requires a license from DotCorr.
  */
 
 import 'package:dcflight/framework/renderer/engine/stub_mutator.dart';
@@ -94,7 +94,7 @@ abstract class DCFStatefulComponent extends DCFComponentNode {
       hook.dispose();
     }
     _hooks.clear();
-    
+
     // 🔥 CRITICAL: Clear scheduleUpdate closure to break reference cycle
     // The scheduleUpdate closure captures 'this' (component instance), preventing GC
     // Clearing it ensures the component can be garbage collected

@@ -1,12 +1,15 @@
 /*
  * Copyright (c) Dotcorr Studio. and affiliates.
  *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
+ * Licensed under the PolyForm Noncommercial License 1.0.0.
+ * Commercial use requires a license from DotCorr.
  */
 
 import UIKit
 import dcflight
+
+// DCFView is defined in Objective-C (DCFView.h/DCFView.m)
+// It's automatically available to Swift via the bridging header
 
 class DCFViewComponent: NSObject, DCFComponent {
     required override init() {
@@ -14,63 +17,46 @@ class DCFViewComponent: NSObject, DCFComponent {
     }
     
     func createView(props: [String: Any]) -> UIView {
-        let view = UIView()
-        
-        // Check if this view is absolutely positioned
-        let isAbsolutelyPositioned = (props["position"] as? String) == "absolute" || props["absoluteLayout"] != nil
-        
-        // CRITICAL: Enable clipping for views with padding/borderRadius to prevent child overflow
-        // BUT: Disable clipping if this view is absolutely positioned (it needs to be visible outside parent bounds)
-        if isAbsolutelyPositioned {
-            view.clipsToBounds = false
-        } else {
-            view.clipsToBounds = true
-        }
-        
-        if let gradientData = props["backgroundGradient"] as? [String: Any] {
-        }
-        
-        view.applyStyles(props: props)
-        
+        // Use DCFView for proper border rendering (matches standard model)
+        let view = DCFView()
         updateView(view, withProps: props)
-        
         return view
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let view = view as? UIView else { return false }
         
-        // Check if this view is absolutely positioned
-        let isAbsolutelyPositioned = (props["position"] as? String) == "absolute" || props["absoluteLayout"] != nil
+        // Match React Native default: overflow is 'visible' (clipsToBounds = false)
+        // This ensures transforms and absolute positioning work correctly without slicing
+        let overflow = props["overflow"] as? String
+        view.clipsToBounds = (overflow == "hidden" || overflow == "scroll")
         
-        // CRITICAL: Enable clipping for views with padding/borderRadius to prevent child overflow
-        // BUT: Disable clipping on parent if this view is absolutely positioned (it needs to be visible outside parent bounds)
-        if isAbsolutelyPositioned {
-            // If this view is absolutely positioned, ensure parent doesn't clip it
-            // This allows absolutely positioned children to be visible outside the parent's bounds
-            if let parent = view.superview {
-                parent.clipsToBounds = false
-                print("✅ DCFViewComponent: Disabled clipping on parent for absolutely positioned view")
-            }
-            // Don't clip absolutely positioned views themselves (they may be positioned outside their measured bounds)
-            view.clipsToBounds = false
-        } else {
-            // Default to clipping for non-absolutely positioned views
-            // This prevents content overflow for views with borderRadius, etc.
-            view.clipsToBounds = true
+        // Handle absolutely positioned child (disable parent clipping)
+        if (props["position"] as? String) == "absolute", let parent = view.superview {
+            parent.clipsToBounds = false
         }
         
-        if let gradientData = props["backgroundGradient"] as? [String: Any] {
-            view.applyStyles(props: ["backgroundGradient": gradientData])
-        }
-        
-        view.applyStyles(props: props)
+        // Apply properties using direct property mapping (standard model approach)
+        view.applyProperties(props: props)
         
         return true
     }
-    
+
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
+        // CRITICAL: Preserve transform when setting frame
+        let frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
+        
+        // Store current transform to preserve it
+        let currentTransform = view.layer.transform
+        let currentAnchorPoint = view.layer.anchorPoint
+        
+        // Set frame using center + bounds (preserves transforms better)
+        view.center = CGPoint(x: frame.midX, y: frame.midY)
+        view.bounds = CGRect(origin: .zero, size: frame.size)
+        
+        // Restore transform and anchorPoint
+        view.layer.anchorPoint = currentAnchorPoint
+        view.layer.transform = currentTransform
     }
     
     func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {

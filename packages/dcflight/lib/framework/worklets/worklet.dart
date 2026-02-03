@@ -1,8 +1,8 @@
 /*
  * Copyright (c) Dotcorr Studio. and affiliates.
  *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
+ * Licensed under the PolyForm Noncommercial License 1.0.0.
+ * Commercial use requires a license from DotCorr.
  */
 
 library;
@@ -303,10 +303,10 @@ class WorkletExecutor {
     // For closures, toString() only returns the signature, not the body
     // In this case, we leave body empty - it will be handled by runtime interpreter
     if (!functionString.contains('Closure:') || !functionString.contains('from Function')) {
-      final bodyMatch = RegExp(r'\{([^}]*)\}').firstMatch(functionString);
-      if (bodyMatch != null) {
-        body = bodyMatch.group(1) ?? '';
-      }
+    final bodyMatch = RegExp(r'\{([^}]*)\}').firstMatch(functionString);
+    if (bodyMatch != null) {
+      body = bodyMatch.group(1) ?? '';
+    }
     }
     // For closures, body is empty - will be extracted from IR or runtime interpretation
 

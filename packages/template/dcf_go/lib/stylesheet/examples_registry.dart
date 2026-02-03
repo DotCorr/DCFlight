@@ -1,8 +1,8 @@
 /*
  * Copyright (c) Dotcorr Studio. and affiliates.
  *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
+ * Licensed under the PolyForm Noncommercial License 1.0.0.
+ * Commercial use requires a license from DotCorr.
  */
 
 import 'package:dcf_go/stylesheet/border_examples.dart';
@@ -20,7 +20,7 @@ import 'package:dcflight/dcflight.dart';
 class StyleSheetExamplesRegistry {
   static final Map<String, DCFComponentNode Function()> examples = {
     'Borders': () => BorderExamples(),
-    'Shadows': () => ShadowExamples(),
+    'Shadows': () => ShadowExamples(),   
     'Gradients': () => GradientExamples(),
     'Transforms': () => TransformExamples(),
     'Corner Radius': () => CornerRadiusExamples(),
