@@ -85,7 +85,6 @@ export 'src/components/error_boundary.dart';
 export 'src/components/touchable_opacity_component.dart';
 export 'src/components/button_component.dart';
 import 'package:dcflight/src/components/component_node.dart';
-import 'package:dcflight/src/components/root_error_boundary.dart';
 import 'package:dcflight/src/components/core_wrapper.dart';
 
 import 'framework/renderer/engine/engine_api.dart';

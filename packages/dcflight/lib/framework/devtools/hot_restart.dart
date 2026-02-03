@@ -19,24 +19,24 @@ class HotRestartDetector {
     }
     
     try {
-      print('🔥 HotRestartDetector: Checking for hot restart...');
+      print('$_tag: Checking for hot restart...');
       String? sessionToken;
       
       if (Platform.isIOS) {
         final result = await DCFlightFfiWrapper.getSessionToken();
         sessionToken = result as String?;
-        print('🔥 HotRestartDetector: iOS session token: $sessionToken');
+        print('$_tag: iOS session token: $sessionToken');
       } else if (Platform.isAndroid) {
         sessionToken = await DCFlightJniWrapper.getSessionToken();
-        print('🔥 HotRestartDetector: Android session token: $sessionToken');
+        print('$_tag: Android session token: $sessionToken');
       }
       
       if (sessionToken != null) {
-        print('🔥 HotRestartDetector: Hot restart detected! Session token exists: $sessionToken');
+        print('$_tag: Hot restart detected! Session token exists: $sessionToken');
         await _cleanupNativeViews();
         return true;
       } else {
-        print('🔥 HotRestartDetector: First launch - no session token found');
+        print('$_tag: First launch - no session token found');
         await _createSessionToken();
         return false;
       }
@@ -49,13 +49,13 @@ class HotRestartDetector {
   
   static Future<void> _createSessionToken() async {
     try {
-      print('🔥 HotRestartDetector: Creating session token...');
+      print('$_tag: Creating session token...');
       if (Platform.isIOS) {
         final token = await DCFlightFfiWrapper.createSessionToken();
-        print('🔥 HotRestartDetector: Created iOS session token: $token');
+        print('$_tag: Created iOS session token: $token');
       } else if (Platform.isAndroid) {
         final token = await DCFlightJniWrapper.createSessionToken();
-        print('🔥 HotRestartDetector: Created Android session token: $token');
+        print('$_tag: Created Android session token: $token');
       }
     } catch (e, stackTrace) {
       print('❌ HotRestartDetector: Error creating session token: $e');
@@ -65,7 +65,7 @@ class HotRestartDetector {
   
   static Future<void> _cleanupNativeViews() async {
     try {
-      print('🔥 HotRestartDetector: Starting native views cleanup...');
+      print('$_tag: Starting native views cleanup...');
       if (Platform.isIOS) {
         await DCFlightFfiWrapper.cleanupViews();
         print('✅ HotRestartDetector: iOS cleanup completed');

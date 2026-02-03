@@ -4,8 +4,8 @@ analyzer:
     deprecated_member_use: ignore
     must_be_immutable: ignore
   exclude:
-    - framework/context/context_test_example.dart
-    - framework/renderer/interface/src/generated/**
+    - lib/framework/context/context_test_example.dart
+    - lib/framework/renderer/interface/src/generated/**
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

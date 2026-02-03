@@ -5,8 +5,6 @@
  * Commercial use requires a license from DotCorr.
  */
 
-import '../../renderer/interface/native_platform.dart';
-
 /// Configuration options for the layout system
 class LayoutConfig {
   /// Whether to use web defaults for cross-platform compatibility
