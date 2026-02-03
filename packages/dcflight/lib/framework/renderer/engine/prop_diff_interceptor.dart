@@ -5,11 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+/// Optional interceptor for prop diffing (engine: no VDOM, minimal use)
 abstract class PropDiffInterceptor {
-  /// Should this interceptor handle prop diffing for this element type?
   bool shouldHandle(String elementType, Map<String, dynamic> oldProps, Map<String, dynamic> newProps);
-  
-  /// Modify the changed props before sending to native
   Map<String, dynamic> interceptPropDiff(
     String elementType,
     Map<String, dynamic> oldProps,

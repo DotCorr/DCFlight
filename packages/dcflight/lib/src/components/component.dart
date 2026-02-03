@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import 'package:dcflight/framework/renderer/engine/core/mutator/engine_mutator_extension_reg.dart';
+import 'package:dcflight/framework/renderer/engine/stub_mutator.dart';
 import 'package:dcflight/framework/renderer/engine/index.dart';
 import 'package:dcflight/framework/hooks/context_hook.dart';
 import 'package:dcflight/framework/context/context.dart';

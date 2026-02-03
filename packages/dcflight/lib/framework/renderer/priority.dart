@@ -7,42 +7,40 @@
 
 import 'package:dcflight/src/components/component_node.dart';
 
-/// Component priority levels for update scheduling
+/// Component priority levels for update scheduling (used by the engine)
 enum ComponentPriority {
-  immediate, // Text inputs, scroll events, touch interactions
-  high, // Buttons, navigation, modals
-  normal, // Regular views, text, images
-  low, // Analytics, background tasks
-  idle; // Debug panels, dev tools
+  immediate,
+  high,
+  normal,
+  low,
+  idle;
 
-  /// Delay in milliseconds for this priority level
   int get delayMs {
     switch (this) {
-      case immediate:
-        return 0; // Process immediately
-      case high:
-        return 1; // 1ms delay
-      case normal:
-        return 2; // 2ms delay
-      case low:
-        return 5; // 5ms delay
-      case idle:
-        return 16; // 16ms delay (next frame)
+      case ComponentPriority.immediate:
+        return 0;
+      case ComponentPriority.high:
+        return 1;
+      case ComponentPriority.normal:
+        return 2;
+      case ComponentPriority.low:
+        return 5;
+      case ComponentPriority.idle:
+        return 16;
     }
   }
 
-  /// Weight for sorting (lower = higher priority)
   int get weight {
     switch (this) {
-      case immediate:
+      case ComponentPriority.immediate:
         return 1;
-      case high:
+      case ComponentPriority.high:
         return 2;
-      case normal:
+      case ComponentPriority.normal:
         return 3;
-      case low:
+      case ComponentPriority.low:
         return 4;
-      case idle:
+      case ComponentPriority.idle:
         return 5;
     }
   }
@@ -53,43 +51,34 @@ abstract class ComponentPriorityInterface {
   ComponentPriority get priority;
 }
 
-/// Helper class for priority-related utilities
 class PriorityUtils {
-  /// Get component priority from component (if it implements the interface)
   static ComponentPriority getComponentPriority(DCFComponentNode component) {
     if (component is ComponentPriorityInterface) {
       return component.priority;
     }
-
     final typeName = component.runtimeType.toString().toLowerCase();
-
     if (typeName.contains('input') ||
         typeName.contains('textfield') ||
         typeName.contains('scroll')) {
       return ComponentPriority.immediate;
     }
-
     if (typeName.contains('button') ||
         typeName.contains('touchable') ||
         typeName.contains('modal') ||
         typeName.contains('navigation')) {
       return ComponentPriority.high;
     }
-
     if (typeName.contains('background') ||
         typeName.contains('analytics') ||
         typeName.contains('cache')) {
       return ComponentPriority.low;
     }
-
     if (typeName.contains('debug') || typeName.contains('dev')) {
       return ComponentPriority.idle;
     }
-
     return ComponentPriority.normal;
   }
 
-  /// Sort component IDs by priority
   static List<String> sortByPriority(
       List<String> componentIds, Map<String, ComponentPriority> priorities) {
     final sorted = List<String>.from(componentIds);
@@ -100,20 +89,4 @@ class PriorityUtils {
     });
     return sorted;
   }
-
-  /// Get the highest priority from a list of priorities
-  static ComponentPriority getHighestPriority(
-      List<ComponentPriority> priorities) {
-    if (priorities.isEmpty) return ComponentPriority.normal;
-
-    return priorities.reduce((a, b) => a.weight < b.weight ? a : b);
-  }
-
-  /// Check if priority should interrupt current processing
-  static bool shouldInterrupt(
-      ComponentPriority newPriority, ComponentPriority? currentPriority) {
-    if (currentPriority == null) return true;
-    return newPriority.weight < currentPriority.weight;
-  }
 }
-

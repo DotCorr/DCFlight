@@ -3,49 +3,34 @@
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
+ *
+ * Public API for the engine — same surface as DCFEngineAPI (pure signals, no VDOM).
  */
 
 import 'dart:async';
 
-import 'package:dcflight/framework/renderer/interface/interface.dart' show PlatformInterface;
-import 'package:dcflight/src/components/component_node.dart';
-import 'core/engine.dart';
+import '../interface/interface.dart';
+import '../../../src/components/component_node.dart';
+import 'engine_core.dart';
 
-/// Main API for VDOM operations
-/// This class provides a simplified interface to the VDOM implementation
+/// Engine API: pure signals, no VDOM. Same interface as previous engine.
 class DCFEngineAPI {
-  /// Singleton instance
   static final DCFEngineAPI _instance = DCFEngineAPI._();
   static DCFEngineAPI get instance => _instance;
-  
-  /// Internal VDOM implementation
-  DCFEngine? _vdom;
-  
-  /// Ready completer
+
+  Engine? _engine;
   Completer<void> _readyCompleter = Completer<void>();
-  
-  /// Private constructor
-  DCFEngineAPI._() {
-  }
-  
-  /// Initialize the VDOM API with a platform interface
+
+  DCFEngineAPI._();
+
   Future<void> init(PlatformInterface platformInterface) async {
     try {
-      if (_vdom != null) {
+      if (_engine != null) {
         await _resetForHotRestart();
       }
-      
-      // CRITICAL: Always use the singleton instance to ensure event handler consistency
-      // This ensures that events are handled by the same PlatformInterface instance
-      // that the Engine sets the handler on
       final bridge = PlatformInterface.instance;
-      _vdom = DCFEngine(bridge);
-      await _vdom!.isReady;
-      
-      // The Engine sets the event handler during _initialize(), but we verify it's set
-      // This is a defensive check to ensure events work even after hot restart
-      print('✅ DCFEngineAPI: Engine initialized, event handler should be set');
-      
+      _engine = Engine(bridge);
+      await _engine!.init();
       if (_readyCompleter.isCompleted) {
         _readyCompleter = Completer<void>();
       }
@@ -57,79 +42,58 @@ class DCFEngineAPI {
       rethrow;
     }
   }
-  
-  /// Reset the engine state for hot restart
+
   Future<void> _resetForHotRestart() async {
-    if (_vdom != null) {
+    if (_engine != null) {
       try {
-        await _vdom!.forceFullTreeReRender();
-        
-        _vdom = null;
-        
-        if (!_readyCompleter.isCompleted) {
-          _readyCompleter.complete();
-        }
-        
-        print("🔄 DCFEngineAPI: Hot restart cleanup completed");
+        await _engine!.forceFullTreeReRender();
+        _engine = null;
+        if (!_readyCompleter.isCompleted) _readyCompleter.complete();
       } catch (e) {
-        print("⚠️  DCFEngineAPI: Hot restart cleanup error: $e");
-        _vdom = null;
-        if (!_readyCompleter.isCompleted) {
-          _readyCompleter.complete();
-        }
+        _engine = null;
+        if (!_readyCompleter.isCompleted) _readyCompleter.complete();
       }
     }
   }
-  
-  /// Future that completes when the VDOM is ready
+
   Future<void> get isReady => _readyCompleter.future;
-  
-  /// Create a root component
+
   Future<void> createRoot(DCFComponentNode component) async {
     await isReady;
-    return _vdom!.createRoot(component);
+    return _engine!.createRoot(component);
   }
-  
-  /// Render a component to the native side
-  Future<int?> renderToNative(DCFComponentNode node, {int? parentViewId, int? index}) async {
+
+  Future<int?> renderToNative(DCFComponentNode node,
+      {int? parentViewId, int? index}) async {
     await isReady;
-    return _vdom!.renderToNative(node, parentViewId: parentViewId, index: index);
+    return _engine!.renderToNative(node,
+        parentViewId: parentViewId, index: index);
   }
-  
-  /// Delete a view from the native side
+
   Future<void> deleteView(int viewId) async {
     await isReady;
-    return _vdom!.deleteView(viewId);
+    return _engine!.deleteView(viewId);
   }
-  
-  /// Start a batch update (for atomic operations)
+
   Future<void> startBatchUpdate() async {
     await isReady;
-    return _vdom!.startBatchUpdate();
+    return _engine!.startBatchUpdate();
   }
-  
-  /// Commit a batch update
+
   Future<void> commitBatchUpdate() async {
     await isReady;
-    return _vdom!.commitBatchUpdate();
+    return _engine!.commitBatchUpdate();
   }
-  
-  /// Force a full tree re-render for debugging purposes
+
   Future<void> forceFullTreeReRender() async {
     await isReady;
-    await _vdom!.forceFullTreeReRender();
+    await _engine!.forceFullTreeReRender();
   }
-  
-  /// Get performance metrics (monitoring)
-  Map<String, dynamic> getPerformanceMetrics() {
-    if (_vdom == null) return {};
-    return _vdom!.getPerformanceMetrics();
-  }
-  
-  /// Reset performance metrics
+
+  Map<String, dynamic> getPerformanceMetrics() =>
+      _engine?.getPerformanceMetrics() ?? {};
+
   void resetPerformanceMetrics() {
-    _vdom?.resetPerformanceMetrics();
+    _engine?.resetPerformanceMetrics();
   }
 }
-
-

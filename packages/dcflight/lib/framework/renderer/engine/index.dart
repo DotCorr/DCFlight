@@ -5,12 +5,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/// This file serves as a central export point for the VDOM system,
-/// allowing easy swapping between implementations.
+/// Central export for the renderer — engine (pure signals, no VDOM).
 library;
 
 export 'engine_api.dart';
-export 'package:dcflight/framework/renderer/engine/core/concurrency/priority.dart';
+export '../priority.dart';
 export '../../../src/components/component.dart';
 export '../../../src/components/fragment.dart';
 export '../../../src/components/component_node.dart';
@@ -24,4 +23,4 @@ export '../../hooks/state_hook.dart';
 export '../../hooks/context_hook.dart';
 export '../../context/context.dart';
 export '../../context/context_provider.dart';
-export 'core/mutator/prop_diff_interceptor.dart';
+export 'prop_diff_interceptor.dart';
