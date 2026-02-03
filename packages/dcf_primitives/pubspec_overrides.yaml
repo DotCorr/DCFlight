@@ -5,8 +5,6 @@
 dependency_overrides:
   dcflight:
     path: ../dcflight
-  dcf_primitives:
-    path: .
   dcf_reanimated:
     path: ../dcf_reanimated
   dcf_screens:

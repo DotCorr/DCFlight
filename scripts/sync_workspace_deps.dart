@@ -37,14 +37,15 @@ void main() async {
   
   // Generate pubspec_overrides.yaml for each package
   for (final packageDir in packages) {
-    final relativePath = path.relative(packageDir.path, from: workspaceRoot.path);
+    final currentPackageName = await _getPackageName(packageDir);
     final overridesFile = File(path.join(packageDir.path, 'pubspec_overrides.yaml'));
     
-    // Calculate relative paths from package to framework packages
+    // Calculate relative paths from package to framework packages (skip self)
     final dependencyOverrides = <String, Map<String, String>>{};
     
     for (final entry in frameworkPaths.entries) {
       final packageName = entry.key as String;
+      if (packageName == currentPackageName) continue; // package must not override itself
       final packagePath = entry.value as String;
       
       // Calculate relative path from this package to the framework package
@@ -111,6 +112,14 @@ void main() async {
   
   print('');
   print('✅ All dependencies installed!');
+}
+
+Future<String?> _getPackageName(Directory packageDir) async {
+  final pubspec = File(path.join(packageDir.path, 'pubspec.yaml'));
+  if (!await pubspec.exists()) return null;
+  final content = await pubspec.readAsString();
+  final yaml = loadYaml(content);
+  return yaml['name'] as String?;
 }
 
 Future<void> _findPackages(Directory dir, List<Directory> packages) async {

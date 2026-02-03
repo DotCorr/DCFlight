@@ -47,35 +47,70 @@ By participating in this project, you agree to maintain a respectful and inclusi
 
 ## Development Setup
 
-### 1. Install Dependencies
+**Quick start (DCF dev):** From the repo root, run `./scripts/pub_get_all.sh` once, then use `./scripts/analyze_all.sh` to check all packages. See the [Scripts folder](#3-scripts-folder-scripts) table below for details.
+
+### 1. Environment prerequisites
+
+- **Dart SDK** 3.6.1 or higher (see root `pubspec.yaml` and each package)
+- **Flutter SDK** (latest stable) for framework and app packages
+- **Git** for version control
+- **Android Studio / Xcode** for native builds when needed
+
+### 2. One-time workspace setup
+
+From the **DCFlight repo root** (the folder that contains `packages/`, `scripts/`, and `pubspec.yaml`):
 
 ```bash
-# Install Dart dependencies
-flutter pub get
-
-# Install CLI dependencies
-cd cli
-dart pub get
-cd ..
+# Resolve all path dependencies and install packages (root + every package)
+./scripts/pub_get_all.sh
 ```
 
-### 2. Run Tests
+This runs `flutter pub get` at the root and in every package so that `package:dcflight`, `package:dcf_primitives`, etc. resolve correctly.
+
+Optional: (re)sync workspace overrides from the root `framework_paths` (e.g. after adding a new framework package):
 
 ```bash
-# Run all tests
-flutter test
-
-# Run tests for specific package
-cd packages/dcflight
-flutter test
+dart run scripts/sync_workspace_deps.dart
 ```
 
-### 3. Build the CLI
+### 3. Scripts folder (`scripts/`)
+
+| Script | Purpose |
+|--------|--------|
+| **`scripts/pub_get_all.sh`** | Run `flutter pub get` in the root and in every package. Run this after clone or when dependencies change. |
+| **`scripts/sync_workspace_deps.dart`** | Regenerate each package’s `pubspec_overrides.yaml` from the root `framework_paths` and run pub get. Use when adding/removing framework packages. |
+| **`scripts/analyze_all.sh`** | Run `dart analyze lib` for the root (if it has `lib/`), every package under `packages/`, and `cli`. Automatically runs `pub_get_all.sh` first so path deps resolve. Exits with failure only if there are **analysis errors** (warnings/info do not fail the run). |
+| **`scripts/analyze_all.sh --fix`** | Same as above, plus runs `dart fix --apply` in each package before analyzing. |
+| **`scripts/bootstrap.sh`** | Project bootstrap (if used by your workflow). |
+| **`scripts/generate_worklets.dart`** | Codegen for reanimated worklets (dcf_reanimated). |
+
+**Typical DCF dev workflow:**
+
+```bash
+# After clone or pull
+./scripts/pub_get_all.sh
+
+# Before committing / in CI
+./scripts/analyze_all.sh
+```
+
+### 4. Install CLI (optional)
 
 ```bash
 cd cli
 dart pub get
 dart compile exe bin/dcflight_cli.dart -o bin/dcf
+# Use: ./bin/dcf ...
+```
+
+### 5. Run tests
+
+```bash
+# All tests
+flutter test
+
+# Single package
+cd packages/dcflight && flutter test
 ```
 
 ---
@@ -395,10 +430,9 @@ Releases are managed by maintainers. Contributors don't need to worry about vers
 
 ### Resources
 
-- [Framework Guidelines](FRAMEWORK_GUIDELINES.md)
-- [Component Protocol](docs/COMPONENT_PROTOCOL.md)
-- [Event System](docs/EVENT_SYSTEM.md)
+- [Framework Guidelines](FRAMEWORK_GUIDELINES.md) — architecture, components, modules
 - [Module Guidelines](packages/template/dcf_module/GUIDELINES.md)
+- Package READMEs under `packages/*/README.md` and `packages/*/docs/`
 
 ### Communication
 

@@ -5,6 +5,7 @@
  * Commercial use requires a license from DotCorr.
  */
 
+import "package:flutter/material.dart" show Colors;
 import "package:dcf_screens/dcf_screens.dart";
 import "package:dcflight/dcflight.dart";
 import "package:dcf_primitives/dcf_primitives.dart";
@@ -257,11 +258,11 @@ class DCFScreenView extends DCFStatefulComponent {
       children: [
         DCFText(
           content: "Loading $route...",
-          textProps: DCFTextProps(
+          textProps: const DCFTextProps(
             fontSize: 16,
-            color: Colors.grey,
             textAlign: DCFTextAlign.center,
           ),
+          styleSheet: const DCFStyleSheet(primaryColor: Colors.grey),
         ),
       ],
     );

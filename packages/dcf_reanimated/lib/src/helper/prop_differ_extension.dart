@@ -1,4 +1,4 @@
-import 'package:dcflight/framework/renderer/engine/core/mutator/prop_diff_interceptor.dart';
+import 'package:dcflight/framework/renderer/engine/prop_diff_interceptor.dart';
 
 class ReanimatedPropDiffInterceptor extends PropDiffInterceptor {
   @override

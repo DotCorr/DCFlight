@@ -28,12 +28,12 @@ This comprehensive guide covers how to develop components, modules, and contribu
 ```
 ┌─────────────────────────────────────┐
 │         Dart Layer (Components)      │
-│  StatelessComponent / StatefulComponent │
+│  DCFStatelessComponent / DCFStatefulComponent │
 └─────────────────────────────────────┘
               ↓
 ┌─────────────────────────────────────┐
-│      Renderer Engine (VDOM)          │
-│  Component Reconciliation & Diffing  │
+│   Renderer Engine (signal-driven)    │
+│  Pure signals, no VDOM; direct sync   │
 └─────────────────────────────────────┘
               ↓
 ┌─────────────────────────────────────┐

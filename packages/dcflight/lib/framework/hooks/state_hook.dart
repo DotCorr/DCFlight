@@ -32,16 +32,9 @@ class StateHook<T> extends Hook {
 
   /// Set the value and trigger update
   void setState(T newValue) {
-    print("🔥 STATE_HOOK: setState called - old: $_value, new: $newValue");
     if (_value != newValue) {
-      print("🔥 STATE_HOOK: Value changed, updating and scheduling render");
       _value = newValue;
-      
-      print("🔥 STATE_HOOK: Calling _scheduleUpdate");
       _scheduleUpdate();
-      print("🔥 STATE_HOOK: _scheduleUpdate completed");
-    } else {
-      print("🔥 STATE_HOOK: Value unchanged, skipping update");
     }
   }
   
@@ -122,7 +115,7 @@ class EffectHook extends Hook {
 
       // Run the effect
       try {
-        _cleanup = _effect?.call();
+        _cleanup = _effect!.call();
       } catch (e, stackTrace) {
         // Log effect errors but don't crash
         print('⚠️ EffectHook: Error running effect: $e');
@@ -241,8 +234,10 @@ class StoreHook<T> extends Hook {
 
   /// Create a store hook
   StoreHook(this._store, this._onChange, [this._componentId, this._componentType]) {
-    if (_componentId != null && _componentType != null) {
-        _store.trackHookAccess(_componentId!, _componentType!);
+    final cid = _componentId;
+    final ctype = _componentType;
+    if (cid != null && ctype != null) {
+      _store.trackHookAccess(cid, ctype);
     }
     
     _listener = (T _) {

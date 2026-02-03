@@ -17,6 +17,7 @@ import '../../../src/components/dcf_element.dart';
 import '../../../src/components/fragment.dart';
 import '../../utils/widget_to_dcf_adaptor.dart' show WidgetToDCFAdaptor, widgetRegistry;
 import '../../utils/flutter_widget_renderer.dart';
+import '../../constants/style/style_wrapper_util.dart';
 
 /// Pure-signals engine: no VDOM reconciliation, signal-driven sync to native.
 class Engine {
@@ -104,7 +105,9 @@ class Engine {
 
   Future<void> _syncComponentSubtree(DCFStatefulComponent component) async {
     final contentViewId = component.contentViewId;
-    if (contentViewId == null) return;
+    final contentParentViewId = component.contentParentViewId;
+    final contentIndex = component.contentIndex;
+    if (contentViewId == null || contentParentViewId == null) return;
 
     final oldRendered = component.renderedNode;
     final oldViewIds = _collectViewIds(oldRendered);
@@ -120,7 +123,11 @@ class Engine {
       await _bridge.deleteView(vid);
       _nodesByViewId.remove(vid);
     }
-    await renderToNative(newRendered, parentViewId: contentViewId, index: 0);
+    final newViewId = await renderToNative(newRendered,
+        parentViewId: contentParentViewId, index: contentIndex ?? 0);
+    if (newViewId != null) {
+      component.contentViewId = newViewId;
+    }
     await _bridge.commitBatchUpdate();
   }
 
@@ -164,6 +171,8 @@ class Engine {
         final viewId = await renderToNative(renderedNode,
             parentViewId: parentViewId, index: index);
         node.contentViewId = viewId;
+        node.contentParentViewId = parentViewId;
+        node.contentIndex = index;
 
         if (renderedNode is DCFElement && viewId != null) {
           _nodesByViewId[viewId] = renderedNode;
@@ -198,8 +207,9 @@ class Engine {
     _nodesByViewId[viewId] = element;
     element.nativeViewId = viewId;
 
+    final props = StyleWrapperUtil.wrapIfNeeded(element.elementProps);
     final ok = await _bridge
-        .createView(viewId, element.type, element.elementProps)
+        .createView(viewId, element.type, props)
         .timeout(const Duration(seconds: 5), onTimeout: () => false);
     if (!ok) return null;
 

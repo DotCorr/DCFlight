@@ -18,8 +18,14 @@ abstract class DCFComponentNode {
   /// Native view ID once rendered
   int? nativeViewId;
 
-  /// The native view ID of the rendered content
+  /// The native view ID of the rendered content (root of this node's subtree)
   int? contentViewId;
+
+  /// Parent native view ID for the content (used when re-rendering after state update)
+  int? contentParentViewId;
+
+  /// Index under parent (used when re-rendering after state update)
+  int? contentIndex;
 
   /// The rendered node from the component (for component nodes)
   DCFComponentNode? _renderedNode;

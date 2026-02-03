@@ -216,14 +216,6 @@ class DCFPortal extends DCFStatefulComponent {
         }
       }
       
-      if (actualTargetViewId == null) {
-        if (kDebugMode) {
-          print('❌ DCFPortal: Empty target view ID, cannot render');
-        }
-        await engine.commitBatchUpdate();
-        return;
-      }
-      
       // Render each child to the target view
       for (var i = 0; i < children.length; i++) {
         final child = children[i];

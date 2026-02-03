@@ -1,5 +1,6 @@
-import 'tab_navigator_component.dart';
+import 'package:flutter/material.dart' show Colors;
 import 'package:dcflight/dcflight.dart';
+import 'tab_navigator_component.dart';
 
 class DCFNestedNavigationRoot extends DCFStatelessComponent {
   final double? animationDuration;

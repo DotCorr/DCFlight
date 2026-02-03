@@ -2,6 +2,9 @@ name: dcflight_workspace
 description: DCFlight Framework Workspace - Single source of truth for framework package paths
 publish_to: "none"
 
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
 # ============================================================================
 # SINGLE SOURCE OF TRUTH FOR FRAMEWORK PACKAGE PATHS
 # ============================================================================
