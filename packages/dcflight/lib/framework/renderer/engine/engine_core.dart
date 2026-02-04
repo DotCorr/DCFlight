@@ -111,6 +111,8 @@ class Engine {
     final contentIndex = component.contentIndex;
     if (contentViewId == null || contentParentViewId == null) return;
 
+    if (_kReconciliationLogs) print('\n🔄 RECONCILING: ${component.runtimeType}');
+    
     final oldRendered = component.renderedNode;
 
     component.prepareForRender();
@@ -122,6 +124,8 @@ class Engine {
     // SMART UPDATE: Only update what changed, keep unchanged views mounted
     await _reconcileNode(oldRendered, newRendered, contentParentViewId, contentIndex ?? 0);
     await _bridge.commitBatchUpdate();
+    
+    if (_kReconciliationLogs) print('✅ RECONCILIATION COMPLETE\n');
   }
 
   /// Reconcile old and new nodes - only update what changed
@@ -129,6 +133,7 @@ class Engine {
   Future<void> _reconcileNode(DCFComponentNode? oldNode, DCFComponentNode newNode, int parentViewId, int index) async {
     // Case 1: No old node - create new
     if (oldNode == null) {
+      if (_kReconciliationLogs) print('🆕 CREATE: ${_nodeType(newNode)}');
       await renderToNative(newNode, parentViewId: parentViewId, index: index);
       return;
     }
@@ -139,6 +144,8 @@ class Engine {
       if (oldNode.type == newNode.type && oldNode.key == newNode.key) {
         final viewId = oldNode.nativeViewId;
         if (viewId != null) {
+          if (_kReconciliationLogs) print('♻️  REUSE: ${oldNode.type}#$viewId (view stays mounted)');
+          
           // REUSE the native view - just update props if needed
           newNode.nativeViewId = viewId;
           _nodesByViewId[viewId] = newNode;
@@ -163,6 +170,7 @@ class Engine {
     // Case 3: Both are stateful components - update in place
     if (oldNode is DCFStatefulComponent && newNode is DCFStatefulComponent) {
       if (oldNode.runtimeType == newNode.runtimeType && oldNode.key == newNode.key) {
+        if (_kReconciliationLogs) print('♻️  REUSE: ${oldNode.runtimeType} (component stays mounted)');
         // Reuse the component instance - transfer state
         newNode.transferStateFrom(oldNode);
         // Don't need to do anything else - the component keeps its views
@@ -173,6 +181,7 @@ class Engine {
     // Case 4: Both are stateless components - check if we can reuse
     if (oldNode is DCFStatelessComponent && newNode is DCFStatelessComponent) {
       if (oldNode.runtimeType == newNode.runtimeType && oldNode.key == newNode.key) {
+        if (_kReconciliationLogs) print('🔄 UPDATE: ${oldNode.runtimeType} (reconciling children)');
         // Check if props changed - for stateless, we need to check the component's fields
         // For now, be conservative and assume props changed - re-render
         final oldRendered = oldNode.renderedNode;
@@ -187,6 +196,7 @@ class Engine {
 
     // Case 5: Types don't match or can't reconcile - replace
     // Delete old and create new
+    if (_kReconciliationLogs) print('🔥 REPLACE: ${_nodeType(oldNode)} → ${_nodeType(newNode)}');
     final oldViewIds = _collectViewIds(oldNode);
     for (final vid in oldViewIds.reversed) {
       EventRegistry().unregister(vid);
@@ -195,12 +205,21 @@ class Engine {
     }
     await renderToNative(newNode, parentViewId: parentViewId, index: index);
   }
+  
+  String _nodeType(DCFComponentNode node) {
+    if (node is DCFElement) return node.type;
+    return node.runtimeType.toString();
+  }
 
   /// Reconcile children arrays
   Future<void> _reconcileChildren(List<DCFComponentNode> oldChildren, List<DCFComponentNode> newChildren, int parentViewId) async {
     final oldLen = oldChildren.length;
     final newLen = newChildren.length;
     final minLen = oldLen < newLen ? oldLen : newLen;
+
+    if (_kReconciliationLogs && oldLen != newLen) {
+      print('  📦 Children: $oldLen → $newLen (${newLen > oldLen ? "+${newLen - oldLen}" : newLen - oldLen})');
+    }
 
     // Update existing children
     for (int i = 0; i < minLen; i++) {
@@ -209,6 +228,7 @@ class Engine {
 
     // Add new children
     if (newLen > oldLen) {
+      if (_kReconciliationLogs) print('  ➕ Adding ${newLen - oldLen} new children');
       for (int i = oldLen; i < newLen; i++) {
         await renderToNative(newChildren[i], parentViewId: parentViewId, index: i);
       }
@@ -216,6 +236,7 @@ class Engine {
 
     // Remove extra old children
     if (oldLen > newLen) {
+      if (_kReconciliationLogs) print('  ➖ Removing ${oldLen - newLen} old children');
       for (int i = newLen; i < oldLen; i++) {
         final oldViewIds = _collectViewIds(oldChildren[i]);
         for (final vid in oldViewIds.reversed) {
