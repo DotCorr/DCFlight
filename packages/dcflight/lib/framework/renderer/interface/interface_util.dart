@@ -9,6 +9,7 @@
 
 
 import 'package:dcflight/dcflight.dart';
+import '../../hooks/reactive_signal.dart' show TrackingResult;
 
 Map<String, dynamic> preprocessProps(Map<String, dynamic> props) {
     final processedProps = <String, dynamic>{};
@@ -48,12 +49,14 @@ Map<String, dynamic> preprocessProps(Map<String, dynamic> props) {
         } else {
           processedProps[key] = value;
         }
-      } else if (value != null) {
-        processedProps[key] = value;
-      }else if (value is List) {
-        processedProps[key] = _processList(value);
+      } else if (value is TrackingResult) {
+        processedProps[key] = _processValue(value.value);
       } else if (value is Map<String, dynamic>) {
         processedProps[key] = preprocessProps(value);
+      } else if (value is List) {
+        processedProps[key] = _processList(value);
+      } else if (value != null) {
+        processedProps[key] = _processValue(value);
       } else {
         processedProps[key] = value;
       }
@@ -64,8 +67,16 @@ Map<String, dynamic> preprocessProps(Map<String, dynamic> props) {
 
 
 
+dynamic _processValue(dynamic value) {
+  if (value is TrackingResult) return _processValue(value.value);
+  if (value is Map<String, dynamic>) return preprocessProps(value);
+  if (value is List) return _processList(value);
+  return value;
+}
+
 List<dynamic> _processList(List<dynamic> list) {
   return list.map((item) {
+    if (item is TrackingResult) return _processValue(item.value);
     if (item is double) {
       if (item.isInfinite || item.isNaN) {
         return 0.0;

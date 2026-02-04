@@ -9,6 +9,7 @@ import 'package:dcflight/framework/renderer/engine/index.dart';
 import 'package:dcflight/framework/renderer/engine/extension_registry.dart';
 import 'package:dcflight/framework/hooks/context_hook.dart';
 import 'package:dcflight/framework/hooks/state_hook.dart';
+import 'package:dcflight/framework/hooks/reactive_signal.dart' show ReactiveSignal;
 import 'package:dcflight/framework/context/context.dart';
 import 'package:flutter/foundation.dart';
 
@@ -135,6 +136,21 @@ abstract class DCFStatefulComponent extends DCFComponentNode {
     }
   }
 
+  /// useState - DEPRECATED: Use `signal()` instead
+  /// 
+  /// This is kept for backward compatibility but internally just creates a signal
+  /// and wraps it with the old .state/.setState API.
+  /// 
+  /// **New code should use `signal()` directly:**
+  /// ```dart
+  /// // Old way (still works)
+  /// final count = useState(0);
+  /// count.setState(1);
+  /// 
+  /// // New way (preferred)
+  /// final count = signal(0);
+  /// count.set(1);
+  /// ```
   StateHook<T> useState<T>(T initialValue, [String? name]) {
     if (_hookIndex >= _hooks.length) {
       final hook = StateHook<T>(initialValue, name, () {
@@ -147,6 +163,53 @@ abstract class DCFStatefulComponent extends DCFComponentNode {
     _hookIndex++;
 
     return hook;
+  }
+  
+  /// signal - Pure reactive signal (RECOMMENDED)
+  /// 
+  /// **Use for everything - works everywhere!**
+  /// - ✅ Text, colors, numbers → direct native updates
+  /// - ✅ Conditional rendering → automatic reconciliation
+  /// - ✅ Adding/removing children → automatic reconciliation
+  /// 
+  /// The engine automatically optimizes:
+  /// - Signal in prop → direct updateView()
+  /// - Signal in structure → re-render + reconcile
+  /// 
+  /// Example:
+  /// ```dart
+  /// final count = signal(0);
+  /// final showMenu = signal(false);
+  /// 
+  /// DCFView(
+  ///   children: [
+  ///     // Direct update (prop)
+  ///     DCFText(content: () => "Count: ${count()}"),
+  ///     
+  ///     // Reconciliation (structure)
+  ///     if (showMenu()) Menu(),
+  ///     
+  ///     DCFButton(onPress: () => count.set(count() + 1)),
+  ///   ],
+  /// )
+  /// ```
+  ReactiveSignal<T> signal<T>(T initialValue, [String? name]) {
+    if (_hookIndex >= _hooks.length) {
+      final sig = ReactiveSignal<T>(initialValue);
+      // DON'T auto-subscribe component - let engine decide based on usage:
+      // - If used in prop → engine subscribes view
+      // - If used in structure → engine subscribes component
+      _hooks.add(sig as Hook);
+      
+      if (name != null) {
+        print('🎯 Signal created: $name = $initialValue');
+      }
+    }
+
+    final sig = _hooks[_hookIndex] as ReactiveSignal<T>;
+    _hookIndex++;
+
+    return sig;
   }
 
   void useEffect(Function()? Function() effect,

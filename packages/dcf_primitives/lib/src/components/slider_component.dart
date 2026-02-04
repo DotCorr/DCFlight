@@ -97,8 +97,8 @@ class DCFSlider extends DCFStatelessComponent
   @override
   ComponentPriority get priority => ComponentPriority.immediate;
 
-  /// Current value of the slider
-  final double value;
+  /// Current value of the slider. Can be [double] or [ReactiveSignal<double>] for reactive updates.
+  final dynamic value;
 
   /// Minimum value of the slider
   final double minimumValue;
@@ -144,7 +144,7 @@ class DCFSlider extends DCFStatelessComponent
 
   DCFSlider({
     super.key,
-    required this.value,
+    required this.value, // double or ReactiveSignal<double>
     this.minimumValue = 0.0,
     this.maximumValue = 1.0,
     this.step,
@@ -182,8 +182,10 @@ class DCFSlider extends DCFStatelessComponent
       };
     }
 
+    // Pass value as-is so engine can treat ReactiveSignal as reactive prop (direct native updates)
+    final valueProp = value;
     Map<String, dynamic> props = {
-      'value': value,
+      'value': valueProp is num ? valueProp.toDouble() : valueProp,
       'minimumValue': minimumValue,
       'maximumValue': maximumValue,
       'disabled': disabled,

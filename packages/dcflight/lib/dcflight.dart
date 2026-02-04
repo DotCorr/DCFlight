@@ -56,6 +56,9 @@ export 'framework/renderer/engine/index.dart';
 export 'framework/renderer/interface/interface.dart';
 export 'framework/renderer/interface/native_platform.dart';
 export 'framework/events/event_registry.dart';
+
+// Reactive signals - pure fine-grained reactivity (RECOMMENDED API)
+export 'framework/hooks/reactive_signal.dart' show ReactiveSignal, ComputedSignal, signal, computed, effect;
 export 'framework/worklets/worklet.dart';
 export 'framework/constants/layout/yoga_enums.dart';
 export 'framework/constants/layout/layout_properties.dart';
@@ -78,6 +81,7 @@ export 'src/components/portal/dcf_portal_target.dart';
 export 'framework/utils/widget_to_dcf_adaptor.dart';
 export 'src/components/view_component.dart';
 export 'src/components/text_component.dart';
+export 'src/components/reactive_text.dart';
 export 'src/components/scroll_view_component.dart';
 // export 'src/components/scroll_content_view_component.dart';
 export 'src/components/dc_logo.dart';

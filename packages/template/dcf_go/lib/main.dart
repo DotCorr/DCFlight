@@ -18,8 +18,11 @@ class AppRoot extends DCFStatefulComponent {
 
   @override
   DCFComponentNode render() {
-    final sliderValue = useState<double>(0.0);
-    final lastUpdateTime = useState<DateTime>(DateTime.now());
+    // 🎯 PURE SIGNALS - no component re-render on slider changes
+    final sliderValue = signal(0.0);
+    final lastUpdateTime = signal(DateTime.now());
+    
+    // Regular useState for navigation (still needs component re-render for structure change)
     final showExamples = useState<bool>(false);
     final showScreenUtilsTest = useState<bool>(false);
     final screenUtils = ScreenUtilities.instance;
@@ -29,12 +32,11 @@ class AppRoot extends DCFStatefulComponent {
     // Use a fixed offset that works on both iOS and Android
     final buttonTop = safeAreaTop + 72;
     
-    // Generate boxes based on slider value (0-100 boxes)
-    final boxCount = (sliderValue.state * 100).toInt();
-    
-    // Track render time
-    final now = DateTime.now();
-    final timeSinceLastUpdate = now.difference(lastUpdateTime.state).inMilliseconds;
+    // 🎯 COMPUTED SIGNALS - automatically derive from other signals
+    final boxCount = computed(() => (sliderValue() * 100).toInt());
+    final timeSinceLastUpdate = computed(() => 
+      DateTime.now().difference(lastUpdateTime()).inMilliseconds
+    );
     
     return DCFView(
       styleSheet: DCFStyleSheet(
@@ -101,9 +103,9 @@ class AppRoot extends DCFStatefulComponent {
                         ],
                       ),
                       
-                      // SLIDER DEBUG TEST
+                      // 🎯 PURE SIGNALS TEST - Angular-style direct updates
                       _ShadCard(
-                        title: "🔬 Slider Render Test",
+                        title: "✨ Pure Signals Test (Angular-style)",
                         children: [
                           DCFView(
                             layout: DCFLayout(
@@ -121,19 +123,19 @@ class AppRoot extends DCFStatefulComponent {
                                   backgroundColor: DCFColors.gray900,
                                   borderRadius: 6,
                                   borderWidth: 1,
-                                  borderColor: DCFColors.yellow,
+                                  borderColor: DCFColors.purple,
                                 ),
                                 children: [
                                   DCFText(
-                                    content: "🎯 DEBUG INSTRUCTIONS:",
+                                    content: "✨ PURE SIGNALS:",
                                     textProps: DCFTextProps(
                                       fontSize: 14,
                                       fontWeight: DCFFontWeight.bold,
                                     ),
-                                    styleSheet: DCFStyleSheet(primaryColor: DCFColors.yellow),
+                                    styleSheet: DCFStyleSheet(primaryColor: DCFColors.purple),
                                   ),
                                   DCFText(
-                                    content: "1. Drag the slider slowly → watch box count\n2. Drag slider FAST → if box count lags behind or stutters = rendering throttle\n3. If boxes freeze during drag = event batching/pausing issue",
+                                    content: "Text below updates DIRECTLY via signals - no component re-render, no reconciliation! Just like Angular. Check console logs.",
                                     textProps: DCFTextProps(
                                       fontSize: 13,
                                       lineHeight: 1.6,
@@ -144,25 +146,25 @@ class AppRoot extends DCFStatefulComponent {
                                 ],
                               ),
                               
-                              // Slider value display with timing
+                              // 🎯 REACTIVE TEXT - Direct signal subscription
                               DCFView(
                                 layout: DCFLayout(width: '100%', gap: 4),
                                 children: [
-                                  DCFText(
-                                    content: "Value: ${sliderValue.state.toStringAsFixed(2)} → ${boxCount} boxes",
+                                  DCFReactiveText(
+                                    content: () => "Value: ${sliderValue().toStringAsFixed(2)} → ${boxCount()} boxes",
                                     textProps: DCFTextProps(
                                       fontSize: 16,
                                       fontWeight: DCFFontWeight.bold,
                                     ),
                                     styleSheet: DCFStyleSheet(primaryColor: DCFColors.white),
                                   ),
-                                  DCFText(
-                                    content: "Last update: ${timeSinceLastUpdate}ms ago",
+                                  DCFReactiveText(
+                                    content: () => "Last update: ${timeSinceLastUpdate()}ms ago",
                                     textProps: DCFTextProps(
                                       fontSize: 12,
                                     ),
                                     styleSheet: DCFStyleSheet(
-                                      primaryColor: timeSinceLastUpdate > 100 
+                                      primaryColor: timeSinceLastUpdate() > 100 
                                           ? DCFColors.red 
                                           : DCFColors.gray500,
                                     ),
@@ -170,17 +172,18 @@ class AppRoot extends DCFStatefulComponent {
                                 ],
                               ),
                               
-                              // Native slider - fires events continuously while dragging
+                              // Native slider - pass signal so value stays in sync and reactive text/box grid update
                               DCFSlider(
-                                value: sliderValue.state,
+                                value: sliderValue,
                                 minimumValue: 0.0,
                                 maximumValue: 1.0,
                                 onValueChange: (data) {
-                                  // This fires CONTINUOUSLY while dragging
-                                  sliderValue.setState(data.value);
-                                  lastUpdateTime.setState(DateTime.now());
+                                  sliderValue.set(data.value);
+                                  lastUpdateTime.set(DateTime.now());
                                 },
-                             
+                                minimumTrackColor: DCFColors.blue,
+                                maximumTrackColor: DCFColors.gray700,
+                                thumbColor: DCFColors.white,
                                 layout: DCFLayout(
                                   width: '100%',
                                   height: 40,
@@ -188,67 +191,7 @@ class AppRoot extends DCFStatefulComponent {
                               ),
                               
                               // RESULTS PANEL
-                              DCFView(
-                                layout: DCFLayout(
-                                  width: '100%',
-                                  padding: 12,
-                                  gap: 8,
-                                ),
-                                styleSheet: DCFStyleSheet(
-                                  backgroundColor: DCFColors.gray900,
-                                  borderRadius: 6,
-                                  borderWidth: 1,
-                                  borderColor: boxCount > 50 ? DCFColors.red : DCFColors.green,
-                                ),
-                                children: [
-                                  DCFText(
-                                    content: boxCount > 50 
-                                        ? "⚠️ PROBLEM DETECTED"
-                                        : "✅ Should update smoothly",
-                                    textProps: DCFTextProps(
-                                      fontSize: 14,
-                                      fontWeight: DCFFontWeight.bold,
-                                    ),
-                                    styleSheet: DCFStyleSheet(
-                                      primaryColor: boxCount > 50 ? DCFColors.red : DCFColors.green,
-                                    ),
-                                  ),
-                                  DCFText(
-                                    content: boxCount > 50
-                                        ? "At ${boxCount} boxes, the engine deletes + recreates ${boxCount} views on EVERY drag event. This causes lag."
-                                        : "Drag slider past 50% to see lag from full tree rebuild.",
-                                    textProps: DCFTextProps(
-                                      fontSize: 13,
-                                      lineHeight: 1.5,
-                                      numberOfLines: 0,
-                                    ),
-                                    styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray300),
-                                  ),
-                                ],
-                              ),
-                              
-                              // Box grid - renders boxes based on slider value
-                              DCFView(
-                                layout: DCFLayout(
-                                  width: '100%',
-                                  flexDirection: DCFFlexDirection.row,
-                                  flexWrap: DCFWrap.wrap,
-                                  gap: 4,
-                                  marginTop: 16,
-                                ),
-                                children: List.generate(boxCount, (i) {
-                                  return DCFView(
-                                    layout: DCFLayout(
-                                      width: 20,
-                                      height: 20,
-                                    ),
-                                    styleSheet: DCFStyleSheet(
-                                      backgroundColor: i % 2 == 0 ? DCFColors.blue : DCFColors.purple,
-                                      borderRadius: 2,
-                                    ),
-                                  );
-                                }),
-                              ),
+                              DCFReactiveBoxGrid(countSignal: boxCount),
                             ],
                           ),
                         ],
@@ -1343,3 +1286,100 @@ class Footer extends DCFStatelessComponent {
   }
 }
 
+/// Reactive box grid component - uses pure signals
+/// Structural changes (add/remove boxes) still need reconciliation
+class DCFReactiveBoxGrid extends DCFStatefulComponent {
+  final ComputedSignal<int> countSignal;
+  
+  DCFReactiveBoxGrid({required this.countSignal, super.key});
+  
+  @override
+  DCFComponentNode render() {
+    // Subscribe to signal changes for structural updates
+    useEffect(() {
+      final cleanup = effect(() {
+        final count = countSignal();
+        // Set _kLogBoxCount to true for debug
+        if (const bool.fromEnvironment('DCF_DEBUG_BOX', defaultValue: false)) {
+          print('📦 Box count changed: $count (triggering structural update)');
+        }
+        scheduleUpdate(); // Trigger re-render only for adding/removing boxes
+      });
+      
+      return () => cleanup.dispose();
+    }, dependencies: []);
+    
+    final count = countSignal.value;
+    
+    return DCFView(
+      layout: DCFLayout(
+        width: '100%',
+        gap: 12,
+      ),
+      children: [
+        // Status panel
+        DCFView(
+          layout: DCFLayout(
+            width: '100%',
+            padding: 12,
+            gap: 8,
+          ),
+          styleSheet: DCFStyleSheet(
+            backgroundColor: DCFColors.gray900,
+            borderRadius: 6,
+            borderWidth: 1,
+            borderColor: count > 50 ? DCFColors.green : DCFColors.blue,
+          ),
+          children: [
+            DCFText(
+              content: count > 50 
+                  ? "✅ SMOOTH: Only boxes reconcile, text updates directly!"
+                  : "Drag slider past 50% →",
+              textProps: DCFTextProps(
+                fontSize: 14,
+                fontWeight: DCFFontWeight.bold,
+              ),
+              styleSheet: DCFStyleSheet(
+                primaryColor: count > 50 ? DCFColors.green : DCFColors.blue,
+              ),
+            ),
+            DCFText(
+              content: count > 50
+                  ? "At $count boxes, smart reconciliation reuses views. Text updates via signals (no re-render!). Check console logs!"
+                  : "Past 50% you'll see smooth updates because signals work directly on native views.",
+              textProps: DCFTextProps(
+                fontSize: 13,
+                lineHeight: 1.5,
+                numberOfLines: 0,
+              ),
+              styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray300),
+            ),
+          ],
+        ),
+        
+        // Box grid
+        DCFView(
+          layout: DCFLayout(
+            width: '100%',
+            flexDirection: DCFFlexDirection.row,
+            flexWrap: DCFWrap.wrap,
+            gap: 4,
+            marginTop: 8,
+          ),
+          children: List.generate(count, (i) {
+            return DCFView(
+              layout: DCFLayout(
+                width: 20,
+                height: 20,
+              ),
+              styleSheet: DCFStyleSheet(
+                backgroundColor: i % 2 == 0 ? DCFColors.blue : DCFColors.purple,
+                borderRadius: 2,
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+}

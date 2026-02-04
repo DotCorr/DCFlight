@@ -18,10 +18,17 @@ import '../../../src/components/fragment.dart';
 import '../../utils/widget_to_dcf_adaptor.dart' show WidgetToDCFAdaptor, widgetRegistry;
 import '../../utils/flutter_widget_renderer.dart';
 import '../../constants/style/style_wrapper_util.dart';
+import 'reactive_props.dart';
 
-/// Pure-signals engine: smart reconciliation, only update what changed.
+/// DCFlight Rendering Engine - Hybrid Architecture
+/// 
+/// **Two Update Paths:**
+/// 1. Signals (props) → Direct native view updates (< 1ms, no re-render)
+/// 2. State (structure) → Smart reconciliation (reuses unchanged views)
+/// 
+/// See ARCHITECTURE.md for details
 class Engine {
-  static const bool _kReconciliationLogs = true; // Set to false to disable logs
+  static const bool _kReconciliationLogs = false; // Set to true for reconciliation debug logs
   
   final PlatformInterface _bridge;
   final Completer<void> _readyCompleter = Completer<void>();
@@ -335,11 +342,26 @@ class Engine {
     _nodesByViewId[viewId] = element;
     element.nativeViewId = viewId;
 
-    final props = StyleWrapperUtil.wrapIfNeeded(element.elementProps);
+    // Process reactive props
+    final reactiveProps = ReactiveViewProps(viewId);
+    final rawProps = element.elementProps;
+    final resolvedProps = reactiveProps.processProps(rawProps);
+    
+    final props = StyleWrapperUtil.wrapIfNeeded(resolvedProps);
     final ok = await _bridge
         .createView(viewId, element.type, props)
         .timeout(const Duration(seconds: 5), onTimeout: () => false);
     if (!ok) return null;
+
+    // Subscribe to reactive prop changes
+    if (reactiveProps.hasReactiveProps) {
+      ReactivePropsRegistry.instance.register(viewId, reactiveProps);
+      reactiveProps.subscribeSignals((changedProps) async {
+        // Directly update native view when signal changes
+        final wrappedProps = StyleWrapperUtil.wrapIfNeeded(changedProps);
+        await _bridge.updateView(viewId, wrappedProps);
+      });
+    }
 
     if (parentViewId != null) {
       await _bridge.attachView(viewId, parentViewId, index ?? 0);
@@ -368,6 +390,7 @@ class Engine {
 
   Future<void> deleteView(int viewId) async {
     EventRegistry().unregister(viewId);
+    ReactivePropsRegistry.instance.unregister(viewId);
     await _bridge.deleteView(viewId);
     _nodesByViewId.remove(viewId);
   }
