@@ -117,7 +117,8 @@ class DCFlight {
     final bridge = PlatformInterface.instance;
     await bridge.initialize();
 
-    ScreenUtilities.instance.refreshDimensions();
+    // Do NOT call refreshDimensions() here — native may not be ready yet (e.g. after hot restart).
+    // Single refresh happens in go() after createRoot() when needed; dimension callback also delivers values.
 
     await DCFEngineAPI.instance.init(bridge);
 
@@ -160,6 +161,11 @@ class DCFlight {
 
     final engine = DCFEngineAPI.instance;
 
+    // Hot restart: native views were cleared; clear engine state so createRoot starts fresh.
+    if (wasHotRestart) {
+      await engine.forceFullTreeReRender();
+    }
+
     // CRASH PROTECTION: Automatically wrap app in error boundary at framework level
     // This provides React Native-style crash protection without requiring developers
     // to manually wrap their app components
@@ -167,22 +173,24 @@ class DCFlight {
     // Core Wrapper: Wrap in SystemChangeListener to listen to OS-level changes
     // (font scale, language, etc.) and trigger re-renders when they occur
     await engine.createRoot(CoreWrapper(app));
+
+    // Single refresh after root is created. On hot restart native may need a moment; dimension callback also delivers values.
+    Future.delayed(const Duration(milliseconds: 250), () {
+      ScreenUtilities.instance.refreshDimensions();
+    });
+
     // Create minimal Flutter widget for hot reload detection
-    // This widget uses reassemble() which Flutter calls automatically on hot reload
-    // When Flutter hot reloads, reassemble() is called, which notifies VDOM to update
+    // reassemble() is called by Flutter on hot reload; we trigger engine root re-render (no VDOM).
     if (!const bool.fromEnvironment('dart.vm.product')) {
       runApp(_DCFlightHotReloadDetector());
     }
 
-    if (wasHotRestart) {
-      print('🔥 DCFlight: Hot restart detected');
-    }
+    // Hot restart handled silently; set HotRestartDetector.verboseLogging = true to log.
   }
 }
 
 /// Minimal Flutter widget that detects hot reload via reassemble()
-/// Flutter automatically calls reassemble() on all State objects during hot reload
-/// This widget is invisible and only exists to detect hot reload and notify VDOM
+/// Flutter calls reassemble() on hot reload; we trigger engine root re-render (signals, no VDOM).
 class _DCFlightHotReloadDetector extends StatefulWidget {
   @override
   State<_DCFlightHotReloadDetector> createState() => _DCFlightHotReloadDetectorState();
@@ -196,19 +204,14 @@ class _DCFlightHotReloadDetectorState extends State<_DCFlightHotReloadDetector> 
   }
   
   /// Flutter calls this automatically when hot reload happens
-  /// This is the standard Flutter hot reload detection mechanism
   @override
   void reassemble() {
     super.reassemble();
-    print('🔥 DCFlight: Hot reload detected via reassemble() - notifying VDOM...');
-    // Notify VDOM to update when Flutter hot reloads
     HotReloadDetector.instance.handleHotReload();
   }
-  
+
   @override
   Widget build(BuildContext context) {
-    // Return minimal transparent widget - this widget is invisible
-    // It only exists to detect hot reload via reassemble()
     return MaterialApp(
       debugShowCheckedModeBanner: true,
       home:  SizedBox.shrink(), // Completely invisible

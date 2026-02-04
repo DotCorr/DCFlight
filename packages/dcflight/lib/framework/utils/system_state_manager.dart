@@ -50,10 +50,12 @@ class SystemStateManager {
     if (theme) changeTypes.add('theme');
     if (accessibility) changeTypes.add('accessibility');
     
-    if (changeTypes.isNotEmpty) {
+    if (changeTypes.isNotEmpty && _verbose) {
       print('🔄 SystemStateManager: System change detected (version: $_version) - ${changeTypes.join(', ')}');
     }
   }
+
+  static const bool _verbose = false;
   
   /// Reset the version counter (useful for testing or hot restart)
   static void reset() {

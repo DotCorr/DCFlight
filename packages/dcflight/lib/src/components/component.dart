@@ -5,9 +5,10 @@
  * Commercial use requires a license from DotCorr.
  */
 
-import 'package:dcflight/framework/renderer/engine/stub_mutator.dart';
 import 'package:dcflight/framework/renderer/engine/index.dart';
+import 'package:dcflight/framework/renderer/engine/extension_registry.dart';
 import 'package:dcflight/framework/hooks/context_hook.dart';
+import 'package:dcflight/framework/hooks/state_hook.dart';
 import 'package:dcflight/framework/context/context.dart';
 import 'package:flutter/foundation.dart';
 
@@ -114,6 +115,24 @@ abstract class DCFStatefulComponent extends DCFComponentNode {
 
   void prepareForRender() {
     _hookIndex = 0;
+  }
+
+  /// Transfer state from old component instance (for reconciliation)
+  void transferStateFrom(DCFStatefulComponent oldComponent) {
+    // Transfer hooks to preserve state
+    _hooks.clear();
+    _hooks.addAll(oldComponent._hooks);
+    _isMounted = oldComponent._isMounted;
+    _renderedNode = oldComponent._renderedNode;
+    
+    // Update hook closures to point to new component
+    for (final hook in _hooks) {
+      if (hook is StateHook) {
+        hook.updateScheduleUpdate(() {
+          scheduleUpdate();
+        });
+      }
+    }
   }
 
   StateHook<T> useState<T>(T initialValue, [String? name]) {

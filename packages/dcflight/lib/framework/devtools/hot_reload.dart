@@ -35,7 +35,7 @@ class HotReloadDetector {
   void initialize() {
     if (!kDebugMode || _isInitialized) return;
     
-    DCFLogger.debug('Hot reload detection ready - will be triggered via reassemble() on hot reload', 'HOT_RELOAD');
+    // Hot reload detection ready; no log by default to avoid console noise.
     _isInitialized = true;
   }
 
@@ -44,36 +44,20 @@ class HotReloadDetector {
     if (!_isInitialized) return;
     
     _isInitialized = false;
-    
-    DCFLogger.debug('Hot reload detection system disposed', 'HOT_RELOAD');
   }
 
-  /// Handle hot reload - this is called when actual hot reload occurs
-  /// 
-  /// Hot reload behavior:
-  /// - Flutter recompiles changed code and injects it into the running Dart VM
-  /// - Native views are cleared (like hot restart) so VDOM can recreate them from updated code
-  /// - VDOM then recreates all views from the new component tree
-  /// 
-  /// This is different from hot restart:
-  /// - Hot restart: Restarts Dart VM, clears all state, VDOM recreates from scratch
-  /// - Hot reload: Recompiles code, clears native views, VDOM recreates from updated code
-  /// 
-  /// Both clear native views, but hot reload preserves Dart VM state (variables, etc.)
+  /// Handle hot reload - called when Flutter triggers reassemble().
+  /// Clears native views and re-syncs the engine root (signals, no VDOM).
   Future<void> handleHotReload() async {
     if (!kDebugMode) return;
-    
-    DCFLogger.debug('Hot reload detected! Clearing native views and triggering VDOM re-render...', 'HOT_RELOAD');
-    
+
     try {
-      // CRITICAL: Clear native views (like hot restart) so VDOM can recreate from updated code
-      // Hot reload recompiles the code, so we need to clear views and let VDOM recreate them
+      // CRITICAL: Clear native views so we can recreate from updated code
       await _cleanupNativeViews();
-      
-      final vdom = DCFEngineAPI.instance;
-      await vdom.isReady;
-      await vdom.forceFullTreeReRender();
-      DCFLogger.debug('VDOM hot reload completed successfully', 'HOT_RELOAD');
+
+      final engine = DCFEngineAPI.instance;
+      await engine.isReady;
+      await engine.recreateRootNativeViews();
     } catch (e, stackTrace) {
       DCFLogger.error('Failed to handle hot reload: $e', tag: 'HOT_RELOAD');
       debugPrint('Hot reload error: $e\n$stackTrace');
@@ -88,9 +72,8 @@ class HotReloadDetector {
       } else if (Platform.isAndroid) {
         await DCFlightJniWrapper.cleanupViews();
       }
-      DCFLogger.debug('Hot reload: Native views cleared', 'HOT_RELOAD');
     } catch (e) {
-      DCFLogger.debug('Hot reload cleanup failed (non-critical): $e', 'HOT_RELOAD');
+      // Non-critical; native views may already be cleared
     }
   }
 }
@@ -120,12 +103,9 @@ class _HotReloadDetectorWidgetState extends State<HotReloadDetectorWidget> {
     super.dispose();
   }
   
-  /// Flutter calls this automatically on hot reload
-  /// This is the standard Flutter hot reload detection mechanism
   @override
   void reassemble() {
     super.reassemble();
-    // Flutter's hot reload detected - notify VDOM to update
     HotReloadDetector.instance.handleHotReload();
   }
   

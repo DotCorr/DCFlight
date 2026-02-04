@@ -19,8 +19,10 @@ import '../../utils/widget_to_dcf_adaptor.dart' show WidgetToDCFAdaptor, widgetR
 import '../../utils/flutter_widget_renderer.dart';
 import '../../constants/style/style_wrapper_util.dart';
 
-/// Pure-signals engine: no VDOM reconciliation, signal-driven sync to native.
+/// Pure-signals engine: smart reconciliation, only update what changed.
 class Engine {
+  static const bool _kReconciliationLogs = true; // Set to false to disable logs
+  
   final PlatformInterface _bridge;
   final Completer<void> _readyCompleter = Completer<void>();
   int _viewIdCounter = 1;
@@ -110,7 +112,6 @@ class Engine {
     if (contentViewId == null || contentParentViewId == null) return;
 
     final oldRendered = component.renderedNode;
-    final oldViewIds = _collectViewIds(oldRendered);
 
     component.prepareForRender();
     final newRendered = component.render();
@@ -118,17 +119,123 @@ class Engine {
     newRendered.parent = component;
 
     await _bridge.startBatchUpdate();
+    // SMART UPDATE: Only update what changed, keep unchanged views mounted
+    await _reconcileNode(oldRendered, newRendered, contentParentViewId, contentIndex ?? 0);
+    await _bridge.commitBatchUpdate();
+  }
+
+  /// Reconcile old and new nodes - only update what changed
+  /// This is TRUE signals behavior: unchanged views stay mounted
+  Future<void> _reconcileNode(DCFComponentNode? oldNode, DCFComponentNode newNode, int parentViewId, int index) async {
+    // Case 1: No old node - create new
+    if (oldNode == null) {
+      await renderToNative(newNode, parentViewId: parentViewId, index: index);
+      return;
+    }
+
+    // Case 2: Both are elements - try to reuse view
+    if (oldNode is DCFElement && newNode is DCFElement) {
+      // Can reuse if type and key match
+      if (oldNode.type == newNode.type && oldNode.key == newNode.key) {
+        final viewId = oldNode.nativeViewId;
+        if (viewId != null) {
+          // REUSE the native view - just update props if needed
+          newNode.nativeViewId = viewId;
+          _nodesByViewId[viewId] = newNode;
+          
+          // Update props if they changed
+          final newProps = StyleWrapperUtil.wrapIfNeeded(newNode.elementProps);
+          await _bridge.updateView(viewId, newProps);
+          
+          // Update event handlers
+          EventRegistry().unregister(viewId);
+          if (newNode.eventHandlers.isNotEmpty) {
+            EventRegistry().register(viewId, newNode.eventHandlers);
+          }
+          
+          // Reconcile children
+          await _reconcileChildren(oldNode.children, newNode.children, viewId);
+          return;
+        }
+      }
+    }
+
+    // Case 3: Both are stateful components - update in place
+    if (oldNode is DCFStatefulComponent && newNode is DCFStatefulComponent) {
+      if (oldNode.runtimeType == newNode.runtimeType && oldNode.key == newNode.key) {
+        // Reuse the component instance - transfer state
+        newNode.transferStateFrom(oldNode);
+        // Don't need to do anything else - the component keeps its views
+        return;
+      }
+    }
+
+    // Case 4: Both are stateless components - check if we can reuse
+    if (oldNode is DCFStatelessComponent && newNode is DCFStatelessComponent) {
+      if (oldNode.runtimeType == newNode.runtimeType && oldNode.key == newNode.key) {
+        // Check if props changed - for stateless, we need to check the component's fields
+        // For now, be conservative and assume props changed - re-render
+        final oldRendered = oldNode.renderedNode;
+        final newRendered = newNode.render();
+        newNode.renderedNode = newRendered;
+        newRendered.parent = newNode;
+        
+        await _reconcileNode(oldRendered, newRendered, parentViewId, index);
+        return;
+      }
+    }
+
+    // Case 5: Types don't match or can't reconcile - replace
+    // Delete old and create new
+    final oldViewIds = _collectViewIds(oldNode);
     for (final vid in oldViewIds.reversed) {
       EventRegistry().unregister(vid);
       await _bridge.deleteView(vid);
       _nodesByViewId.remove(vid);
     }
-    final newViewId = await renderToNative(newRendered,
-        parentViewId: contentParentViewId, index: contentIndex ?? 0);
-    if (newViewId != null) {
-      component.contentViewId = newViewId;
+    await renderToNative(newNode, parentViewId: parentViewId, index: index);
+  }
+
+  /// Reconcile children arrays
+  Future<void> _reconcileChildren(List<DCFComponentNode> oldChildren, List<DCFComponentNode> newChildren, int parentViewId) async {
+    final oldLen = oldChildren.length;
+    final newLen = newChildren.length;
+    final minLen = oldLen < newLen ? oldLen : newLen;
+
+    // Update existing children
+    for (int i = 0; i < minLen; i++) {
+      await _reconcileNode(oldChildren[i], newChildren[i], parentViewId, i);
     }
-    await _bridge.commitBatchUpdate();
+
+    // Add new children
+    if (newLen > oldLen) {
+      for (int i = oldLen; i < newLen; i++) {
+        await renderToNative(newChildren[i], parentViewId: parentViewId, index: i);
+      }
+    }
+
+    // Remove extra old children
+    if (oldLen > newLen) {
+      for (int i = newLen; i < oldLen; i++) {
+        final oldViewIds = _collectViewIds(oldChildren[i]);
+        for (final vid in oldViewIds.reversed) {
+          EventRegistry().unregister(vid);
+          await _bridge.deleteView(vid);
+          _nodesByViewId.remove(vid);
+        }
+      }
+    }
+
+    // Update native children list
+    final childIds = <int>[];
+    for (final child in newChildren) {
+      if (child is DCFElement && child.nativeViewId != null) {
+        childIds.add(child.nativeViewId!);
+      }
+    }
+    if (childIds.isNotEmpty) {
+      await _bridge.setChildren(parentViewId, childIds);
+    }
   }
 
   Future<void> createRoot(DCFComponentNode component) async {
@@ -271,6 +378,33 @@ class Engine {
     _pendingUpdates.clear();
     rootComponent = null;
     // Caller will createRoot again after this
+  }
+
+  /// Re-sync root to native without clearing engine state (for hot reload).
+  /// Native views are assumed already cleared by caller (e.g. cleanupViews).
+  Future<void> recreateRootNativeViews() async {
+    await isReady;
+    final root = rootComponent;
+    if (root == null) return;
+    
+    DCFComponentNode newRendered;
+    if (root is DCFStatefulComponent) {
+      root.prepareForRender();
+      newRendered = root.render();
+    } else if (root is DCFStatelessComponent) {
+      newRendered = root.render();
+    } else {
+      return;
+    }
+    
+    EventRegistry().clear();
+    _nodesByViewId.clear();
+    root.renderedNode = newRendered;
+    newRendered.parent = root;
+    
+    await _bridge.startBatchUpdate();
+    await renderToNative(newRendered, parentViewId: 0);
+    await _bridge.commitBatchUpdate();
   }
 
   Map<String, dynamic> getPerformanceMetrics() => {};

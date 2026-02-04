@@ -19,35 +19,31 @@ class PortalTargetRegistry {
   
   /// Map of PortalTarget ID to component instance
   final Map<String, DCFPortalTarget> _targets = {};
-  
+
+  static const bool _verbose = false;
+
   /// Register a PortalTarget component
   void register(String id, DCFPortalTarget target) {
     _targets[id] = target;
-    if (kDebugMode) {
-      print('✅ PortalTargetRegistry: Registered target "$id"');
-    }
+    if (kDebugMode && _verbose) print('✅ PortalTargetRegistry: Registered target "$id"');
   }
-  
+
   /// Unregister a PortalTarget component
   void unregister(String id) {
     _targets.remove(id);
-    if (kDebugMode) {
-      print('🗑️ PortalTargetRegistry: Unregistered target "$id"');
-    }
+    if (kDebugMode && _verbose) print('🗑️ PortalTargetRegistry: Unregistered target "$id"');
   }
-  
+
   /// Get a PortalTarget by ID
   DCFPortalTarget? get(String id) {
     return _targets[id];
   }
-  
+
   /// Get the view ID of a PortalTarget by its ID
   int? getViewId(String id) {
     final target = _targets[id];
     if (target == null) {
-      if (kDebugMode) {
-        print('⚠️ PortalTargetRegistry: Target "$id" not found');
-      }
+      if (kDebugMode && _verbose) print('⚠️ PortalTargetRegistry: Target "$id" not found');
       return null;
     }
     return target.targetViewId;

@@ -26,37 +26,33 @@ import 'package:dcflight/dcflight.dart';
 class CoreWrapper extends DCFStatefulComponent {
   final DCFComponentNode _child;
   int _previousSystemVersion = 0;
-  
+  DateTime? _lastScheduleTime;
+
   CoreWrapper(this._child, {super.key});
-  
+
   @override
   DCFComponentNode render() {
     // Track system state version and trigger re-render when it changes
     useEffect(() {
-      // Initialize previous version
       _previousSystemVersion = SystemStateManager.version;
-      
-      // Listen to dimension changes (which includes font scale changes)
-      // When SystemStateManager.onSystemChange() is called, version increments
-      // We check version on each dimension change event to detect system changes
+
       StreamSubscription<void>? subscription;
       subscription = ScreenUtilities.instance.dimensionChanges.listen((_) {
         final currentVersion = SystemStateManager.version;
         if (currentVersion != _previousSystemVersion) {
-          print('🔄 CoreWrapper: System state version changed: $_previousSystemVersion → $currentVersion');
           _previousSystemVersion = currentVersion;
-          scheduleUpdate();
-          print('✅ CoreWrapper: Update scheduled for system state change');
+          // Throttle: avoid storm of updates if dimension/version fires repeatedly
+          final now = DateTime.now();
+          if (_lastScheduleTime == null ||
+              now.difference(_lastScheduleTime!).inMilliseconds > 150) {
+            _lastScheduleTime = now;
+            scheduleUpdate();
+          }
         }
-        // Note: Layout-only changes (no system version change) are handled natively
-        // and don't require rebuilds, so we skip scheduleUpdate() in that case
       });
-    
-      return () {
-        print('🔄 CoreWrapper: Cleaning up system state listener...');
-        subscription?.cancel();
-      };
-    }, dependencies: []); // Empty deps = run once on mount, cleanup on unmount
+
+      return () => subscription?.cancel();
+    }, dependencies: []);
     
     // Return the child - the state change will trigger reconciliation
     // which will process all children naturally

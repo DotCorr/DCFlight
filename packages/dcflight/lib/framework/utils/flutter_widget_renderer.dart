@@ -18,7 +18,12 @@ import 'package:dcflight/framework/utils/widget_to_dcf_adaptor.dart' show widget
 class FlutterWidgetRenderer {
   static final FlutterWidgetRenderer instance = FlutterWidgetRenderer._();
   FlutterWidgetRenderer._();
-  
+
+  static const bool _verbose = false;
+  static void _log(String msg) {
+    if (_verbose) print(msg);
+  }
+
   static const MethodChannel _channel = MethodChannel('dcflight/flutter_widget');
   
   static bool _initialized = false;
@@ -59,15 +64,15 @@ class FlutterWidgetRenderer {
             final width = (args['width'] as num?)?.toDouble();
             final height = (args['height'] as num?)?.toDouble();
             
-            print('🎨🎨🎨 FlutterWidgetRenderer: renderWidget CALLED - widgetId=$widgetId, viewId=$viewId');
+            FlutterWidgetRenderer._log('🎨🎨🎨 FlutterWidgetRenderer: renderWidget CALLED - widgetId=$widgetId, viewId=$viewId');
             if (x != null && y != null && width != null && height != null) {
-              print('   Frame: ($x, $y, $width, $height)');
+              FlutterWidgetRenderer._log('   Frame: ($x, $y, $width, $height)');
             }
             
             // Get widget from registry
             final widget = widgetRegistry.get(widgetId);
             if (widget != null) {
-              print('✅ FlutterWidgetRenderer: Found widget in registry, type=${widget.runtimeType}');
+              FlutterWidgetRenderer._log('✅ FlutterWidgetRenderer: Found widget in registry, type=${widget.runtimeType}');
               // Render widget into FlutterView using Flutter's embedding API
               _renderWidgetIntoView(widget, widgetId, viewId, x, y, width, height);
               return {'status': 'success', 'widgetId': widgetId};
@@ -83,7 +88,7 @@ class FlutterWidgetRenderer {
             
             if (x != null && y != null && width != null && height != null) {
               _viewFrames[viewId] = _ViewFrame(x: x, y: y, width: width, height: height);
-              print('🎨 FlutterWidgetRenderer: Updated frame for view $viewId: ($x, $y, $width, $height)');
+              FlutterWidgetRenderer._log('🎨 FlutterWidgetRenderer: Updated frame for view $viewId: ($x, $y, $width, $height)');
               
               // Update FlutterView position/size to match union of all widget frames
               _updateFlutterViewFrame();
@@ -91,22 +96,22 @@ class FlutterWidgetRenderer {
               // Mark overlay entry as needing rebuild to update position
               final entry = _overlayEntries[viewId];
               if (entry != null) {
-                print('🎨 FlutterWidgetRenderer: Marking OverlayEntry for rebuild...');
+                FlutterWidgetRenderer._log('🎨 FlutterWidgetRenderer: Marking OverlayEntry for rebuild...');
                 entry.markNeedsBuild();
                 // Force a frame to ensure the rebuild happens
                 WidgetsBinding.instance.scheduleFrame();
-                print('✅ FlutterWidgetRenderer: OverlayEntry marked for rebuild, frame scheduled');
+                FlutterWidgetRenderer._log('✅ FlutterWidgetRenderer: OverlayEntry marked for rebuild, frame scheduled');
               } else {
                 // If no entry exists, check if widget has been rendered
                 final host = _hosts[viewId];
                 if (host != null) {
                   // Widget is rendered but no OverlayEntry yet - create it
-                  print('⚠️ FlutterWidgetRenderer: Widget rendered but no OverlayEntry for view $viewId, creating one...');
+                  FlutterWidgetRenderer._log('⚠️ FlutterWidgetRenderer: Widget rendered but no OverlayEntry for view $viewId, creating one...');
                   _updateCompositeTree();
                 } else {
                   // Widget hasn't been rendered yet - just store the frame
                   // The frame will be used when renderWidget is called
-                  print('ℹ️ FlutterWidgetRenderer: Widget not rendered yet for view $viewId, frame stored for later use');
+                  FlutterWidgetRenderer._log('ℹ️ FlutterWidgetRenderer: Widget not rendered yet for view $viewId, frame stored for later use');
                 }
               }
               
@@ -135,7 +140,7 @@ class FlutterWidgetRenderer {
     // Check if widget is already rendered for this viewId
     final existingHost = _hosts[viewId];
     if (existingHost != null) {
-      print('ℹ️ FlutterWidgetRenderer: Widget already rendered for view $viewId, updating widget and frame...');
+      FlutterWidgetRenderer._log('ℹ️ FlutterWidgetRenderer: Widget already rendered for view $viewId, updating widget and frame...');
       // Update the widget in case it changed
       existingHost.widget = widget;
       // Update frame if provided
@@ -159,16 +164,16 @@ class FlutterWidgetRenderer {
     if (x != null && y != null && width != null && height != null) {
       if (width > 0 && height > 0) {
         _viewFrames[viewId] = _ViewFrame(x: x, y: y, width: width, height: height);
-        print('🎨 FlutterWidgetRenderer: Stored frame for view $viewId: ($x, $y, $width, $height)');
+        FlutterWidgetRenderer._log('🎨 FlutterWidgetRenderer: Stored frame for view $viewId: ($x, $y, $width, $height)');
         // Update FlutterView position/size to match union of all widget frames
         _updateFlutterViewFrame();
       } else {
         // Frame is invalid (0x0), check if we have a stored frame
         final storedFrame = _viewFrames[viewId];
         if (storedFrame != null && storedFrame.width > 0 && storedFrame.height > 0) {
-          print('🎨 FlutterWidgetRenderer: Using stored frame for view $viewId: (${storedFrame.x}, ${storedFrame.y}, ${storedFrame.width}, ${storedFrame.height})');
+          FlutterWidgetRenderer._log('🎨 FlutterWidgetRenderer: Using stored frame for view $viewId: (${storedFrame.x}, ${storedFrame.y}, ${storedFrame.width}, ${storedFrame.height})');
         } else {
-          print('⚠️ FlutterWidgetRenderer: Invalid frame for view $viewId: ($x, $y, $width, $height), will wait for updateWidgetFrame');
+          FlutterWidgetRenderer._log('⚠️ FlutterWidgetRenderer: Invalid frame for view $viewId: ($x, $y, $width, $height), will wait for updateWidgetFrame');
         }
       }
     }
@@ -202,8 +207,8 @@ class FlutterWidgetRenderer {
   /// a composite widget tree that contains all FlutterView widgets, and use
   /// Flutter's rendering pipeline to render them into their respective FlutterViews.
   void _createWidgetTree(Widget widget, String viewId) {
-    print('🎨 FlutterWidgetRenderer: Creating widget tree for view $viewId (replicating runApp flow)');
-    print('   Widget type: ${widget.runtimeType}');
+    FlutterWidgetRenderer._log('🎨 FlutterWidgetRenderer: Creating widget tree for view $viewId (replicating runApp flow)');
+    FlutterWidgetRenderer._log('   Widget type: ${widget.runtimeType}');
     
     // Replicate runApp flow:
     // runApp does: WidgetsFlutterBinding.ensureInitialized() then attachRootWidget(widget)
@@ -219,14 +224,14 @@ class FlutterWidgetRenderer {
       host.widget = widget;
     }
     
-    print('🎨 FlutterWidgetRenderer: Widget host created for view $viewId, updating composite tree...');
+    FlutterWidgetRenderer._log('🎨 FlutterWidgetRenderer: Widget host created for view $viewId, updating composite tree...');
     
     // Create composite widget tree that contains all FlutterView widgets
     // This is like runApp - we create a root widget tree and Flutter renders it
     _updateCompositeTree();
     
-    print('✅ FlutterWidgetRenderer: Widget tree created for view $viewId');
-    print('   Composite tree updated, Flutter engine will render automatically');
+    FlutterWidgetRenderer._log('✅ FlutterWidgetRenderer: Widget tree created for view $viewId');
+    FlutterWidgetRenderer._log('   Composite tree updated, Flutter engine will render automatically');
     
     // Schedule a frame - this is what runApp does internally
     // Flutter's engine will render the widget tree into the FlutterView
@@ -237,7 +242,7 @@ class FlutterWidgetRenderer {
   void _updateCompositeTree() {
     // If no OverlayState exists, create root widget tree first
     if (_overlayState == null) {
-      print('⚠️ FlutterWidgetRenderer: No OverlayState available, creating root widget tree...');
+      FlutterWidgetRenderer._log('⚠️ FlutterWidgetRenderer: No OverlayState available, creating root widget tree...');
       _createRootWidgetTree();
       // Wait for OverlayState to be set via callback
       // The callback will call _updateCompositeTree again
@@ -257,7 +262,7 @@ class FlutterWidgetRenderer {
           final entry = OverlayEntry(
             opaque: false, // Make it non-opaque so we can see through if needed
             builder: (context) {
-              print('🎨🎨🎨 FlutterWidgetRenderer: OverlayEntry builder CALLED for view $viewId');
+              FlutterWidgetRenderer._log('🎨🎨🎨 FlutterWidgetRenderer: OverlayEntry builder CALLED for view $viewId');
               
               // ALWAYS read the latest frame from _viewFrames - don't use the closure variable!
               // The frame can be updated after the entry is created, so we need to read it fresh
@@ -273,7 +278,7 @@ class FlutterWidgetRenderer {
                 top = 0;
                 widgetWidth = currentFrame.width;
                 widgetHeight = currentFrame.height;
-                print('🎨 FlutterWidgetRenderer: Using CURRENT frame: widget at (0, 0) relative to FlutterView, size ($widgetWidth, $widgetHeight), FlutterView at window ($currentFrame.x, $currentFrame.y)');
+                FlutterWidgetRenderer._log('🎨 FlutterWidgetRenderer: Using CURRENT frame: widget at (0, 0) relative to FlutterView, size ($widgetWidth, $widgetHeight), FlutterView at window ($currentFrame.x, $currentFrame.y)');
               } else {
                 // Fallback to screen size
                 try {
@@ -282,19 +287,19 @@ class FlutterWidgetRenderer {
                   top = 0;
                   widgetWidth = screenSize.width;
                   widgetHeight = screenSize.height;
-                  print('🎨 FlutterWidgetRenderer: Using screen size: ${widgetWidth}x${widgetHeight}');
+                  FlutterWidgetRenderer._log('🎨 FlutterWidgetRenderer: Using screen size: ${widgetWidth}x${widgetHeight}');
                 } catch (e) {
                   left = 0;
                   top = 0;
                   widgetWidth = 400;
                   widgetHeight = 800;
-                  print('⚠️ FlutterWidgetRenderer: Using default size: ${widgetWidth}x${widgetHeight}');
+                  FlutterWidgetRenderer._log('⚠️ FlutterWidgetRenderer: Using default size: ${widgetWidth}x${widgetHeight}');
                 }
               }
           
-          print('🎨 FlutterWidgetRenderer: Widget type: ${host.widget.runtimeType}');
-          print('🎨 FlutterWidgetRenderer: Building widget at ($left, $top) with size ${widgetWidth}x${widgetHeight}');
-          print('🎨🎨🎨 FlutterWidgetRenderer: OverlayEntry builder EXECUTING - this means the widget is being built!');
+          FlutterWidgetRenderer._log('🎨 FlutterWidgetRenderer: Widget type: ${host.widget.runtimeType}');
+          FlutterWidgetRenderer._log('🎨 FlutterWidgetRenderer: Building widget at ($left, $top) with size ${widgetWidth}x${widgetHeight}');
+          FlutterWidgetRenderer._log('🎨🎨🎨 FlutterWidgetRenderer: OverlayEntry builder EXECUTING - this means the widget is being built!');
           
           // OverlayEntry builder must return widgets that work with Stack
           // Positioned widgets must be direct children of Stack
@@ -359,16 +364,16 @@ class FlutterWidgetRenderer {
       // Insert into overlay
       if (_overlayState!.mounted) {
         _overlayState!.insert(entry);
-        print('✅ FlutterWidgetRenderer: Inserted OverlayEntry for view $viewId');
+        FlutterWidgetRenderer._log('✅ FlutterWidgetRenderer: Inserted OverlayEntry for view $viewId');
         // Mark the entry as needing a rebuild to ensure it renders
         entry.markNeedsBuild();
-        print('✅ FlutterWidgetRenderer: Marked OverlayEntry as needing build');
+        FlutterWidgetRenderer._log('✅ FlutterWidgetRenderer: Marked OverlayEntry as needing build');
       } else {
-        print('❌ FlutterWidgetRenderer: OverlayState not mounted, cannot insert entry');
+        FlutterWidgetRenderer._log('❌ FlutterWidgetRenderer: OverlayState not mounted, cannot insert entry');
       }
     }
     
-    print('✅ FlutterWidgetRenderer: Updated ${_overlayEntries.length} OverlayEntries');
+    FlutterWidgetRenderer._log('✅ FlutterWidgetRenderer: Updated ${_overlayEntries.length} OverlayEntries');
   }
   
   /// Create a minimal root widget tree with Overlay
@@ -377,18 +382,18 @@ class FlutterWidgetRenderer {
     // Check if there's already a root widget attached
     final rootElement = WidgetsBinding.instance.rootElement;
     if (rootElement != null) {
-      print('⚠️ FlutterWidgetRenderer: Root widget already attached, trying to get OverlayState from existing tree');
+      FlutterWidgetRenderer._log('⚠️ FlutterWidgetRenderer: Root widget already attached, trying to get OverlayState from existing tree');
       _tryGetOverlayFromExistingTree();
       return;
     }
     
-    print('🎨 FlutterWidgetRenderer: Creating root widget tree with Overlay...');
+    FlutterWidgetRenderer._log('🎨 FlutterWidgetRenderer: Creating root widget tree with Overlay...');
     
     // CRITICAL: Enable FlutterView rendering BEFORE calling runApp
     // WebView and other platform channel plugins need the FlutterView to be
     // attached to the engine and in the view hierarchy before they can initialize
     _channel.invokeMethod('enableFlutterViewRendering').then((result) {
-      print('✅ FlutterWidgetRenderer: enableFlutterViewRendering succeeded: $result');
+      FlutterWidgetRenderer._log('✅ FlutterWidgetRenderer: enableFlutterViewRendering succeeded: $result');
       
       // Wait a microtask to ensure FlutterView is fully attached before runApp
       // This gives native side time to attach the view to the engine
@@ -397,23 +402,23 @@ class FlutterWidgetRenderer {
         // This provides an OverlayState without blocking DCF UI
         runApp(_FlutterWidgetRoot(
           onOverlayReady: (overlayState) {
-            print('✅ FlutterWidgetRenderer: OverlayState ready from root widget tree');
+            FlutterWidgetRenderer._log('✅ FlutterWidgetRenderer: OverlayState ready from root widget tree');
             setOverlayState(overlayState);
           },
         ));
       });
     }).catchError((error) {
-      print('⚠️ FlutterWidgetRenderer: Failed to enable FlutterView rendering: $error');
+      FlutterWidgetRenderer._log('⚠️ FlutterWidgetRenderer: Failed to enable FlutterView rendering: $error');
       // Continue anyway - runApp might still work, but plugins may fail
       runApp(_FlutterWidgetRoot(
         onOverlayReady: (overlayState) {
-          print('✅ FlutterWidgetRenderer: OverlayState ready from root widget tree');
+          FlutterWidgetRenderer._log('✅ FlutterWidgetRenderer: OverlayState ready from root widget tree');
           setOverlayState(overlayState);
         },
       ));
     });
     
-    print('✅ FlutterWidgetRenderer: Root widget tree created');
+    FlutterWidgetRenderer._log('✅ FlutterWidgetRenderer: Root widget tree created');
   }
   
   /// Try to get OverlayState from existing widget tree
@@ -427,15 +432,15 @@ class FlutterWidgetRenderer {
         final overlayState = Overlay.of(context);
         if (overlayState.mounted) {
           _overlayState = overlayState;
-          print('✅ FlutterWidgetRenderer: Found OverlayState in existing tree');
+          FlutterWidgetRenderer._log('✅ FlutterWidgetRenderer: Found OverlayState in existing tree');
           _updateCompositeTree();
           return;
         }
       } catch (e) {
-        print('⚠️ FlutterWidgetRenderer: Could not find OverlayState in existing tree: $e');
+        FlutterWidgetRenderer._log('⚠️ FlutterWidgetRenderer: Could not find OverlayState in existing tree: $e');
       }
     }
-    print('⚠️ FlutterWidgetRenderer: Cannot find OverlayState, will create new root widget tree');
+    FlutterWidgetRenderer._log('⚠️ FlutterWidgetRenderer: Cannot find OverlayState, will create new root widget tree');
   }
   
   /// Set the OverlayState for rendering widgets
@@ -443,7 +448,7 @@ class FlutterWidgetRenderer {
   void setOverlayState(OverlayState overlayState) {
     _overlayState = overlayState;
     
-    print('✅ FlutterWidgetRenderer: OverlayState set, updating composite tree...');
+    FlutterWidgetRenderer._log('✅ FlutterWidgetRenderer: OverlayState set, updating composite tree...');
     
     // Update composite tree to create/insert overlay entries
     _updateCompositeTree();
@@ -467,7 +472,7 @@ class FlutterWidgetRenderer {
     // Remove widgetId mapping
     _widgetIdToViewId.removeWhere((_, vId) => vId == viewId);
     
-    print('✅ FlutterWidgetRenderer: Disposed widget tree for view $viewId');
+    FlutterWidgetRenderer._log('✅ FlutterWidgetRenderer: Disposed widget tree for view $viewId');
   }
   
   /// Mark widget for rebuild when state changes
@@ -482,7 +487,7 @@ class FlutterWidgetRenderer {
         'width': 0.0,
         'height': 0.0,
       }).catchError((error) {
-        print('⚠️ FlutterWidgetRenderer: Failed to update FlutterView frame: $error');
+        FlutterWidgetRenderer._log('⚠️ FlutterWidgetRenderer: Failed to update FlutterView frame: $error');
       });
       return;
     }
@@ -510,7 +515,7 @@ class FlutterWidgetRenderer {
       final unionWidth = maxX - minX;
       final unionHeight = maxY - minY;
       
-      print('🎨 FlutterWidgetRenderer: Updating FlutterView frame to union: ($unionX, $unionY, $unionWidth, $unionHeight)');
+      FlutterWidgetRenderer._log('🎨 FlutterWidgetRenderer: Updating FlutterView frame to union: ($unionX, $unionY, $unionWidth, $unionHeight)');
       
       _channel.invokeMethod('updateFlutterViewFrame', {
         'x': unionX,
@@ -518,7 +523,7 @@ class FlutterWidgetRenderer {
         'width': unionWidth,
         'height': unionHeight,
       }).catchError((error) {
-        print('⚠️ FlutterWidgetRenderer: Failed to update FlutterView frame: $error');
+        FlutterWidgetRenderer._log('⚠️ FlutterWidgetRenderer: Failed to update FlutterView frame: $error');
       });
     }
   }
@@ -535,7 +540,7 @@ class FlutterWidgetRenderer {
         final entry = _overlayEntries[viewId];
         entry?.markNeedsBuild();
         WidgetsBinding.instance.scheduleFrame();
-        print('🔄 FlutterWidgetRenderer: Marked widget $widgetId (view $viewId) for rebuild due to state change');
+        FlutterWidgetRenderer._log('🔄 FlutterWidgetRenderer: Marked widget $widgetId (view $viewId) for rebuild due to state change');
       }
     }
   }
@@ -543,7 +548,7 @@ class FlutterWidgetRenderer {
   /// Clear all Flutter widgets during hot restart
   /// This ensures Flutter widgets are disposed when native views are cleared
   void clearAllForHotRestart() {
-    print('🔥 FlutterWidgetRenderer: Clearing all widgets for hot restart');
+    FlutterWidgetRenderer._log('🔥 FlutterWidgetRenderer: Clearing all widgets for hot restart');
     
     // Dispose all widget trees
     final viewIds = _hosts.keys.toList();
@@ -560,7 +565,7 @@ class FlutterWidgetRenderer {
     // Reset overlay state (will be recreated on next render)
     _overlayState = null;
     
-    print('✅ FlutterWidgetRenderer: All widgets cleared for hot restart');
+    FlutterWidgetRenderer._log('✅ FlutterWidgetRenderer: All widgets cleared for hot restart');
   }
 }
 
@@ -616,27 +621,27 @@ class _FlutterWidgetRootState extends State<_FlutterWidgetRoot> {
   @override
   void initState() {
     super.initState();
-    print('🎨 _FlutterWidgetRootState: initState() called');
+    FlutterWidgetRenderer._log('🎨 _FlutterWidgetRootState: initState() called');
     
     // Schedule callback after first frame to ensure Overlay is built and RenderView is ready
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      print('🎨 _FlutterWidgetRootState: PostFrameCallback called');
+      FlutterWidgetRenderer._log('🎨 _FlutterWidgetRootState: PostFrameCallback called');
       final overlayState = _overlayKey.currentState;
-      print('🎨 _FlutterWidgetRootState: OverlayState: $overlayState, mounted: ${overlayState?.mounted}');
+      FlutterWidgetRenderer._log('🎨 _FlutterWidgetRootState: OverlayState: $overlayState, mounted: ${overlayState?.mounted}');
       if (overlayState != null && overlayState.mounted) {
-        print('✅ _FlutterWidgetRootState: OverlayState ready, calling onOverlayReady');
+        FlutterWidgetRenderer._log('✅ _FlutterWidgetRootState: OverlayState ready, calling onOverlayReady');
         widget.onOverlayReady(overlayState);
       } else {
-        print('⚠️ _FlutterWidgetRootState: OverlayState not ready, retrying...');
+        FlutterWidgetRenderer._log('⚠️ _FlutterWidgetRootState: OverlayState not ready, retrying...');
         // Retry after a short delay if not ready yet
         Future.delayed(const Duration(milliseconds: 100), () {
           final retryState = _overlayKey.currentState;
-          print('🎨 _FlutterWidgetRootState: Retry - OverlayState: $retryState, mounted: ${retryState?.mounted}');
+          FlutterWidgetRenderer._log('🎨 _FlutterWidgetRootState: Retry - OverlayState: $retryState, mounted: ${retryState?.mounted}');
           if (retryState != null && retryState.mounted) {
-            print('✅ _FlutterWidgetRootState: OverlayState ready on retry, calling onOverlayReady');
+            FlutterWidgetRenderer._log('✅ _FlutterWidgetRootState: OverlayState ready on retry, calling onOverlayReady');
             widget.onOverlayReady(retryState);
           } else {
-            print('❌ _FlutterWidgetRootState: OverlayState still not ready after retry');
+            FlutterWidgetRenderer._log('❌ _FlutterWidgetRootState: OverlayState still not ready after retry');
           }
         });
       }
@@ -645,13 +650,13 @@ class _FlutterWidgetRootState extends State<_FlutterWidgetRoot> {
   
   @override
   Widget build(BuildContext context) {
-    print('🎨 _FlutterWidgetRootState: build() called');
+    FlutterWidgetRenderer._log('🎨 _FlutterWidgetRootState: build() called');
     
     // We can't use View widget with existing FlutterView (it's already a root render tree)
     // Instead, create a simple widget tree that provides Overlay
     // The FlutterView is already attached to the engine, so we just need to provide
     // a widget tree that Flutter can render into it
-    print('🎨 _FlutterWidgetRootState: Creating widget tree with Overlay (no View widget)');
+    FlutterWidgetRenderer._log('🎨 _FlutterWidgetRootState: Creating widget tree with Overlay (no View widget)');
     
     // Create a minimal root widget tree with Overlay
     // CRITICAL: This widget tree must be completely transparent and non-blocking

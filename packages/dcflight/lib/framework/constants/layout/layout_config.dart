@@ -16,17 +16,18 @@ class LayoutConfig {
   /// 
   /// Note: position still defaults to relative for compatibility
   static bool useWebDefaults = false;
-  
+  static const bool _verbose = false;
+
   /// Enable web defaults for cross-platform CSS compatibility
   static Future<void> enableWebDefaults() async {
     useWebDefaults = true;
-    print("✅ LayoutConfig: Web defaults enabled");
+    if (_verbose) print("✅ LayoutConfig: Web defaults enabled");
   }
-  
+
   /// Disable web defaults (use Yoga native defaults)
   static Future<void> disableWebDefaults() async {
     useWebDefaults = false;
-    print("✅ LayoutConfig: Web defaults disabled");
+    if (_verbose) print("✅ LayoutConfig: Web defaults disabled");
   }
   
   /// Check if web defaults are currently enabled
@@ -64,13 +65,13 @@ class LayoutConfig {
   static Future<void> enableLayoutAnimations({int duration = 300}) async {
     layoutAnimationEnabled = true;
     layoutAnimationDuration = duration;
-    print("✅ LayoutConfig: Layout animations enabled (duration: ${duration}ms)");
+    if (_verbose) print("✅ LayoutConfig: Layout animations enabled (duration: ${duration}ms)");
   }
-  
+
   /// Disable layout animations globally
   static Future<void> disableLayoutAnimations() async {
     layoutAnimationEnabled = false;
-    print("✅ LayoutConfig: Layout animations disabled");
+    if (_verbose) print("✅ LayoutConfig: Layout animations disabled");
   }
   
   /// Check if layout animations are currently enabled

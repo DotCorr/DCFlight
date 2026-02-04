@@ -28,6 +28,9 @@ import '../../events/event_registry.dart';
 /// await bridge.initialize();
 /// ```
 class DCFlightFfiWrapper implements PlatformInterface {
+  /// Set to true to log init/session/cleanup (noisy). Errors are always logged.
+  static bool verboseLogging = false;
+
   static DCFlightFfi? _bindings;
   static final EventRegistry _eventRegistry = EventRegistry();
   static DCFlightEventCallback? _eventCallback;
@@ -159,13 +162,13 @@ class DCFlightFfiWrapper implements PlatformInterface {
         // Zero-initialize buffer using Uint8 view
         resultBuffer.cast<ffi.Uint8>().asTypedList(256).fillRange(0, 256, 0);
         
-        log('🔥 DCFlightFfiWrapper: Calling dcflight_get_session_token...');
+        if (verboseLogging) log('🔥 DCFlightFfiWrapper: Calling dcflight_get_session_token...');
         final success = _bindings!.dcflight_get_session_token(
           resultBuffer,
           256,
         );
         
-        log('🔥 DCFlightFfiWrapper: dcflight_get_session_token returned: success=$success');
+        if (verboseLogging) log('🔥 DCFlightFfiWrapper: dcflight_get_session_token returned: success=$success');
         
         if (!success) {
           log('❌ DCFlightFfiWrapper: Failed to get session token');
@@ -173,7 +176,7 @@ class DCFlightFfiWrapper implements PlatformInterface {
         }
         
         final tokenStr = resultBuffer.cast<Utf8>().toDartString();
-        log('🔥 DCFlightFfiWrapper: Token from native: "$tokenStr" (length: ${tokenStr.length})');
+        if (verboseLogging) log('🔥 DCFlightFfiWrapper: Token from native: "$tokenStr" (length: ${tokenStr.length})');
         return tokenStr.isEmpty ? null : tokenStr;
       } finally {
         malloc.free(resultBuffer);
@@ -195,29 +198,29 @@ class DCFlightFfiWrapper implements PlatformInterface {
         // Zero-initialize buffer using Uint8 view
         resultBuffer.cast<ffi.Uint8>().asTypedList(256).fillRange(0, 256, 0);
         
-        log('🔥 DCFlightFfiWrapper: Calling dcflight_create_session_token...');
+        if (verboseLogging) log('🔥 DCFlightFfiWrapper: Calling dcflight_create_session_token...');
         final success = _bindings!.dcflight_create_session_token(
           resultBuffer,
           256,
         );
         
-        log('🔥 DCFlightFfiWrapper: dcflight_create_session_token returned: success=$success');
+        if (verboseLogging) log('🔥 DCFlightFfiWrapper: dcflight_create_session_token returned: success=$success');
         
         if (!success) {
           log('❌ DCFlightFfiWrapper: Failed to create session token');
-          // Check buffer contents even on failure
-          final bufferHex = resultBuffer.cast<ffi.Uint8>().asTypedList(50).map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
-          log('⚠️ DCFlightFfiWrapper: Buffer contents on failure: $bufferHex');
+          if (verboseLogging) {
+            final bufferHex = resultBuffer.cast<ffi.Uint8>().asTypedList(50).map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
+            log('⚠️ DCFlightFfiWrapper: Buffer contents on failure: $bufferHex');
+          }
           return '';
         }
         
         final tokenStr = resultBuffer.cast<Utf8>().toDartString();
-        log('🔥 DCFlightFfiWrapper: Token from native: "$tokenStr" (length: ${tokenStr.length})');
+        if (verboseLogging) log('🔥 DCFlightFfiWrapper: Token from native: "$tokenStr" (length: ${tokenStr.length})');
         
-        if (tokenStr.isEmpty) {
+        if (tokenStr.isEmpty && verboseLogging) {
           final bufferHex = resultBuffer.cast<ffi.Uint8>().asTypedList(50).map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
           log('⚠️ DCFlightFfiWrapper: Token is empty! Buffer contents: $bufferHex');
-          // Try reading as raw bytes to see what's there
           final rawBytes = resultBuffer.cast<ffi.Uint8>().asTypedList(50).where((b) => b != 0).toList();
           log('⚠️ DCFlightFfiWrapper: Non-zero bytes in buffer: $rawBytes');
         }
@@ -258,7 +261,7 @@ class DCFlightFfiWrapper implements PlatformInterface {
       // Small delay to ensure cleanup completes on native side
       await Future.delayed(const Duration(milliseconds: 50));
       
-      log('✅ DCFlightFfiWrapper: Cleanup completed');
+      if (verboseLogging) log('✅ DCFlightFfiWrapper: Cleanup completed');
     } catch (e) {
       log('❌ DCFlightFfiWrapper: Error cleaning up views: $e');
     }
@@ -294,14 +297,14 @@ class DCFlightFfiWrapper implements PlatformInterface {
   @override
   Future<bool> initialize() async {
     try {
-      log('🔄 DCFlightFfiWrapper: Calling dcflight_initialize()');
+      if (verboseLogging) log('🔄 DCFlightFfiWrapper: Calling dcflight_initialize()');
       final result = _ffi.dcflight_initialize();
-      log('✅ DCFlightFfiWrapper: dcflight_initialize() returned: $result (type: ${result.runtimeType})');
+      if (verboseLogging) log('✅ DCFlightFfiWrapper: dcflight_initialize() returned: $result (type: ${result.runtimeType})');
       // FFI maps C bool to Dart bool, so we can use it directly
       if (!result) {
         log('❌ DCFlightFfiWrapper: Initialization failed - dcflight_initialize returned false');
       } else {
-        log('✅ DCFlightFfiWrapper: Initialization succeeded');
+        if (verboseLogging) log('✅ DCFlightFfiWrapper: Initialization succeeded');
         // Start polling for queued events from native threads
         _startEventPoller();
       }

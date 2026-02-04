@@ -30,9 +30,6 @@ class EventRegistry {
   /// Map of viewId -> Set of registered event types
   final Map<int, Set<String>> _registeredEvents = {};
 
-  /// Global event handler (fallback for unhandled events - can be null)
-  void Function(int viewId, String eventType, Map<String, dynamic> eventData)? _globalHandler;
-
   /// Register event handlers for a view
   /// 
   /// [viewId]: The unique identifier for the view
@@ -93,25 +90,14 @@ class EventRegistry {
       }
     }
 
-    // If no specific handler, try global handler
-    if (_globalHandler != null) {
-      try {
-        _globalHandler!(viewId, eventType, eventData);
-        return true;
-      } catch (e) {
-        print('❌ EventRegistry: Error in global handler: $e');
-        return false;
-      }
-    }
-
-    // Event not registered - fail-fast (no fallback)
+    // No view-specific handler (e.g. view was torn down). Ignore to avoid
+    // infinite recursion (a "global" handler that re-enters handleEvent causes stack overflow).
     return false;
   }
 
-  /// Set global event handler (optional - for debugging or catch-all)
-  void setGlobalHandler(void Function(int viewId, String eventType, Map<String, dynamic> eventData)? handler) {
-    _globalHandler = handler;
-  }
+  /// No-op: previously set a global fallback handler; re-entering caused stack overflow.
+  /// Kept for API compatibility with bridge.setEventHandler().
+  void setGlobalHandler(void Function(int viewId, String eventType, Map<String, dynamic> eventData)? handler) {}
 
   /// Check if an event is registered for a view
   bool isRegistered(int viewId, String eventType) {
@@ -127,7 +113,6 @@ class EventRegistry {
   void clear() {
     _handlers.clear();
     _registeredEvents.clear();
-    _globalHandler = null;
   }
   
   /// Get all registered event types for a view (for native side to query)

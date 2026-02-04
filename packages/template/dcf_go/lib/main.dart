@@ -7,6 +7,8 @@ import 'package:dcflight/dcflight.dart';
 import 'package:dcf_go/stylesheet/style_sheet_examples_screen.dart';
 
 void main() async {
+  // Use .warning for quiet console; set to DCFLogLevel.debug only when debugging.
+  DCFlight.setLogLevel(DCFLogLevel.warning);
   await DCFlight.go(app: AppRoot());
 }
 
@@ -16,23 +18,32 @@ class AppRoot extends DCFStatefulComponent {
 
   @override
   DCFComponentNode render() {
-    final textInputValue = useState<String>("");
+    final sliderValue = useState<double>(0.0);
+    final lastUpdateTime = useState<DateTime>(DateTime.now());
     final showExamples = useState<bool>(false);
     final showScreenUtilsTest = useState<bool>(false);
     final screenUtils = ScreenUtilities.instance;
     final safeAreaTop = screenUtils.safeAreaTop;
-    print('safeAreaTop: $safeAreaTop');
-    
+
     // Position button below NavigationBar (which is ~72px tall including safe area)
     // Use a fixed offset that works on both iOS and Android
     final buttonTop = safeAreaTop + 72;
     
+    // Generate boxes based on slider value (0-100 boxes)
+    final boxCount = (sliderValue.state * 100).toInt();
+    
+    // Track render time
+    final now = DateTime.now();
+    final timeSinceLastUpdate = now.difference(lastUpdateTime.state).inMilliseconds;
+    
     return DCFView(
+      styleSheet: DCFStyleSheet(
+        backgroundColor: DCFColors.black,
+      ),
       layout: DCFLayout(width: '100%', height: '100%'),
       children: [
         // Content wrapper - this changes when navigating
         DCFView(
-         
           layout: DCFLayout(width: '100%', height: '100%'),
           children: [
             if (showScreenUtilsTest.state)
@@ -42,27 +53,256 @@ class AppRoot extends DCFStatefulComponent {
                 },
               )
             else if (showExamples.state)
-              StyleSheetExamplesScreen(
-                
-              )
+              StyleSheetExamplesScreen()
             else
-              // DotCorrLanding(
-              //   // key: 'landing-screen',
-              //   onToggleExamples: () {
-              //     showExamples.setState(true);
-              //   },
-              // ),
               DCFScrollView(
-                layout: DCFLayout(width: '100%',height: '80%', margin: 50),
+                styleSheet: DCFStyleSheet(
+                  backgroundColor: DCFColors.black,
+                ),
+                layout: DCFLayout(width: '100%', height: '100%'),
                 scrollContent: [
-                DCFTextInput(placeholder: "Enter your name",
-                onChangeText: (text) {
-                  textInputValue.setState(text);
-                },
-
-                styleSheet: DCFStyleSheet(backgroundColor: DCFColors.gray100,borderRadius: 8,borderWidth: 10,borderColor: DCFColors.amber)),
-                DCFText(content: "Hello, World ${textInputValue.state}!"),
-              ])
+                  // Main container with padding
+                  DCFView(
+                    layout: DCFLayout(
+                      width: '100%',
+                      paddingTop: safeAreaTop + 120,
+                      paddingBottom: 40,
+                      paddingHorizontal: 24,
+                      gap: 24,
+                      alignItems: DCFAlign.center,
+                    ),
+                    children: [
+                      // Hero text
+                      DCFView(
+                        layout: DCFLayout(
+                          width: '100%',
+                          marginBottom: 16,
+                          alignItems: DCFAlign.center,
+                        ),
+                        children: [
+                          DCFText(
+                            content: "Welcome to DCFlight",
+                            textProps: DCFTextProps(
+                              fontSize: 32,
+                              fontWeight: DCFFontWeight.bold,
+                              letterSpacing: -1,
+                            ),
+                            styleSheet: DCFStyleSheet(primaryColor: DCFColors.white),
+                          ),
+                          DCFText(
+                            content: "Pure signals, native performance",
+                            textProps: DCFTextProps(
+                              fontSize: 16,
+                              lineHeight: 1.5,
+                            ),
+                            styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray400),
+                            layout: DCFLayout(marginTop: 8),
+                          ),
+                        ],
+                      ),
+                      
+                      // SLIDER DEBUG TEST
+                      _ShadCard(
+                        title: "🔬 Slider Render Test",
+                        children: [
+                          DCFView(
+                            layout: DCFLayout(
+                              width: '100%',
+                              gap: 16,
+                            ),
+                            children: [
+                              DCFView(
+                                layout: DCFLayout(
+                                  width: '100%',
+                                  padding: 12,
+                                  gap: 8,
+                                ),
+                                styleSheet: DCFStyleSheet(
+                                  backgroundColor: DCFColors.gray900,
+                                  borderRadius: 6,
+                                  borderWidth: 1,
+                                  borderColor: DCFColors.yellow,
+                                ),
+                                children: [
+                                  DCFText(
+                                    content: "🎯 DEBUG INSTRUCTIONS:",
+                                    textProps: DCFTextProps(
+                                      fontSize: 14,
+                                      fontWeight: DCFFontWeight.bold,
+                                    ),
+                                    styleSheet: DCFStyleSheet(primaryColor: DCFColors.yellow),
+                                  ),
+                                  DCFText(
+                                    content: "1. Drag the slider slowly → watch box count\n2. Drag slider FAST → if box count lags behind or stutters = rendering throttle\n3. If boxes freeze during drag = event batching/pausing issue",
+                                    textProps: DCFTextProps(
+                                      fontSize: 13,
+                                      lineHeight: 1.6,
+                                      numberOfLines: 0,
+                                    ),
+                                    styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray300),
+                                  ),
+                                ],
+                              ),
+                              
+                              // Slider value display with timing
+                              DCFView(
+                                layout: DCFLayout(width: '100%', gap: 4),
+                                children: [
+                                  DCFText(
+                                    content: "Value: ${sliderValue.state.toStringAsFixed(2)} → ${boxCount} boxes",
+                                    textProps: DCFTextProps(
+                                      fontSize: 16,
+                                      fontWeight: DCFFontWeight.bold,
+                                    ),
+                                    styleSheet: DCFStyleSheet(primaryColor: DCFColors.white),
+                                  ),
+                                  DCFText(
+                                    content: "Last update: ${timeSinceLastUpdate}ms ago",
+                                    textProps: DCFTextProps(
+                                      fontSize: 12,
+                                    ),
+                                    styleSheet: DCFStyleSheet(
+                                      primaryColor: timeSinceLastUpdate > 100 
+                                          ? DCFColors.red 
+                                          : DCFColors.gray500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              
+                              // Native slider - fires events continuously while dragging
+                              DCFSlider(
+                                value: sliderValue.state,
+                                minimumValue: 0.0,
+                                maximumValue: 1.0,
+                                onValueChange: (data) {
+                                  // This fires CONTINUOUSLY while dragging
+                                  sliderValue.setState(data.value);
+                                  lastUpdateTime.setState(DateTime.now());
+                                },
+                             
+                                layout: DCFLayout(
+                                  width: '100%',
+                                  height: 40,
+                                ),
+                              ),
+                              
+                              // RESULTS PANEL
+                              DCFView(
+                                layout: DCFLayout(
+                                  width: '100%',
+                                  padding: 12,
+                                  gap: 8,
+                                ),
+                                styleSheet: DCFStyleSheet(
+                                  backgroundColor: DCFColors.gray900,
+                                  borderRadius: 6,
+                                  borderWidth: 1,
+                                  borderColor: boxCount > 50 ? DCFColors.red : DCFColors.green,
+                                ),
+                                children: [
+                                  DCFText(
+                                    content: boxCount > 50 
+                                        ? "⚠️ PROBLEM DETECTED"
+                                        : "✅ Should update smoothly",
+                                    textProps: DCFTextProps(
+                                      fontSize: 14,
+                                      fontWeight: DCFFontWeight.bold,
+                                    ),
+                                    styleSheet: DCFStyleSheet(
+                                      primaryColor: boxCount > 50 ? DCFColors.red : DCFColors.green,
+                                    ),
+                                  ),
+                                  DCFText(
+                                    content: boxCount > 50
+                                        ? "At ${boxCount} boxes, the engine deletes + recreates ${boxCount} views on EVERY drag event. This causes lag."
+                                        : "Drag slider past 50% to see lag from full tree rebuild.",
+                                    textProps: DCFTextProps(
+                                      fontSize: 13,
+                                      lineHeight: 1.5,
+                                      numberOfLines: 0,
+                                    ),
+                                    styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray300),
+                                  ),
+                                ],
+                              ),
+                              
+                              // Box grid - renders boxes based on slider value
+                              DCFView(
+                                layout: DCFLayout(
+                                  width: '100%',
+                                  flexDirection: DCFFlexDirection.row,
+                                  flexWrap: DCFWrap.wrap,
+                                  gap: 4,
+                                  marginTop: 16,
+                                ),
+                                children: List.generate(boxCount, (i) {
+                                  return DCFView(
+                                    layout: DCFLayout(
+                                      width: 20,
+                                      height: 20,
+                                    ),
+                                    styleSheet: DCFStyleSheet(
+                                      backgroundColor: i % 2 == 0 ? DCFColors.blue : DCFColors.purple,
+                                      borderRadius: 2,
+                                    ),
+                                  );
+                                }),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      
+                      // Feature cards
+                      _ShadCard(
+                        title: "⚡ Pure Signals Engine",
+                        children: [
+                          DCFText(
+                            content: "No VDOM, no reconciliation. Direct component-to-native updates with zero overhead.",
+                            textProps: DCFTextProps(
+                              fontSize: 14,
+                              lineHeight: 1.6,
+                              numberOfLines: 0,
+                            ),
+                            styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray400),
+                          ),
+                        ],
+                      ),
+                      
+                      _ShadCard(
+                        title: "🎯 Native Performance",
+                        children: [
+                          DCFText(
+                            content: "Write Dart once, render true native UI components. Direct bridge access with FFI/JNI.",
+                            textProps: DCFTextProps(
+                              fontSize: 14,
+                              lineHeight: 1.6,
+                              numberOfLines: 0,
+                            ),
+                            styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray400),
+                          ),
+                        ],
+                      ),
+                      
+                      _ShadCard(
+                        title: "🚀 Modern Stack",
+                        children: [
+                          DCFText(
+                            content: "Built for iOS, Android, and the future. Powered by Dart's reactive primitives.",
+                            textProps: DCFTextProps(
+                              fontSize: 14,
+                              lineHeight: 1.6,
+                              numberOfLines: 0,
+                            ),
+                            styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray400),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              )
           ],
         ),
         
@@ -90,13 +330,13 @@ class AppRoot extends DCFStatefulComponent {
             }
           },
           styleSheet: DCFStyleSheet(
-            backgroundColor: DCFColors.green,
+            backgroundColor: DCFColors.blue,
             borderRadius: 8,
-            shadowColor: DCFColors.black,
-            shadowOpacity: 0.3,
-            shadowRadius: 6,
+            shadowColor: DCFColors.blue,
+            shadowOpacity: 0.4,
+            shadowRadius: 8,
             shadowOffsetX: 0,
-            shadowOffsetY: 3,
+            shadowOffsetY: 4,
           ),
           children: [
             DCFText(
@@ -151,6 +391,42 @@ class AppRoot extends DCFStatefulComponent {
       ],
     );
   }
+}
+
+/// Shadcn-style card component
+DCFComponentNode _ShadCard({
+  required String title,
+  required List<DCFComponentNode> children,
+}) {
+  return DCFView(
+    layout: DCFLayout(
+      width: '100%',
+      padding: 24,
+      gap: 16,
+    ),
+    styleSheet: DCFStyleSheet(
+      backgroundColor: DCFColors.gray800,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: DCFColors.gray700,
+      shadowColor: DCFColors.black,
+      shadowOpacity: 0.5,
+      shadowRadius: 20,
+      shadowOffsetX: 0,
+      shadowOffsetY: 8,
+    ),
+    children: [
+      DCFText(
+        content: title,
+        textProps: DCFTextProps(
+          fontSize: 18,
+          fontWeight: DCFFontWeight.bold,
+        ),
+        styleSheet: DCFStyleSheet(primaryColor: DCFColors.white),
+      ),
+      ...children,
+    ],
+  );
 }
 
 /// DotCorr Landing Page - Matching Web Design

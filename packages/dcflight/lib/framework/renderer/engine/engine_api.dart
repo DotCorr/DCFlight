@@ -67,7 +67,7 @@ class DCFEngineAPI {
       {int? parentViewId, int? index}) async {
     await isReady;
     return _engine!.renderToNative(node,
-        parentViewId: parentViewId, index: index);
+        parentViewId: parentViewId ?? 0, index: index ?? 0);
   }
 
   Future<void> deleteView(int viewId) async {
@@ -88,6 +88,12 @@ class DCFEngineAPI {
   Future<void> forceFullTreeReRender() async {
     await isReady;
     await _engine!.forceFullTreeReRender();
+  }
+
+  /// Re-sync root to native without clearing engine state (for hot reload).
+  Future<void> recreateRootNativeViews() async {
+    await isReady;
+    return _engine!.recreateRootNativeViews();
   }
 
   Map<String, dynamic> getPerformanceMetrics() =>

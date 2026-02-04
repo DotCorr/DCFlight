@@ -1,5 +1,5 @@
 import 'package:dcf_reanimated/dcf_reanimated.dart';
-import 'package:dcflight/framework/renderer/engine/stub_mutator.dart';
+import 'package:dcflight/framework/renderer/engine/extension_registry.dart';
 
 class ReanimatedInit {
   static bool _initialized = false;

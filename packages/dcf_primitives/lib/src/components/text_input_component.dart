@@ -294,6 +294,7 @@ class DCFTextInput extends DCFStatelessComponent
     return DCFElement(
       type: 'TextInput',
       key: key,
+      propsOmitOnUpdate: {'value'},
       elementProps: {
         'value': value,
         'defaultValue': defaultValue,

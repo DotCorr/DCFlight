@@ -14,7 +14,11 @@ class DCFElement extends DCFComponentNode {
 
   /// Properties of the element
   final Map<String, dynamic> elementProps;
-  
+
+  /// Prop keys to omit when sending updateView (e.g. native-owned like input value).
+  /// Set by primitives; engine just strips these — no component-specific logic in engine.
+  final Set<String>? propsOmitOnUpdate;
+
   /// Child nodes
   final List<DCFComponentNode> children;
 
@@ -22,6 +26,7 @@ class DCFElement extends DCFComponentNode {
     required this.type,
     super.key,
     required this.elementProps,
+    this.propsOmitOnUpdate,
     this.children = const [],
   }) {
     for (var child in children) {
@@ -35,6 +40,7 @@ class DCFElement extends DCFComponentNode {
       type: type,
       key: key,
       elementProps: Map<String, dynamic>.from(elementProps),
+      propsOmitOnUpdate: propsOmitOnUpdate,
       children: children.map((child) => child.clone()).toList(),
     );
   }

@@ -12,7 +12,8 @@ import 'package:dcflight/framework/renderer/engine/index.dart';
 import 'package:dcflight/src/components/portal/dcf_portal_target.dart';
 
 /// Portal component that renders children into a different part of the view tree
-/// Allows rendering children outside the normal parent hierarchy
+/// Allows rendering children outside the normal parent hierarchy.
+/// Set [_verbose] to true to log portal updates (noisy).
 /// 
 /// Usage:
 /// ```dart
@@ -38,7 +39,9 @@ class DCFPortal extends DCFStatefulComponent {
   
   /// Previous children for change detection
   List<DCFComponentNode>? _prevChildren;
-  
+
+  static const bool _verbose = false;
+
   DCFPortal({
     required this.target,
     required this.children,
@@ -80,7 +83,7 @@ class DCFPortal extends DCFStatefulComponent {
     
     // Only update if something actually changed
     if (targetChanged || childrenChanged) {
-      if (kDebugMode) {
+      if (kDebugMode && _verbose) {
         print('🔄 DCFPortal: Updating - target changed: $targetChanged, children changed: $childrenChanged');
         print('🔄 DCFPortal: Old children count: ${_prevChildren?.length ?? 0}, New: ${children.length}');
       }
@@ -96,10 +99,7 @@ class DCFPortal extends DCFStatefulComponent {
         _cleanupAndRender();
       }
     } else {
-      // Nothing changed, skip update
-      if (kDebugMode) {
-        print('⏭️ DCFPortal: Skipping update - no changes detected');
-      }
+      if (kDebugMode && _verbose) print('⏭️ DCFPortal: Skipping update - no changes detected');
     }
   }
   
@@ -135,9 +135,7 @@ class DCFPortal extends DCFStatefulComponent {
       final engine = DCFEngineAPI.instance;
       await engine.isReady;
       
-      if (kDebugMode) {
-        print('🎯 DCFPortal: Rendering ${children.length} children to target "$target"');
-      }
+      if (kDebugMode && _verbose) print('🎯 DCFPortal: Rendering ${children.length} children to target "$target"');
       
       // CRITICAL: Don't clear _renderedChildViewIds here - we need to track old IDs
       // for cleanup. Only clear after new children are successfully rendered.
@@ -149,9 +147,7 @@ class DCFPortal extends DCFStatefulComponent {
       
       // If no children, cleanup old views and return
       if (children.isEmpty) {
-        if (kDebugMode) {
-          print('✅ DCFPortal: No children to render, cleaning up old views');
-        }
+        if (kDebugMode && _verbose) print('✅ DCFPortal: No children to render, cleaning up old views');
         // Still need to cleanup old views
         _renderedChildViewIds = [];
         if (oldRenderedChildViewIds.isNotEmpty) {
@@ -175,16 +171,12 @@ class DCFPortal extends DCFStatefulComponent {
       if (PortalTargetRegistry().has(target)) {
         final viewId = PortalTargetRegistry().getViewId(target);
         if (viewId == null) {
-          if (kDebugMode) {
-            print('⚠️ DCFPortal: PortalTarget "$target" exists but has no view ID yet. Waiting for mount...');
-          }
+          if (kDebugMode && _verbose) print('⚠️ DCFPortal: PortalTarget "$target" exists but has no view ID yet. Waiting for mount...');
           // Target exists but not mounted yet - wait a bit and retry
           await Future.delayed(const Duration(milliseconds: 50));
           final retryViewId = PortalTargetRegistry().getViewId(target);
           if (retryViewId == null) {
-            if (kDebugMode) {
-              print('❌ DCFPortal: PortalTarget "$target" still has no view ID after wait');
-            }
+            if (kDebugMode && _verbose) print('❌ DCFPortal: PortalTarget "$target" still has no view ID after wait');
             await engine.commitBatchUpdate();
             return;
           }
@@ -192,24 +184,16 @@ class DCFPortal extends DCFStatefulComponent {
         } else {
           actualTargetViewId = viewId;
         }
-        if (kDebugMode) {
-          print('✅ DCFPortal: Resolved target "$target" to view ID "$actualTargetViewId"');
-        }
+        if (kDebugMode && _verbose) print('✅ DCFPortal: Resolved target "$target" to view ID "$actualTargetViewId"');
       } else {
-        // Not a PortalTarget - use as direct view ID (backward compatibility)
-        // But warn if it's 'root' as that's not recommended
         if (target == 'root') {
-          if (kDebugMode) {
-            print('⚠️ DCFPortal: Using "root" as target is not recommended. Use DCFPortalTarget instead.');
-          }
+          if (kDebugMode && _verbose) print('⚠️ DCFPortal: Using "root" as target is not recommended. Use DCFPortalTarget instead.');
           actualTargetViewId = 0; // Root is tag 0
         } else {
           // Try to parse as int for backward compatibility
           actualTargetViewId = int.tryParse(target);
           if (actualTargetViewId == null) {
-            if (kDebugMode) {
-              print('❌ DCFPortal: Target "$target" is not a valid PortalTarget ID or view ID');
-            }
+            if (kDebugMode && _verbose) print('❌ DCFPortal: Target "$target" is not a valid PortalTarget ID or view ID');
             await engine.commitBatchUpdate();
             return;
           }
@@ -231,13 +215,9 @@ class DCFPortal extends DCFStatefulComponent {
         
         if (childViewId != null) {
           newRenderedChildViewIds.add(childViewId);
-          if (kDebugMode) {
-            print('✅ DCFPortal: Rendered child $i with viewId: $childViewId');
-          }
+          if (kDebugMode && _verbose) print('✅ DCFPortal: Rendered child $i with viewId: $childViewId');
         } else {
-          if (kDebugMode) {
-            print('⚠️ DCFPortal: Failed to render child $i - no viewId returned');
-          }
+          if (kDebugMode && _verbose) print('⚠️ DCFPortal: Failed to render child $i - no viewId returned');
         }
       }
       
@@ -255,9 +235,7 @@ class DCFPortal extends DCFStatefulComponent {
           .toList();
       
       if (viewsToCleanup.isNotEmpty) {
-        if (kDebugMode) {
-          print('🧹 DCFPortal: Cleaning up ${viewsToCleanup.length} old children');
-        }
+        if (kDebugMode && _verbose) print('🧹 DCFPortal: Cleaning up ${viewsToCleanup.length} old children');
         await engine.startBatchUpdate();
         for (final viewId in viewsToCleanup) {
           await engine.deleteView(viewId);
@@ -265,14 +243,10 @@ class DCFPortal extends DCFStatefulComponent {
         await engine.commitBatchUpdate();
       }
       
-      if (kDebugMode) {
-        print('✅ DCFPortal: Successfully rendered ${_renderedChildViewIds.length} children to target "$target"');
-      }
+      if (kDebugMode && _verbose) print('✅ DCFPortal: Successfully rendered ${_renderedChildViewIds.length} children to target "$target"');
     } catch (e, stackTrace) {
       print('❌ DCFPortal: Error rendering children to target $target: $e');
-      if (kDebugMode) {
-        print('Stack trace: $stackTrace');
-      }
+      if (kDebugMode && _verbose) print('Stack trace: $stackTrace');
     }
   }
   
@@ -283,9 +257,7 @@ class DCFPortal extends DCFStatefulComponent {
         return;
       }
       
-      if (kDebugMode) {
-        print('🧹 DCFPortal: Cleaning up ${_renderedChildViewIds.length} children from target "$target"');
-      }
+      if (kDebugMode && _verbose) print('🧹 DCFPortal: Cleaning up ${_renderedChildViewIds.length} children from target "$target"');
       
       final engine = DCFEngineAPI.instance;
       await engine.isReady;
@@ -296,25 +268,16 @@ class DCFPortal extends DCFStatefulComponent {
       // Delete all rendered children
       for (final viewId in _renderedChildViewIds) {
         await engine.deleteView(viewId);
-        if (kDebugMode) {
-          print('🗑️ DCFPortal: Deleted child view: $viewId');
-        }
+        if (kDebugMode && _verbose) print('🗑️ DCFPortal: Deleted child view: $viewId');
       }
       
-      // Commit batch update
       await engine.commitBatchUpdate();
-      
-      // Clear our tracking list
       _renderedChildViewIds.clear();
       
-      if (kDebugMode) {
-        print('✅ DCFPortal: Cleanup complete');
-      }
+      if (kDebugMode && _verbose) print('✅ DCFPortal: Cleanup complete');
     } catch (e, stackTrace) {
       print('❌ DCFPortal: Error cleaning up children: $e');
-      if (kDebugMode) {
-        print('Stack trace: $stackTrace');
-      }
+      if (kDebugMode && _verbose) print('Stack trace: $stackTrace');
       // Clear list even on error to prevent stale references
       _renderedChildViewIds.clear();
     }

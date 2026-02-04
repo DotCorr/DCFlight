@@ -12,31 +12,33 @@ import 'package:dcflight/framework/renderer/interface/dcflight_jni_wrapper.dart'
 
 class HotRestartDetector {
   static const String _tag = 'HotRestartDetector';
-  
+  /// Set to true to log hot restart detection/cleanup. Errors are always printed.
+  static bool verboseLogging = false;
+
   static Future<bool> detectAndCleanup() async {
     if (!kDebugMode) {
       return false;
     }
     
     try {
-      print('$_tag: Checking for hot restart...');
+      if (verboseLogging) print('$_tag: Checking for hot restart...');
       String? sessionToken;
       
       if (Platform.isIOS) {
         final result = await DCFlightFfiWrapper.getSessionToken();
         sessionToken = result as String?;
-        print('$_tag: iOS session token: $sessionToken');
+        if (verboseLogging) print('$_tag: iOS session token: $sessionToken');
       } else if (Platform.isAndroid) {
         sessionToken = await DCFlightJniWrapper.getSessionToken();
-        print('$_tag: Android session token: $sessionToken');
+        if (verboseLogging) print('$_tag: Android session token: $sessionToken');
       }
       
       if (sessionToken != null) {
-        print('$_tag: Hot restart detected! Session token exists: $sessionToken');
+        if (verboseLogging) print('$_tag: Hot restart detected! Session token exists: $sessionToken');
         await _cleanupNativeViews();
         return true;
       } else {
-        print('$_tag: First launch - no session token found');
+        if (verboseLogging) print('$_tag: First launch - no session token found');
         await _createSessionToken();
         return false;
       }
@@ -49,13 +51,13 @@ class HotRestartDetector {
   
   static Future<void> _createSessionToken() async {
     try {
-      print('$_tag: Creating session token...');
+      if (verboseLogging) print('$_tag: Creating session token...');
       if (Platform.isIOS) {
         final token = await DCFlightFfiWrapper.createSessionToken();
-        print('$_tag: Created iOS session token: $token');
+        if (verboseLogging) print('$_tag: Created iOS session token: $token');
       } else if (Platform.isAndroid) {
         final token = await DCFlightJniWrapper.createSessionToken();
-        print('$_tag: Created Android session token: $token');
+        if (verboseLogging) print('$_tag: Created Android session token: $token');
       }
     } catch (e, stackTrace) {
       print('❌ HotRestartDetector: Error creating session token: $e');
@@ -65,13 +67,13 @@ class HotRestartDetector {
   
   static Future<void> _cleanupNativeViews() async {
     try {
-      print('$_tag: Starting native views cleanup...');
+      if (verboseLogging) print('$_tag: Starting native views cleanup...');
       if (Platform.isIOS) {
         await DCFlightFfiWrapper.cleanupViews();
-        print('✅ HotRestartDetector: iOS cleanup completed');
+        if (verboseLogging) print('✅ HotRestartDetector: iOS cleanup completed');
       } else if (Platform.isAndroid) {
         await DCFlightJniWrapper.cleanupViews();
-        print('✅ HotRestartDetector: Android cleanup completed');
+        if (verboseLogging) print('✅ HotRestartDetector: Android cleanup completed');
       }
     } catch (e, stackTrace) {
       print('❌ HotRestartDetector: Error during cleanup: $e');

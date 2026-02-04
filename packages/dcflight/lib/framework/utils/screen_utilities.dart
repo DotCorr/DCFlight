@@ -12,6 +12,11 @@ import 'package:dcflight/framework/utils/system_state_manager.dart';
 import 'package:dcflight/framework/renderer/interface/dcflight_ffi_wrapper.dart';
 import 'package:dcflight/framework/renderer/interface/dcflight_jni_wrapper.dart' show DCFlightJniWrapper;
 
+/// Epsilon for dimension/safe area comparisons to avoid re-notifying on float noise
+const double _kDimensionEpsilon = 0.5;
+
+bool _dimensionChanged(double a, double b) => (a - b).abs() > _kDimensionEpsilon;
+
 /// Utility class for handling screen dimensions and orientation changes
 class ScreenUtilities {
   /// Singleton instance
@@ -80,12 +85,15 @@ class ScreenUtilities {
     final newSafeAreaBottom = dimensions['safeAreaBottom'] as double? ?? 0.0;
     final newSafeAreaLeft = dimensions['safeAreaLeft'] as double? ?? 0.0;
     final newSafeAreaRight = dimensions['safeAreaRight'] as double? ?? 0.0;
-    final safeAreaChanged = newSafeAreaTop != _safeAreaTop || 
-                           newSafeAreaBottom != _safeAreaBottom ||
-                           newSafeAreaLeft != _safeAreaLeft ||
-                           newSafeAreaRight != _safeAreaRight;
+    final safeAreaChanged = _dimensionChanged(newSafeAreaTop, _safeAreaTop) ||
+                           _dimensionChanged(newSafeAreaBottom, _safeAreaBottom) ||
+                           _dimensionChanged(newSafeAreaLeft, _safeAreaLeft) ||
+                           _dimensionChanged(newSafeAreaRight, _safeAreaRight);
+    final sizeChanged = _dimensionChanged(newWidth, _screenWidth) ||
+                        _dimensionChanged(newHeight, _screenHeight);
+    final fontScaleChanged = _dimensionChanged(newFontScale, oldFontScale);
 
-    if (newWidth != _screenWidth || newHeight != _screenHeight) {
+    if (sizeChanged) {
       _previousWidth = _screenWidth;
       _previousHeight = _screenHeight;
 
@@ -105,9 +113,8 @@ class ScreenUtilities {
           name: 'ScreenUtilities');
 
       _notifyDimensionChangeListeners();
-    } else if (oldFontScale != newFontScale || safeAreaChanged) {
-      // Font scale or safe area changed without dimension change
-      final fontScaleChanged = oldFontScale != newFontScale;
+    } else if (fontScaleChanged || safeAreaChanged) {
+      // Font scale or safe area changed without size change
       
       _fontScale = newFontScale;
       _safeAreaTop = newSafeAreaTop;
@@ -149,19 +156,16 @@ class ScreenUtilities {
     }
   }
 
-  /// Refresh dimensions from native side via FFI/JNI
-  /// Includes retry logic to handle cases where native isn't ready yet
-  /// During hot restart, native side may need more time to initialize
+  /// Refresh dimensions from native side via FFI/JNI.
+  /// Single retry; on failure keep existing values (dimension callback may have already delivered).
   Future<void> refreshDimensions() async {
-    const maxRetries = 5; // Increased from 3 to 5 for hot restart scenarios
-    const retryDelays = [100, 200, 400, 600, 800]; // milliseconds - longer delays for later attempts
+    const maxRetries = 2;
+    const retryDelayMs = 100;
     
     for (int attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        // On first attempt, add a small delay to allow native side to initialize
-        // This is especially important during hot restart
-        if (attempt == 0) {
-          await Future.delayed(const Duration(milliseconds: 50));
+        if (attempt > 0) {
+          await Future.delayed(const Duration(milliseconds: retryDelayMs));
         }
         
       Map<String, dynamic>? result;
@@ -186,48 +190,23 @@ class ScreenUtilities {
         _safeAreaLeft = result['safeAreaLeft'] as double? ?? 0.0;
         _safeAreaRight = result['safeAreaRight'] as double? ?? 0.0;
 
-        developer.log(
-              'Screen dimensions refreshed: $_screenWidth x $_screenHeight, safeAreaTop: $_safeAreaTop',
-            name: 'ScreenUtilities');
-
         if (_previousWidth != _screenWidth || _previousHeight != _screenHeight) {
           _notifyDimensionChangeListeners();
         }
           return; // Success - exit retry loop
         } else {
-          // Result is null - retry if we have attempts left
-          if (attempt < maxRetries - 1) {
-            developer.log(
-                'Failed to refresh screen dimensions: result is null (attempt ${attempt + 1}/$maxRetries), retrying in ${retryDelays[attempt]}ms...',
-                name: 'ScreenUtilities');
-            await Future.delayed(Duration(milliseconds: retryDelays[attempt]));
-            continue;
-          } else {
-            developer.log(
-                'Failed to refresh screen dimensions: result is null after $maxRetries attempts',
-                name: 'ScreenUtilities');
-          }
+          if (attempt < maxRetries - 1) continue;
+          // Native not ready yet (e.g. right after hot restart); skip silently.
         }
       } catch (e) {
-        // Error occurred - retry if we have attempts left
-        if (attempt < maxRetries - 1) {
-          developer.log(
-              'Failed to refresh screen dimensions: $e (attempt ${attempt + 1}/$maxRetries), retrying in ${retryDelays[attempt]}ms...',
-              name: 'ScreenUtilities');
-          await Future.delayed(Duration(milliseconds: retryDelays[attempt]));
-          continue;
-        } else {
-          developer.log('Failed to refresh screen dimensions after $maxRetries attempts: $e', name: 'ScreenUtilities');
-        }
+        if (attempt < maxRetries - 1) continue;
+        // Skip silently; set verboseLogging to log.
       }
     }
-    
-    // If we get here, all retries failed - use fallback values
-      if (_screenWidth == 0 || _screenHeight == 0) {
-      developer.log('Using fallback screen dimensions: 400x800', name: 'ScreenUtilities');
-        _screenWidth = 400;
-        _screenHeight = 800;
-        _scaleFactor = 2.0;
+    if (_screenWidth == 0 || _screenHeight == 0) {
+      _screenWidth = 400;
+      _screenHeight = 800;
+      _scaleFactor = 2.0;
     }
   }
 

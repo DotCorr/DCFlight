@@ -37,6 +37,11 @@ class StateHook<T> extends Hook {
       _scheduleUpdate();
     }
   }
+
+  /// Update the schedule function (used during reconciliation)
+  void updateScheduleUpdate(Function() newSchedule) {
+    _scheduleUpdate = newSchedule;
+  }
   
   @override
   void dispose() {
