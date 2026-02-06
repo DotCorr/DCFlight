@@ -78,10 +78,8 @@ class ReactiveSignal<T> extends Hook {
   T call() {
     // Track this signal as a dependency if we're in a reactive context
     final context = SignalTrackingContext.current;
-    print('  🔎 Signal.call() - context: ${context != null ? "EXISTS" : "NULL"}');
     if (context != null) {
       context.addDependency(this);
-      print('  🔎 Signal added as dependency to context');
     }
     return _value;
   }

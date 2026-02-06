@@ -200,10 +200,6 @@ abstract class DCFStatefulComponent extends DCFComponentNode {
       // - If used in prop → engine subscribes view
       // - If used in structure → engine subscribes component
       _hooks.add(sig as Hook);
-      
-      if (name != null) {
-        print('🎯 Signal created: $name = $initialValue');
-      }
     }
 
     final sig = _hooks[_hookIndex] as ReactiveSignal<T>;
