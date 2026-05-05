@@ -73,19 +73,33 @@ export async function listDevices(): Promise<Device[]> {
   return devices;
 }
 
-export async function takeScreenshot(deviceId: string, platform: 'ios' | 'android'): Promise<string> {
-  const tmpPath = `/tmp/dcfinspector_screenshot_${Date.now()}.png`;
+export async function takeScreenshot(deviceId: string, platform: 'ios' | 'android', quality: number = 80): Promise<string> {
+  const tmpPng = `/tmp/dcfinspector_screenshot_${Date.now()}.png`;
+  const tmpJpg = `/tmp/dcfinspector_screenshot_${Date.now()}.jpg`;
 
   if (platform === 'ios') {
-    await execAsync(`xcrun simctl io "${deviceId}" screenshot "${tmpPath}"`);
+    await execAsync(`xcrun simctl io "${deviceId}" screenshot "${tmpPng}"`);
   } else {
     const adbPath = '/opt/homebrew/bin/adb';
-    await execAsync(`${adbPath} -s "${deviceId}" exec-out screencap -p > "${tmpPath}"`);
+    const deviceTmpPath = '/sdcard/dcfinspector_ss.png';
+    // Capture to device storage then pull — avoids exec-out buffer limits
+    await execAsync(`${adbPath} -s "${deviceId}" shell screencap -p "${deviceTmpPath}"`);
+    await execAsync(`${adbPath} -s "${deviceId}" pull "${deviceTmpPath}" "${tmpPng}"`, { maxBuffer: 50 * 1024 * 1024 });
+    await execAsync(`${adbPath} -s "${deviceId}" shell rm -f "${deviceTmpPath}"`);
   }
 
-  const { stdout } = await execAsync(`base64 < "${tmpPath}"`);
-  await execAsync(`rm -f "${tmpPath}"`);
-  return stdout.trim();
+  // Convert to JPEG for drastically smaller transfer size (PNG → JPEG 80%)
+  try {
+    await execAsync(`sips -s format jpeg -s formatOptions ${quality} "${tmpPng}" --out "${tmpJpg}"`);
+    const { stdout } = await execAsync(`base64 < "${tmpJpg}"`, { maxBuffer: 50 * 1024 * 1024 });
+    await execAsync(`rm -f "${tmpPng}" "${tmpJpg}"`);
+    return stdout.trim();
+  } catch {
+    // sips not available; fall back to PNG
+    const { stdout } = await execAsync(`base64 < "${tmpPng}"`, { maxBuffer: 50 * 1024 * 1024 });
+    await execAsync(`rm -f "${tmpPng}"`);
+    return stdout.trim();
+  }
 }
 
 export async function tap(deviceId: string, platform: 'ios' | 'android', x: number, y: number): Promise<void> {

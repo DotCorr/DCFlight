@@ -31,10 +31,10 @@ app.get('/api/devices', async (_req: Request, res: Response) => {
 });
 
 app.post('/api/screenshot', async (req: Request, res: Response) => {
-  const { deviceId, platform } = req.body as { deviceId: string; platform: 'ios' | 'android' };
+  const { deviceId, platform, quality } = req.body as { deviceId: string; platform: 'ios' | 'android'; quality?: number };
   try {
-    const base64 = await takeScreenshot(deviceId, platform);
-    res.json({ screenshot: base64 });
+    const base64 = await takeScreenshot(deviceId, platform, quality ?? 80);
+    res.json({ screenshot: base64, mimeType: 'image/jpeg' });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
