@@ -16,9 +16,6 @@ func dcflight_send_screen_dimensions_changed(_ dimensionsJson: UnsafePointer<CCh
 @objc public class DCFScreenUtilities: NSObject {
     @objc public static let shared = DCFScreenUtilities()
     
-    private var flutterBinaryMessenger: FlutterBinaryMessenger?
-    private var methodChannel: FlutterMethodChannel?
-    
     private var _screenWidth: CGFloat = 0
     private var _screenHeight: CGFloat = 0
     private var _safeAreaTop: CGFloat = 0
@@ -101,14 +98,32 @@ func dcflight_send_screen_dimensions_changed(_ dimensionsJson: UnsafePointer<CCh
     
     func initialize(with binaryMessenger: FlutterBinaryMessenger?) {
         // NO MethodChannel - all communication uses direct FFI callbacks
-        // No async needed - FFI callbacks can be called from any thread
         updateScreenDimensions()
         
-        // CRITICAL: Always notify Dart of initial dimensions (even if unchanged)
-        // This ensures safeAreaTop and other values are available immediately
+        // Notify Dart of initial dimensions
         notifyDartOfDimensionChange()
         
+        // CRITICAL: window.safeAreaInsets is 0 at early init (before first layout pass).
+        // Re-check after main queue drains to get real safe area values.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+            self?.updateScreenDimensions()
+            self?.notifyDartOfDimensionChange()
+        }
+        
+        // Re-check when app becomes active (covers cold start + resume)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appDidBecomeActive),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
+        
         print("✅ DCFScreenUtilities: Initialized - using FFI callbacks instead of MethodChannel")
+    }
+    
+    @objc private func appDidBecomeActive() {
+        updateScreenDimensions()
+        notifyDartOfDimensionChange()
     }
     
     func updateScreenDimensions(width: CGFloat? = nil, height: CGFloat? = nil) {
@@ -205,7 +220,17 @@ func dcflight_send_screen_dimensions_changed(_ dimensionsJson: UnsafePointer<CCh
         
         // Use status bar height as fallback for safe area top if not available
         if safeAreaTop == 0 {
-            safeAreaTop = UIApplication.shared.statusBarFrame.height
+            // UIApplication.statusBarFrame is deprecated on iOS 13+.
+            // Use UIWindowScene.statusBarManager on iOS 13+ for accurate height.
+            if #available(iOS 13.0, *) {
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                    safeAreaTop = windowScene.statusBarManager?.statusBarFrame.height ?? 44
+                } else {
+                    safeAreaTop = 44 // Safe default for phones with notch/dynamic island
+                }
+            } else {
+                safeAreaTop = UIApplication.shared.statusBarFrame.height
+            }
         }
         
         return [

@@ -22,7 +22,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.dotcorr.dcflight.layout.DCFLayoutManager
 import io.flutter.plugin.common.BinaryMessenger
-import io.flutter.plugin.common.MethodChannel
 import kotlin.math.roundToInt
 
 /**
@@ -31,7 +30,6 @@ import kotlin.math.roundToInt
  */
 object DCFScreenUtilities {
     private const val TAG = "DCFScreenUtilities"
-    private const val CHANNEL_NAME = "com.dcmaui.screen_dimensions"
 
     private var context: Context? = null
     private var activity: Activity? = null
@@ -89,6 +87,13 @@ object DCFScreenUtilities {
             }
         }
         Log.d(TAG, "Root view set for safe area calculations: ${view != null}, activity: ${activity != null}")
+        
+        // CRITICAL: Now that we have the root view, notify Dart with real safe area insets.
+        // The initial notifyDimensionChange() in initialize() may have sent safeAreaTop=0
+        // because WindowInsets weren't available yet.
+        view?.post {
+            notifyDimensionChange()
+        }
     }
 
     /**
@@ -452,11 +457,6 @@ object DCFScreenUtilities {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to notify dimension change via JNI", e)
         }
-        
-        /* methodChannel?.invokeMethod(
-            "onDimensionChange",
-            getScreenDimensions()
-        )
     }
 
     /**
