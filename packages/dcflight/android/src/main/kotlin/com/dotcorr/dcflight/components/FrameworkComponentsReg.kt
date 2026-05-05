@@ -8,7 +8,6 @@
 package com.dotcorr.dcflight.components
 
 import android.util.Log
-import com.dotcorr.dcflight.components.DCFFlutterWidgetComponent
 
 /**
  * Registration class for DCFlight framework components
@@ -21,10 +20,6 @@ object FrameworkComponentsReg {
      */
     @JvmStatic
     fun registerComponents() {
-        // Register FlutterWidget component for embedding Flutter widgets
-        DCFComponentRegistry.shared.registerComponent("FlutterWidget", DCFFlutterWidgetComponent::class.java)
-        Log.d(TAG, "✅ Registered FlutterWidget component")
-        
         // Register core framework components
         DCFComponentRegistry.shared.registerComponent("View", DCFViewComponent::class.java)
         Log.d(TAG, "✅ Registered View component")

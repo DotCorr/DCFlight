@@ -9,10 +9,11 @@ output:
     library_name: dcflight_jni
 
 source_path:
+  - 'android/src/main/java'
   - 'android/src/main/kotlin'
 
 classes:
-  - 'com.dotcorr.dcflight.bridge.DCFlightJni'
+  - 'com.dotcorr.dcflight.bridge.DCFlightJniBindings'
 
 
 android_sdk_config:

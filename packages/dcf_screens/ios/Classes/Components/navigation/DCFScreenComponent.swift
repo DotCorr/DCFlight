@@ -1194,20 +1194,17 @@ class DCFScreenComponent: NSObject, DCFComponent {
     private func loadSVGForHeaderAction(
         iconName: String, packageName: String, iconConfig: [String: Any]
     ) -> UIImage? {
-        guard
-            let key = sharedFlutterViewController?.lookupKey(
-                forAsset: "assets/icons/\(iconName).svg",
-                fromPackage: packageName
-            )
-        else {
+        guard let path = DCFAssetLookup.path(
+            forAsset: "assets/icons/\(iconName).svg",
+            fromPackage: packageName
+        ) else {
             print(
                 "❌ DCFScreenComponent: Could not find asset key for \(iconName) in package \(packageName)"
             )
             return nil
         }
 
-        let mainBundle = Bundle.main
-        guard let path = mainBundle.path(forResource: key, ofType: nil), !path.isEmpty else {
+        guard !path.isEmpty else {
             print(
                 "❌ DCFScreenComponent: Could not find file path for \(iconName) in package \(packageName)"
             )
@@ -1218,9 +1215,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
     }
 
     private func loadSVGFromAssetPath(_ assetPath: String, iconConfig: [String: Any]) -> UIImage? {
-        let key = sharedFlutterViewController?.lookupKey(forAsset: assetPath)
-        let mainBundle = Bundle.main
-        guard let path = mainBundle.path(forResource: key, ofType: nil) else {
+        guard let path = DCFAssetLookup.path(forAsset: assetPath) else {
             print("❌ DCFScreenComponent: Could not find SVG at asset path: \(assetPath)")
             return nil
         }

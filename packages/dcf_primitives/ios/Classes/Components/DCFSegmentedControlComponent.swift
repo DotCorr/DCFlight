@@ -180,11 +180,7 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
     
     private func loadIconImage(_ asset: String) -> UIImage? {
         
-        let key = sharedFlutterViewController?.lookupKey(forAsset: asset)
-        let mainBundle = Bundle.main
-        
-        if let assetKey = key,
-           let path = mainBundle.path(forResource: assetKey, ofType: nil),
+        if let path = DCFAssetLookup.path(forAsset: asset),
            let image = UIImage(contentsOfFile: path) {
             return image
         }

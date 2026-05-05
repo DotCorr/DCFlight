@@ -32,11 +32,13 @@ class SystemStateManager {
   /// 
   /// Parameters:
   /// - [fontScale]: Set to true if font scale changed
+  /// - [layoutMetrics]: Set to true if screen size or safe area changed
   /// - [language]: Set to true if language/locale changed
   /// - [theme]: Set to true if theme/brightness changed
   /// - [accessibility]: Set to true if accessibility settings changed
   static void onSystemChange({
     bool fontScale = false,
+    bool layoutMetrics = false,
     bool language = false,
     bool theme = false,
     bool accessibility = false,
@@ -46,6 +48,7 @@ class SystemStateManager {
     // Log the change type for debugging
     final changeTypes = <String>[];
     if (fontScale) changeTypes.add('fontScale');
+    if (layoutMetrics) changeTypes.add('layoutMetrics');
     if (language) changeTypes.add('language');
     if (theme) changeTypes.add('theme');
     if (accessibility) changeTypes.add('accessibility');

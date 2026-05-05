@@ -129,9 +129,8 @@ func dcflight_send_screen_dimensions_changed(_ dimensionsJson: UnsafePointer<CCh
     func updateScreenDimensions(width: CGFloat? = nil, height: CGFloat? = nil) {
         let oldWidth = _screenWidth
         let oldHeight = _screenHeight
-        
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let window = windowScene.windows.first {
+
+        if let window = resolveBestWindow() {
             
             _screenWidth = width ?? window.bounds.width
             _screenHeight = height ?? window.bounds.height
@@ -164,6 +163,31 @@ func dcflight_send_screen_dimensions_changed(_ dimensionsJson: UnsafePointer<CCh
             
             notifyDartOfDimensionChange()
         }
+    }
+
+    private func resolveBestWindow() -> UIWindow? {
+        if #available(iOS 13.0, *) {
+            let scenes = UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .filter { $0.activationState == .foregroundActive || $0.activationState == .foregroundInactive }
+
+            for scene in scenes {
+                if let keyWindow = scene.windows.first(where: { $0.isKeyWindow }) {
+                    return keyWindow
+                }
+            }
+
+            // Fallback: pick the largest visible window in active scenes.
+            let candidate = scenes
+                .flatMap { $0.windows }
+                .filter { !$0.isHidden }
+                .max(by: { $0.bounds.size.height * $0.bounds.size.width < $1.bounds.size.height * $1.bounds.size.width })
+            if let candidate {
+                return candidate
+            }
+        }
+
+        return UIApplication.shared.windows.first(where: { $0.isKeyWindow }) ?? UIApplication.shared.windows.first
     }
     
     func addDimensionChangeListener(_ listener: @escaping () -> Void) {

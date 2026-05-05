@@ -70,10 +70,13 @@ class EventRegistry {
   /// 
   /// Returns true if event was handled, false if not registered
   bool handleEvent(int viewId, String eventType, Map<String, dynamic> eventData) {
+    print('🎯 EventRegistry.handleEvent: viewId=$viewId, eventType=$eventType, handlers=${_handlers[viewId]?.keys.toList()}');
+    
     final handler = _handlers[viewId]?[eventType];
     
     if (handler != null) {
       try {
+        print('✅ EventRegistry: Found handler for $eventType, calling it');
         // Call handler with event data if it accepts parameters, otherwise call without
         if (handler is Function(Map<String, dynamic>)) {
           handler(eventData);
@@ -90,6 +93,7 @@ class EventRegistry {
       }
     }
 
+    print('❌ EventRegistry: No handler for view $viewId, event $eventType');
     // No view-specific handler (e.g. view was torn down). Ignore to avoid
     // infinite recursion (a "global" handler that re-enters handleEvent causes stack overflow).
     return false;

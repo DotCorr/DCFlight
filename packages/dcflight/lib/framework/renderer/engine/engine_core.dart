@@ -15,8 +15,7 @@ import '../../../src/components/component_node.dart';
 import '../../../src/components/component.dart';
 import '../../../src/components/dcf_element.dart';
 import '../../../src/components/fragment.dart';
-import '../../utils/widget_to_dcf_adaptor.dart' show WidgetToDCFAdaptor, widgetRegistry;
-import '../../utils/flutter_widget_renderer.dart';
+import '../../utils/widget_to_dcf_adaptor.dart' show WidgetToDCFAdaptor;
 import '../../constants/style/style_wrapper_util.dart';
 import 'reactive_props.dart';
 
@@ -368,6 +367,9 @@ class Engine {
     }
 
     final eventTypes = element.eventTypes;
+    if (element.type == 'TouchableOpacity') {
+      print('🔔 TouchableOpacity[$viewId] eventTypes: $eventTypes, elementProps keys: ${element.elementProps.keys.toList()}');
+    }
     if (eventTypes.isNotEmpty) {
       await _bridge.addEventListeners(viewId, eventTypes);
       final handlers = element.eventHandlers;
@@ -412,11 +414,7 @@ class Engine {
   Future<void> forceFullTreeReRender() async {
     await isReady;
     if (rootComponent == null) return;
-    try {
-      FlutterWidgetRenderer.instance.clearAllForHotRestart();
-      WidgetToDCFAdaptor.clearAllForHotRestart();
-      widgetRegistry.clearAll();
-    } catch (_) {}
+    WidgetToDCFAdaptor.clearAllForHotRestart();
     _statefulComponents.clear();
     _nodesByViewId.clear();
     _pendingUpdates.clear();

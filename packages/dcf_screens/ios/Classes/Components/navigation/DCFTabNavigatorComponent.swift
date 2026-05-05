@@ -250,9 +250,7 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
                 return false
             }
             
-            let key = sharedFlutterViewController?.lookupKey(forAsset: assetPath)
-            let mainBundle = Bundle.main
-            let path = mainBundle.path(forResource: key, ofType: nil)
+            let path = DCFAssetLookup.path(forAsset: assetPath)
             
             return loadSVGForTab(from: path ?? "", for: viewController, iconConfig: iconConfig)
             
@@ -262,23 +260,20 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
                 return false
             }
             
-            guard let key = sharedFlutterViewController?.lookupKey(
+            guard let path = DCFAssetLookup.path(
                 forAsset: "assets/icons/\(iconName).svg",
                 fromPackage: packageName
             ) else {
                 print("❌ DCFTabNavigatorComponent: Could not find asset key for \(iconName) in package \(packageName)")
                 return false
             }
-            
-            let mainBundle = Bundle.main
-            let path = mainBundle.path(forResource: key, ofType: nil)
-            
-            if path == nil || path!.isEmpty {
+
+            if path.isEmpty {
                 print("❌ DCFTabNavigatorComponent: Could not find file path for \(iconName) in package \(packageName)")
                 return false
             }
-            
-            return loadSVGForTab(from: path!, for: viewController, iconConfig: iconConfig)
+
+            return loadSVGForTab(from: path, for: viewController, iconConfig: iconConfig)
             
         default:
             viewController.tabBarItem.image = UIImage(systemName: "circle")

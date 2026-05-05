@@ -104,8 +104,10 @@ export async function takeScreenshot(deviceId: string, platform: 'ios' | 'androi
 
 export async function tap(deviceId: string, platform: 'ios' | 'android', x: number, y: number): Promise<void> {
   if (platform === 'ios') {
-    // xcrun simctl io tap requires Xcode 15+; fall back to xdotool-style via simctl
-    await execAsync(`xcrun simctl io "${deviceId}" tap ${Math.round(x)} ${Math.round(y)}`);
+    throw new Error(
+      'iOS tap automation is not supported by simctl on this Xcode toolchain. ' +
+      'Use Android tap automation, or add an iOS gesture driver (e.g. applesimutils / XCTest UI runner).'
+    );
   } else {
     const adbPath = '/opt/homebrew/bin/adb';
     await execAsync(`${adbPath} -s "${deviceId}" shell input tap ${Math.round(x)} ${Math.round(y)}`);

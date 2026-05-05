@@ -64,7 +64,10 @@ class DCMauiEventMethodHandler {
 
     internal fun sendEventToFlutter(viewId: Int, eventName: String, eventData: Map<String, Any?>) {
         try {
-            com.dotcorr.dcflight.bridge.DCFlightJni.sendEvent(viewId, eventName, eventData)
+            val sanitizedEventData = eventData.entries
+                .filter { it.value != null }
+                .associate { (key, value) -> key to value as Any }
+            com.dotcorr.dcflight.bridge.DCFlightJni.sendEvent(viewId, eventName, sanitizedEventData)
         } catch (e: Exception) {
             Log.e(TAG, "Error sending event via JNI: ${e.message}", e)
         }
@@ -94,7 +97,7 @@ class DCMauiEventMethodHandler {
             remainingEventTypes.remove(normalizedType)
         }
 
-        if (remainingEventTypes.isEmpty) {
+        if (remainingEventTypes.isEmpty()) {
             view.setTag(com.dotcorr.dcflight.components.DCFTags.VIEW_ID_KEY, null)
             view.setTag(com.dotcorr.dcflight.components.DCFTags.EVENT_TYPES_KEY, null)
             view.setTag(com.dotcorr.dcflight.components.DCFTags.EVENT_CALLBACK_KEY, null)

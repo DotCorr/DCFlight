@@ -8,6 +8,7 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:dcflight/framework/utils/system_state_manager.dart';
 import 'package:dcflight/framework/renderer/interface/dcflight_ffi_wrapper.dart';
 import 'package:dcflight/framework/renderer/interface/dcflight_jni_wrapper.dart' show DCFlightJniWrapper;
@@ -79,6 +80,7 @@ class ScreenUtilities {
   void _handleDimensionChange(Map<String, dynamic> dimensions) {
     final newWidth = dimensions['width'] as double? ?? 0.0;
     final newHeight = dimensions['height'] as double? ?? 0.0;
+    final hasValidSize = newWidth > _kDimensionEpsilon && newHeight > _kDimensionEpsilon;
     final oldFontScale = _fontScale;
     final newFontScale = dimensions['fontScale'] as double? ?? 1.0;
     final newSafeAreaTop = dimensions['safeAreaTop'] as double? ?? 0.0;
@@ -93,7 +95,7 @@ class ScreenUtilities {
                         _dimensionChanged(newHeight, _screenHeight);
     final fontScaleChanged = _dimensionChanged(newFontScale, oldFontScale);
 
-    if (sizeChanged) {
+    if (sizeChanged && hasValidSize) {
       _previousWidth = _screenWidth;
       _previousHeight = _screenHeight;
 
@@ -112,7 +114,31 @@ class ScreenUtilities {
           'Screen dimensions changed ($changeType): ${_previousWidth.toInt()}x${_previousHeight.toInt()} → ${_screenWidth.toInt()}x${_screenHeight.toInt()}, safeAreaTop: $_safeAreaTop',
           name: 'ScreenUtilities');
 
+      SystemStateManager.onSystemChange(layoutMetrics: true);
+
       _notifyDimensionChangeListeners();
+    } else if (sizeChanged && !hasValidSize) {
+      // Ignore transient invalid snapshots from native bridge (e.g. 0x0 during relayout).
+      // Keeping the last known good dimensions prevents full-layout collapse.
+      developer.log(
+          'Ignored invalid dimension snapshot from native: ${newWidth.toStringAsFixed(2)}x${newHeight.toStringAsFixed(2)}',
+          name: 'ScreenUtilities');
+
+      if (fontScaleChanged || safeAreaChanged) {
+        _fontScale = newFontScale;
+        _safeAreaTop = newSafeAreaTop;
+        _safeAreaBottom = newSafeAreaBottom;
+        _safeAreaLeft = newSafeAreaLeft;
+        _safeAreaRight = newSafeAreaRight;
+
+        if (safeAreaChanged) {
+          SystemStateManager.onSystemChange(layoutMetrics: true);
+        }
+        if (fontScaleChanged) {
+          SystemStateManager.onSystemChange(fontScale: true);
+        }
+        _notifyDimensionChangeListeners();
+      }
     } else if (fontScaleChanged || safeAreaChanged) {
       // Font scale or safe area changed without size change
       
@@ -125,12 +151,17 @@ class ScreenUtilities {
       developer.log(
           'Safe area or font scale changed: safeAreaTop=$_safeAreaTop, fontScale=$_fontScale',
           name: 'ScreenUtilities');
-      
+
+      // Trigger a root re-render for safe area and font scale changes.
+      if (safeAreaChanged) {
+        SystemStateManager.onSystemChange(layoutMetrics: true);
+      }
+
       // CRITICAL: Notify SystemStateManager if font scale changed
       // This triggers CoreWrapper to re-render, which will cause all components
       // to re-render with new _systemVersion, ensuring font scale changes are reflected
       if (fontScaleChanged) {
-      SystemStateManager.onSystemChange(fontScale: true);
+        SystemStateManager.onSystemChange(fontScale: true);
         developer.log(
             'Font scale changed: $oldFontScale → $newFontScale - triggering app re-render',
             name: 'ScreenUtilities');
@@ -177,11 +208,34 @@ class ScreenUtilities {
       }
       
       if (result != null) {
+        final incomingWidth = result['width'] as double? ?? 0.0;
+        final incomingHeight = result['height'] as double? ?? 0.0;
+        final hasValidSize =
+            incomingWidth > _kDimensionEpsilon && incomingHeight > _kDimensionEpsilon;
+
+        if (!hasValidSize) {
+          if (_screenWidth > _kDimensionEpsilon && _screenHeight > _kDimensionEpsilon) {
+            // Keep existing good values; native can temporarily report 0x0 during transitions.
+            continue;
+          }
+          if (attempt < maxRetries - 1) continue;
+          // Final attempt still invalid and no cached dimensions; fall back below.
+          break;
+        }
+
+        final oldWidth = _screenWidth;
+        final oldHeight = _screenHeight;
+        final oldSafeAreaTop = _safeAreaTop;
+        final oldSafeAreaBottom = _safeAreaBottom;
+        final oldSafeAreaLeft = _safeAreaLeft;
+        final oldSafeAreaRight = _safeAreaRight;
+        final oldFontScale = _fontScale;
+
         _previousWidth = _screenWidth;
         _previousHeight = _screenHeight;
         
-        _screenWidth = result['width'] as double? ?? 0.0;
-        _screenHeight = result['height'] as double? ?? 0.0;
+        _screenWidth = incomingWidth;
+        _screenHeight = incomingHeight;
         _scaleFactor = result['scale'] as double? ?? 1.0;
         _fontScale = result['fontScale'] as double? ?? 1.0;
         _statusBarHeight = result['statusBarHeight'] as double? ?? 0.0;
@@ -190,7 +244,21 @@ class ScreenUtilities {
         _safeAreaLeft = result['safeAreaLeft'] as double? ?? 0.0;
         _safeAreaRight = result['safeAreaRight'] as double? ?? 0.0;
 
-        if (_previousWidth != _screenWidth || _previousHeight != _screenHeight) {
+        final sizeChanged = _dimensionChanged(oldWidth, _screenWidth) ||
+            _dimensionChanged(oldHeight, _screenHeight);
+        final safeAreaChanged = _dimensionChanged(oldSafeAreaTop, _safeAreaTop) ||
+            _dimensionChanged(oldSafeAreaBottom, _safeAreaBottom) ||
+            _dimensionChanged(oldSafeAreaLeft, _safeAreaLeft) ||
+            _dimensionChanged(oldSafeAreaRight, _safeAreaRight);
+        final fontScaleChanged = _dimensionChanged(oldFontScale, _fontScale);
+
+        if (sizeChanged || safeAreaChanged || fontScaleChanged) {
+          if (sizeChanged || safeAreaChanged) {
+            SystemStateManager.onSystemChange(layoutMetrics: true);
+          }
+          if (fontScaleChanged) {
+            SystemStateManager.onSystemChange(fontScale: true);
+          }
           _notifyDimensionChangeListeners();
         }
           return; // Success - exit retry loop
@@ -203,10 +271,19 @@ class ScreenUtilities {
         // Skip silently; set verboseLogging to log.
       }
     }
-    if (_screenWidth == 0 || _screenHeight == 0) {
-      _screenWidth = 400;
-      _screenHeight = 800;
-      _scaleFactor = 2.0;
+    if (_screenWidth <= _kDimensionEpsilon || _screenHeight <= _kDimensionEpsilon) {
+      final view = ui.PlatformDispatcher.instance.views.isNotEmpty
+          ? ui.PlatformDispatcher.instance.views.first
+          : null;
+      if (view != null && view.devicePixelRatio > 0) {
+        _screenWidth = view.physicalSize.width / view.devicePixelRatio;
+        _screenHeight = view.physicalSize.height / view.devicePixelRatio;
+        _scaleFactor = view.devicePixelRatio;
+      } else {
+        _screenWidth = 400;
+        _screenHeight = 800;
+        _scaleFactor = 2.0;
+      }
     }
   }
 
@@ -253,8 +330,16 @@ class ScreenUtilities {
   /// Get scale (alias for scaleFactor, matches React Native's useWindowDimensions)
   double get scale => _scaleFactor;
 
-  /// Get the status bar height
-  double get statusBarHeight => _statusBarHeight;
+  /// Get the status bar height.
+  /// Fallback to Flutter view padding when native status bar height is unavailable.
+  double get statusBarHeight {
+    if (_statusBarHeight > 0) return _statusBarHeight;
+    final view = ui.PlatformDispatcher.instance.views.isNotEmpty
+        ? ui.PlatformDispatcher.instance.views.first
+        : null;
+    if (view == null || view.devicePixelRatio == 0) return 0.0;
+    return view.viewPadding.top / view.devicePixelRatio;
+  }
 
   /// Get a stream of dimension changes
   Stream<void> get dimensionChanges => _dimensionController.stream;
@@ -265,8 +350,26 @@ class ScreenUtilities {
   /// Check if the device is in portrait mode
   bool get isPortrait => !isLandscape;
 
-  /// Get the safe area top inset
-  double get safeAreaTop => _safeAreaTop;
+  /// Get the safe area top inset.
+  /// Fallback order: native safe area -> native status bar -> Flutter view padding -> platform baseline.
+  ///
+  /// The platform baseline prevents nav/status overlap when native telemetry is temporarily 0.
+  double get safeAreaTop {
+    if (_safeAreaTop > 0) return _safeAreaTop;
+    if (_statusBarHeight > 0) return _statusBarHeight;
+
+    final view = ui.PlatformDispatcher.instance.views.isNotEmpty
+        ? ui.PlatformDispatcher.instance.views.first
+        : null;
+    if (view != null && view.devicePixelRatio > 0) {
+      final paddingTop = view.viewPadding.top / view.devicePixelRatio;
+      if (paddingTop > 0) return paddingTop;
+    }
+
+    if (Platform.isIOS) return 47.0;
+    if (Platform.isAndroid) return 24.0;
+    return 0.0;
+  }
 
   /// Get the safe area bottom inset
   double get safeAreaBottom => _safeAreaBottom;

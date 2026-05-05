@@ -17,6 +17,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.util.TypedValue
 import com.dotcorr.dcflight.utils.ColorUtilities
+import com.dotcorr.dcflight.utils.resolveStyleProps
 import com.dotcorr.dcflight.components.DCFTags
 
 /**

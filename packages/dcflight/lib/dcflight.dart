@@ -100,7 +100,6 @@ import 'framework/devtools/hot_restart.dart';
 import 'framework/utils/dcf_logger.dart';
 import 'framework/devtools/hot_reload.dart';
 import 'package:flutter/material.dart';
-import 'framework/utils/flutter_widget_renderer.dart';
 export 'package:equatable/equatable.dart';
 
 /// DCFlight Framework entry points
@@ -128,9 +127,6 @@ class DCFlight {
 
     PluginRegistry.instance.registerPlugin(CorePlugin.instance);
     
-    // Initialize FlutterWidgetRenderer for WidgetToDCFAdaptor support
-    FlutterWidgetRenderer.initialize();
-
     return true;
   }
 

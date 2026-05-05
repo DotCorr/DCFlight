@@ -1,103 +1,78 @@
 ```
-                               ▂▄▓▄▂         
-
-██████╗  ██████╗███████╗██╗     ██╗ ██████╗ ██╗  ██╗████████╗
-██╔══██╗██╔════╝██╔════╝██║     ██║██╔════╝ ██║  ██║╚══██╔══╝
-██║  ██║██║     █████╗  ██║     ██║██║  ███╗███████║   ██║   
-██║  ██║██║     ██╔══╝  ██║     ██║██║   ██║██╔══██║   ██║   
-██████╔╝╚██████╗██║     ███████╗██║╚██████╔╝██║  ██║   ██║   
-╚═════╝  ╚═════╝╚═╝     ╚══════╝╚═╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   
-```
-
 # DCFlight
 
-A cross-platform mobile framework that renders **actual native UI** using a declarative component architecture. Built on the Flutter engine for Dart runtime, DCFlight provides direct native rendering - **no platform views and no absurd abstractions**.
+DCFlight is a native-first mobile UI framework that uses the Flutter engine only for Dart runtime services. Rendering diverges into native views immediately:
 
-[![License: PolyForm Noncommercial](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue.svg)](https://polyformproject.org/licenses/noncommercial/1.0.0/)
+- iOS uses FFI to call the native renderer.
+- Android uses JNI to call the native renderer.
+- The active framework path does not use Flutter method channels for rendering, layout, events, or screen-dimension updates.
 
-## 🚀 What is DCFlight?
+## What It Is
 
-DCFlight is a framework that renders **actual native UI** (UIKit on iOS, Android Views on Android) using a declarative component system written in Dart. It diverges from Flutter's abstraction for UI rendering and renders the root view that DCFlight depends on to render native UI. **No platform views and no absurd abstractions.** As a bonus, you can still render a Flutter Widget by using the `WidgetToDCFAdaptor` without impacting performance.
+DCFlight renders UIKit views on iOS and Android Views on Android from a declarative Dart component tree.
 
-- ✅ **True Native Performance** - Direct native UI rendering, no platform views
-- ✅ **Declarative Components** - Component-based architecture with state management
-- ✅ **Cross-Platform Consistency** - Same code, native on both platforms
-- ✅ **VDOM Reconciliation** - Efficient updates with virtual DOM diffing
-- ✅ **Yoga Layout Engine** - Flexbox-based layout system
-- ✅ **Hot Reload Support** - Fast development iteration
+Current architecture goals:
 
-### Architecture
+- Native view ownership on both platforms
+- Fine-grained reactive updates from Dart
+- Yoga-based layout calculation
+- Direct native bridge calls through FFI/JNI
+- No platform-view embedding layer
+- No mixed Flutter-widget fallback in the supported runtime
 
-DCFlight uses the Flutter engine for the Dart runtime (similar to how React Native uses Hermes), but diverges completely from Flutter's UI rendering. Instead, it renders directly to native views:
+## Current Runtime Model
 
-```
-Dart Components → VDOM Engine → Native Bridge → Native Views (UIKit/Android Views)
-```
-
-**Key Differences:**
-- **Not React**: DCFlight has its own component system and architecture
-- **Native-First**: Direct native rendering, not a web view or abstraction layer
-- **Dart-Based**: Uses Dart for the component layer, not JavaScript
-- **Framework-Managed**: Framework handles component lifecycle and updates
-- **Swappable Bridge**: The communication layer is abstracted and can be replaced with different mechanisms
-
-## 📝 Quick Start
-
-### iOS Setup
-
-```swift
-import dcflight
-
-@main
-@objc class AppDelegate: DCFAppDelegate {
-  override func application(
-    _ application: UIApplication,
-    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
-  ) -> Bool {
-    GeneratedPluginRegistrant.register(with: self)
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
-  }
-}
+```text
+Dart components
+  -> reactive engine
+  -> native bridge interface
+  -> iOS FFI / Android JNI
+  -> UIKit / Android Views
 ```
 
-### Dart Example
+## Architecture View
 
-```dart
-import 'package:dcflight/dcflight.dart';
-import 'package:dcf_primitives/dcf_primitives.dart';
-
-void main() async {
-  DCFlight.setLogLevel(DCFLogLevel.debug);
-
-  await DCFlight.start(app: DCFView(
-    layout: DCFLayout(
-      flex: 1, 
-      justifyContent: YogaJustifyContent.center, 
-      alignItems: YogaAlign.center
-    ),
-    styleSheet: DCFStyleSheet(backgroundColor: DCFColors.blue),
-    children: [
-      DCFText(content: "Hello World ✈️"),
-    ]
-  ));
-}
+```mermaid
+flowchart TD
+    A[Dart Component Tree] --> B[Reactive Engine]
+    B --> C[Bridge Interface]
+    C --> D[iOS FFI]
+    C --> E[Android JNI]
+    D --> F[UIKit Renderer]
+    E --> G[Android View Renderer]
+    F --> H[Screen Metrics Callback]
+    G --> I[Screen Metrics Callback]
+    H --> B
+    I --> B
 ```
 
-## 📦 Packages
+## Current Design Constraints
 
-- **`dcflight`** - Core framework engine, renderer, and bridge
-- **`dcf_primitives`** - Built-in UI primitive components (View, Text, Button, etc.)
-- **`dcf_screens`** - Screen management and navigation
-- **`dcf_reanimated`** - Animation system
-- **`cli`** - Command-line tools for project and module creation
+- Safe-area and screen metrics must trigger app-level rerenders, not only listener callbacks.
+- Animation, layout, and styling have to converge on the same native property/update path.
+- Sidecar bridge paths are treated as architecture debt and removed rather than left dormant.
 
-## 🛠️ CLI Tools
+The old mixed bridge surfaces have been removed from the supported runtime. In particular, the Flutter-widget embedding path and its platform-channel bridge are no longer part of the active framework surface.
 
-Create a new DCFlight app:
+## Workspace Layout
 
-```bash
-dcf create app
-```
+- `packages/dcflight`: core engine and bridge
+- `packages/dcf_primitives`: native UI primitives
+- `packages/dcf_screens`: navigation and screen lifecycle
+- `packages/dcf_reanimated`: animation/worklet layer
+- `cli`: scaffolding tools
+
+## Development Status
+
+- iOS example app builds and runs through the FFI-backed renderer
+- Android runtime is centered on JNI-backed bridge calls
+- Documentation has been consolidated around the current architecture instead of legacy experiments
+
+## Where To Read Next
+
+- `packages/dcflight/ARCHITECTURE.md`
+- `TECHNICAL_ANALYSIS.md`
+- `FRAMEWORK_GUIDELINES.md`
 
 Create a new module:
 

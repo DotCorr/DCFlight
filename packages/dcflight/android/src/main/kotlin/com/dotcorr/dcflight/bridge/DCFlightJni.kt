@@ -14,6 +14,7 @@ import com.dotcorr.dcflight.layout.DCFLayoutManager
 import com.dotcorr.dcflight.layout.YogaShadowTree
 import com.dotcorr.dcflight.layout.ViewRegistry
 import com.dotcorr.dcflight.components.DCFComponentRegistry
+import java.util.concurrent.ConcurrentLinkedQueue
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -25,7 +26,6 @@ import org.json.JSONObject
  *
  * All methods are called from Dart via JNI bindings (no MethodChannel).
  */
-@JvmName("DCFlightJni")
 class DCFlightJni(private val context: Context) {
     
     companion object {
@@ -43,6 +43,7 @@ class DCFlightJni(private val context: Context) {
         
         private var eventCallback: EventCallback? = null
         private var screenDimensionsCallback: ScreenDimensionsCallback? = null
+        private val pendingEvents = ConcurrentLinkedQueue<String>()
         
         @JvmStatic
         fun setEventCallback(callback: EventCallback?) {
@@ -55,14 +56,38 @@ class DCFlightJni(private val context: Context) {
         }
         
         fun sendEvent(viewId: Int, eventType: String, eventData: Map<String, Any>) {
+            Log.d(TAG, "🚀 sendEvent: viewId=$viewId, eventType=$eventType, callbackSet=${eventCallback != null}")
+            val eventDataJson = JSONObject(eventData).toString()
+            val queuedEvent = JSONObject(
+                mapOf(
+                    "viewId" to viewId,
+                    "eventType" to eventType,
+                    "eventDataJson" to eventDataJson,
+                ),
+            ).toString()
+            pendingEvents.add(queuedEvent)
+
             eventCallback?.let { callback ->
                 try {
-                    val eventDataJson = JSONObject(eventData).toString()
+                    Log.d(TAG, "📤 Invoking callback with eventData: ${eventDataJson.take(100)}")
                     callback.onEvent(viewId, eventType, eventDataJson)
+                    Log.d(TAG, "✅ Callback invoked successfully")
                 } catch (e: Exception) {
-                    Log.e(TAG, "Failed to send event via JNI callback", e)
+                    Log.e(TAG, "❌ Failed to send event via JNI callback: ${e.message}", e)
                 }
+            } ?: run {
+                Log.e(TAG, "❌ sendEvent called but eventCallback is NULL!")
             }
+        }
+
+        @JvmStatic
+        fun consumePendingEvents(): String {
+            val eventsArray = JSONArray()
+            while (true) {
+                val eventJson = pendingEvents.poll() ?: break
+                eventsArray.put(JSONObject(eventJson))
+            }
+            return eventsArray.toString()
         }
         
     fun sendScreenDimensionsChanged(dimensions: Map<String, Any>) {

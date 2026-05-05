@@ -592,7 +592,11 @@ class DCFlightNative private constructor() {
                 
                 // CRITICAL: Check if view already has a parent
                 val currentParent = childView.parent
-                if (currentParent != null && currentParent != parentViewGroup) {
+                if (currentParent === parentViewGroup) {
+                    // Ensure deterministic reordering by detaching from current slot first.
+                    // addView(child, index) can throw when the same child is already attached.
+                    parentViewGroup.removeView(childView)
+                } else if (currentParent != null) {
                     Log.d(TAG, "   Child $childId already has parent ${currentParent.javaClass.simpleName}, will be moved")
                     (currentParent as? ViewGroup)?.removeView(childView)
                 }
@@ -621,14 +625,18 @@ class DCFlightNative private constructor() {
             val childrenToRemove = mutableListOf<android.view.View>()
             for (i in 0 until currentChildCount) {
                 val child = parentViewGroup.getChildAt(i)
-                val childId = child.id
-                if (childId != 0 && !childrenIds.contains(childId)) {
+                val childViewId = child.getTag(com.dotcorr.dcflight.components.DCFTags.VIEW_ID_KEY) as? Int
+
+                // Use DCFlight's logical view id instead of Android's native view id.
+                // Android view ids are unrelated to DCFlight ids and can cause stale children to survive.
+                if (childViewId != null && !childrenIds.contains(childViewId)) {
                     childrenToRemove.add(child)
                 }
             }
             for (child in childrenToRemove) {
+                val removedViewId = child.getTag(com.dotcorr.dcflight.components.DCFTags.VIEW_ID_KEY) as? Int
                 parentViewGroup.removeView(child)
-                Log.d(TAG, "   Removed child ${child.id} (no longer in children list)")
+                Log.d(TAG, "   Removed child logicalViewId=$removedViewId (no longer in children list)")
             }
             
             // 🔥 CRITICAL: After setChildren completes, bring absolutely positioned views to front

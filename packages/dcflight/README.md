@@ -1,122 +1,47 @@
 
-# DCFlight
+# dcflight
 
-[![pub package](https://img.shields.io/pub/v/dcf_primitives.svg)](https://pub.com/packages/dcf_primitives)
-[![License: PolyForm Noncommercial](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue.svg)](https://polyformproject.org/licenses/noncommercial/1.0.0/)
+`dcflight` is the core runtime package for DCFlight.
 
-# 🚧 This CLI is Under Development
+## Supported Architecture
 
-## 📌 Key Points
-DCFlight in short is a framework that renders actual native UI. Built on top of the flutter engine(Flutter engine here provides us the dart runtime and some utilities. More like Hermes in react native). As seen below DCFlight:
-``` swift
-import dcflight
+The supported bridge model is now strict:
 
-@main                                                  
-@objc class AppDelegate: DCAppDelegate {
-  override func application(
-    _ application: UIApplication,
-    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
-  ) -> Bool {
-      GeneratedPluginRegistrant.register(with: self)
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
-  }
-}
-```
-It diverges from the flutter abstraction for UI rendering and renders the root view that dcflight depends on to render native UI. No platform views and no absurd abstractions. As a bonus you can still render a flutter Widget by using the ```WidgetToDCFAdaptor``` without impacting performance. 
+- iOS renderer calls go through FFI
+- Android renderer calls go through JNI
+- Native events are sent back through direct callbacks
+- Screen and safe-area updates are delivered through FFI/JNI callbacks
 
+The package no longer treats Flutter-widget embedding as part of the supported runtime architecture. `WidgetToDCFAdaptor` remains only as a disabled compatibility surface that throws if used.
 
-## 🚀 Key Features
+## Rendering Model
 
-- **Native UI Rendering** - Direct native views (no Flutter widgets)
-- **VDOM with React Fiber Features** - Isolate-based parallel reconciliation, incremental rendering, dual trees, effect list
-- **Integer View IDs** - Matching React Native's tag system (0 = root)
-- **Isolate Workers** - 4 worker isolates for parallel reconciliation of heavy trees (50+ nodes)
-- **Unified Component API** - Same code, native iOS and Android
-- **Framework-Managed Lifecycle** - Framework handles component lifecycle
-
-## 📝 Dart Example
-
-```dart
-
-void main() {
-  DCFlight.start(app: DCFGo());
-}
-
-import 'package:dcf_go/app/components/footer.dart';
-import 'package:dcf_go/app/components/user_card.dart';
-import 'package:dcf_go/app/store.dart';
-import 'package:dcf_go/app/components/top_bar.dart';
-import 'package:dcf_primitives/dcf_primitives.dart';
-import 'package:dcflight/dcflight.dart';
-
-class DCFGo extends StatefulComponent {
-  @override
-  VDomNode render() {
-    final globalCounter = useStore(globalCounterState);
-    final counter = useState(0);
-    return Fragment(
-      children: [
-        TopBar(globalCounter: globalCounter, counter: counter),
-        DCFScrollView(
-          showsScrollIndicator: true,
-          style: StyleSheet(backgroundColor: Colors.white),
-          layout: LayoutProps(
-            paddingHorizontal: 20,
-            justifyContent: YogaJustifyContent.spaceBetween,
-            flex: 1,
-            width: "100%",
-            flexDirection: YogaFlexDirection.column,
-          ),
-          children: [
-            UserCard(
-              onPress: () {
-                print("touchable pressed, maybe state woud change");
-                print("counter value: ${counter.value}");
-                print("global counter value: ${globalCounter.state}");
-                counter.setValue(counter.value + 1);
-                globalCounter.setState(globalCounter.state + 1);
-              },
-            ),
-            UserCard(
-              onPress: () {
-                print("touchable pressed, maybe state woud change");
-                print("counter value: ${counter.value}");
-                print("global counter value: ${globalCounter.state}");
-                counter.setValue(counter.value + 1);
-                globalCounter.setState(globalCounter.state + 1);
-              },
-            ),
-            UserCard(
-              onPress: () {
-                print("touchable pressed, maybe state woud change");
-                print("counter value: ${counter.value}");
-                print("global counter value: ${globalCounter.state}");
-                counter.setValue(counter.value + 1);
-                globalCounter.setState(globalCounter.state + 1);
-              },
-            ),
-            UserCard(
-              onPress: () {
-                print("touchable pressed, maybe state woud change");
-                print("counter value: ${counter.value}");
-                print("global counter value: ${globalCounter.state}");
-                counter.setValue(counter.value + 1);
-                globalCounter.setState(globalCounter.state + 1);
-              },
-            ),
-          ],
-        ),
-        GobalStateCounterComp(),
-      ],
-    );
-  }
-}
+```text
+Dart component tree
+  -> reactive engine
+  -> native bridge abstraction
+  -> FFI / JNI
+  -> native views
 ```
 
+## Guarantees
 
-## ☕ Buy Me a Coffee  
+- Native view rendering only
+- No platform-view dependency
+- No method-channel renderer path in the active runtime
+- Hot restart and cleanup coordinated through native bridge wrappers
 
-> **Your support fuels the grind. Every contribution keeps this journey alive.**  
+## Core Responsibilities
+
+- Bridge setup and lifecycle
+- Component tree synchronization
+- Reactive signal-based updates
+- Event propagation from native to Dart
+- Layout synchronization with Yoga
+
+## Important Note
+
+Older documentation and experiments in this repository described mixed bridge approaches and Flutter-widget embedding. Those are not the canonical architecture anymore.
 
 [![Buy Me A Coffee](https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png)](https://coff.ee/squirelboy360)  
 

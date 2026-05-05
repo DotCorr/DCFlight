@@ -75,9 +75,7 @@ class DCFImageComponent: NSObject, DCFComponent {
                 return false
             }
             
-            let key = sharedFlutterViewController?.lookupKey(forAsset: source)
-            let mainBundle = Bundle.main
-            let path = mainBundle.path(forResource: key, ofType: nil)
+            let path = DCFAssetLookup.path(forAsset: source)
             
             if !source.hasPrefix("https://") && !source.hasPrefix("http://") {
                 if let validPath = path {

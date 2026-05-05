@@ -1,163 +1,56 @@
-# DCFlight Architecture: Pure Signals
+# DCFlight Architecture
 
-## One API: `signal()` for Everything
+## Canonical Runtime
 
-DCFlight uses **pure signals** like SolidJS/Angular - the engine automatically optimizes.
+DCFlight uses Flutter for Dart runtime support, then diverges into a native renderer immediately.
 
-```dart
-final count = signal(0);
-final showMenu = signal(false);
-
-DCFView(
-  children: [
-    // Signal in prop → direct native update
-    DCFText(content: () => "Count: ${count()}"),
-    
-    // Signal in structure → smart reconciliation
-    if (showMenu()) Menu(),
-  ],
-)
+```text
+Dart components
+  -> engine / reconciliation layer
+  -> bridge interface
+  -> iOS FFI or Android JNI
+  -> native view tree
 ```
 
-**Developer doesn't think about optimization - engine handles it automatically!**
+## Bridge Rules
 
-## How It Works
+The framework is standardized around these rules:
 
-### Signal in Props → Direct Updates (< 1ms)
-```dart
-DCFText(
-  content: () => "Count: ${count()}",  // Function reads signal
-)
-```
+1. Rendering operations go through FFI on iOS and JNI on Android.
+2. Native events return to Dart through direct callback registration.
+3. Screen dimension changes and safe-area updates are reported through FFI/JNI callbacks.
+4. Mixed platform-channel rendering paths are not part of the supported runtime.
 
-1. Engine calls function during initial render
-2. Tracks: signal was read
-3. Subscribes text view to signal
-4. **`count.set(1)` → `updateView()` directly on text node**
-5. NO component re-render!
+## Engine Behavior
 
-**Performance:** < 1ms latency, 1000s updates/second
+DCFlight uses a reactive engine with two practical update shapes:
 
-### Signal in Structure → Reconciliation (~5ms)
-```dart
-if (showMenu()) Menu()  // Reading signal during render
-```
+- Prop-level signal changes update native nodes directly when possible.
+- Structural changes trigger tree reconciliation and native view synchronization.
 
-1. Signal read during `component.render()`
-2. Component subscribes to signal
-3. **`showMenu.set(true)` → `component.scheduleUpdate()`**
-4. Re-render + smart reconciliation (reuses unchanged views)
+This keeps the developer model declarative while preserving direct native ownership.
 
-**Performance:** ~5-10ms latency, still very fast
+## Native Ownership
 
-## API Reference
+### iOS
 
-### Create Signal
-```dart
-final count = signal(0);
-final name = signal("World");
-```
+- `DCFAppDelegate` boots the Flutter engine and diverges directly into native UI.
+- `DCFlightNative.swift` exposes the renderer to Dart via FFI.
+- `DCFScreenUtilities.swift` reports dimensions and safe-area changes through FFI callbacks.
 
-### Read Signal
-```dart
-// In props (auto-subscribes view)
-content: () => "Count: ${count()}"
+### Android
 
-// In structure (auto-subscribes component)
-if (count() > 10) BigNumber()
+- `DCFFlutterActivity` diverges to the native UI directly.
+- `DCFlightJni.kt` and `DCFlightNative.kt` expose the renderer to Dart through JNI.
+- `DCFScreenUtilities.kt` reports dimensions through JNI callbacks.
 
-// Get value without tracking
-final value = count.value;  // For logging, debugging
-```
+## Removed Runtime Surface
 
-### Update Signal
-```dart
-count.set(5);           // Set directly
-count.update((v) => v + 1);  // Update based on old value
-```
+The framework previously contained a Flutter-widget embedding path. That surface depended on platform channels and a secondary Flutter view/controller. It is no longer part of the supported runtime and has been removed from active registration and initialization.
 
-### Computed Signals
-```dart
-final doubled = computed(() => count() * 2);
-// Auto-updates when count changes
-```
+## Documentation Contract
 
-### Effects
-```dart
-effect(() {
-  print('Count changed to: ${count()}');
-  // Runs automatically when count changes
-});
-```
-
-## Comparison to Other Frameworks
-
-| Framework | API | DCFlight |
-|-----------|-----|----------|
-| **SolidJS** | `createSignal()` | ✅ `signal()` - same! |
-| **Angular** | `signal()` | ✅ `signal()` - same! |
-| **React** | `useState()` | ⚠️ Different (always re-renders) |
-| **Vue** | `ref()` / `reactive()` | ✅ Similar to `signal()` |
-
-## Migration from useState
-
-```dart
-// Old way (still works)
-final count = useState(0);
-count.setState(count.state + 1);
-
-// New way (recommended)
-final count = signal(0);
-count.set(count() + 1);
-```
-
-**`useState` is kept for backward compatibility but just wraps `signal()` internally.**
-
-## Performance Characteristics
-
-### Direct Updates (Signal in Props)
-- **Latency:** < 1ms
-- **Throughput:** 1000s of updates/second  
-- **Memory:** O(1) per signal
-- **Use for:** Text, colors, numbers, animations, user input
-
-### Reconciliation (Signal in Structure)
-- **Latency:** ~5-10ms
-- **Throughput:** 100s of updates/second
-- **Memory:** O(n) for tree nodes
-- **Use for:** Adding/removing children, conditional rendering, navigation
-
-But you don't think about this - engine picks automatically!
-
-## Why This Architecture?
-
-1. **Simple Mental Model**
-   - ONE API: `signal()`
-   - Engine optimizes automatically
-   - No cognitive overhead
-
-2. **Best Performance**
-   - Direct updates when possible
-   - Smart reconciliation when needed
-   - Developer doesn't choose
-
-3. **Industry Standard**
-   - Same as SolidJS
-   - Same as Angular
-   - Proven approach
-
-## Example
-
-```dart
-class MyApp extends DCFStatefulComponent {
-  @override
-  DCFComponentNode render() {
-    // All state is signals
-    final count = signal(0);
-    final name = signal("World");
-    final showDetails = signal(false);
-    
-    // Computed values
+When code and docs disagree, this file is canonical for bridge architecture. Any document that describes method-channel-based rendering or Flutter-widget embedding as part of the runtime is outdated.
     final doubled = computed(() => count() * 2);
     final greeting = computed(() => "Hello, ${name()}!");
     

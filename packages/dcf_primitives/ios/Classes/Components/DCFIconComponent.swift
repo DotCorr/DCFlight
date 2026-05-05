@@ -46,12 +46,13 @@ class DCFIconComponent: NSObject, DCFComponent {
         
         if let iconName = props["name"] as? String, let packageName = props["package"] as? String {
             
-            guard let key = sharedFlutterViewController?.lookupKey(forAsset: "assets/icons/\(iconName).svg", fromPackage: packageName) else {
+            guard let path = DCFAssetLookup.path(
+                forAsset: "assets/icons/\(iconName).svg",
+                fromPackage: packageName
+            ) else {
                 return false
             }
-            let mainBundle = Bundle.main
-            let path = mainBundle.path(forResource: key, ofType: nil)
-            
+
             svgProps["asset"] = path
         } else {
         }

@@ -5,7 +5,7 @@
  * Commercial use requires a license from DotCorr.
  */
 
-package com.dotcorr.todo_app
+package com.dotcorr.dcf_go
 
 import android.os.Bundle
 import com.dotcorr.dcflight.DCFFlutterActivity

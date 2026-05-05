@@ -20,6 +20,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_lints: ^5.0.0
 # setup icon for your app
 # after updating the image_path, run
 # ```flutter pub get dart run icons_launcher:create```

@@ -155,8 +155,7 @@ class DCFWebViewComponent: NSObject, DCFComponent {
             webView.loadHTMLString(source, baseURL: nil)
             
         case "localFile":
-            if let key = sharedFlutterViewController?.lookupKey(forAsset: source),
-               let path = Bundle.main.path(forResource: key, ofType: nil),
+            if let path = DCFAssetLookup.path(forAsset: source),
                let fileURL = URL(string: "file://" + path) {
                 
                 if #available(iOS 9.0, *) {

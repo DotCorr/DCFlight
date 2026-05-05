@@ -15,12 +15,6 @@ class AppRoot extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
     final showExamples = useState<bool>(false);
-    final screenUtils = ScreenUtilities.instance;
-    final safeAreaTop = screenUtils.safeAreaTop;
-
-    // Position button below NavigationBar (which is ~72px tall including safe area)
-    // Use a fixed offset that works on both iOS and Android
-    final buttonTop = safeAreaTop + 72;
 
     return DCFView(layout: DCFLayout(width: '100%', height: '100%'), children: [
       // Content wrapper - this changes when navigating
@@ -284,9 +278,11 @@ class HeroSection extends DCFStatefulComponent {
                     // Typewriter Effect (Worklet-based - runs on UI thread)
                     DCFView(
                       layout: DCFLayout(
+                        width: '100%', // CRITICAL: Constrain width to prevent overflow
                         height: 80, // h-20 = 80px (matches web)
                         justifyContent: DCFJustifyContent.center,
                         marginBottom: 40, // mb-10 = 40px (matches web)
+                        overflow: DCFOverflow.hidden, // Clip content that exceeds bounds
                       ),
                       children: [TypewriterEffectWorklet()],
                     ),
@@ -311,7 +307,6 @@ class HeroSection extends DCFStatefulComponent {
                             borderRadius: 2, // Small radius like web
                           ),
                           onPress: (data) {
-                            print('🔍🔍🔍 Button pressed');
                             showTest.setState(!showTest.state);
                           },
                           children: [
@@ -384,7 +379,7 @@ class TypewriterEffect extends DCFStatefulComponent {
     ];
 
     final index = useState<int>(0);
-    final subIndex = useState<int>(0);
+    final subIndex = useState<int>(1);
     final reverse = useState<bool>(false);
     final blink = useState<bool>(true);
 
@@ -420,6 +415,7 @@ class TypewriterEffect extends DCFStatefulComponent {
       if (currentSubIndex == 0 && isReversing) {
         reverse.setState(false);
         index.setState((index.state + 1) % words.length);
+        subIndex.setState(1);
         // Don't set timer here - let the effect re-run with new state
         return () {};
       }
@@ -528,8 +524,9 @@ String typewriterWorklet(
 
   if (relativeTime < wordTypeTime) {
     // Typing phase
-    int charIndex = (relativeTime / (typeSpeed / 1000.0)).floor();
-    return currentWord.substring(0, math.min(charIndex, currentWord.length));
+    int charIndex = (relativeTime / (typeSpeed / 1000.0)).floor() + 1;
+    int visibleChars = math.max(1, math.min(charIndex, currentWord.length));
+    return currentWord.substring(0, visibleChars);
   } else if (relativeTime < wordTypeTime + wordPauseTime) {
     // Pause phase - show full word
     return currentWord;
@@ -538,7 +535,7 @@ String typewriterWorklet(
     double deleteStartTime = wordTypeTime + wordPauseTime;
     double deleteElapsed = relativeTime - deleteStartTime;
     int charsToDelete = (deleteElapsed / (deleteSpeed / 1000.0)).floor();
-    int remainingChars = math.max(0, currentWord.length - charsToDelete);
+    int remainingChars = math.max(1, currentWord.length - charsToDelete);
     return currentWord.substring(
       0,
       math.min(remainingChars, currentWord.length),
@@ -557,9 +554,12 @@ class TypewriterEffectWorklet extends DCFStatelessComponent {
       "Build for AGI.",
       "Build for The Future.",
     ];
+    final longestWord = words.reduce((a, b) => a.length > b.length ? a : b);
+    final estimatedWidth = longestWord.length * 12.0;
 
     return DCFView(
       layout: DCFLayout(
+        width: '100%', // CRITICAL: Constrain width to prevent overflow
         flexDirection: DCFFlexDirection.row,
         alignItems: DCFAlign.center,
       ),
@@ -569,16 +569,23 @@ class TypewriterEffectWorklet extends DCFStatelessComponent {
           textProps: DCFTextProps(fontSize: 20, fontFamily: "Courier"),
           styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray400),
         ),
-        AnimatedText(
-          worklet: typewriterWorklet,
-          workletConfig: {
-            'words': words,
-            'typeSpeed': 100.0,
-            'deleteSpeed': 50.0,
-            'pauseDuration': 2000.0,
-          },
-          textProps: DCFTextProps(fontSize: 20, fontFamily: "Courier"),
-          styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray600),
+        DCFView(
+          layout: DCFLayout(
+            minWidth: estimatedWidth,
+          ),
+          children: [
+            AnimatedText(
+              worklet: typewriterWorklet,
+              workletConfig: {
+                'words': words,
+                'typeSpeed': 100.0,
+                'deleteSpeed': 50.0,
+                'pauseDuration': 2000.0,
+              },
+              textProps: DCFTextProps(fontSize: 20, fontFamily: "Courier"),
+              styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray600),
+            ),
+          ],
         ),
       ],
     );

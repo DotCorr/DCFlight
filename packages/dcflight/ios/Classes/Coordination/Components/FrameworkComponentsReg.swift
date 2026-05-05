@@ -15,9 +15,6 @@ import dcflight
     }
 
     @objc public static func registerComponents() {
-        // Register FlutterWidget component for embedding Flutter widgets
-        DCFComponentRegistry.shared.registerComponent("FlutterWidget", componentClass: DCFFlutterWidgetComponent.self)
-        
         // Register core framework components
         DCFComponentRegistry.shared.registerComponent("View", componentClass: DCFViewComponent.self)
         

@@ -26,6 +26,8 @@ class DCFTouchableOpacityComponent : DCFComponent() {
     private var activeOpacity: Float = DEFAULT_ACTIVE_OPACITY
     private var originalAlpha: Float = 1.0f
 
+    private var viewId: Int? = null
+
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val frameLayout = FrameLayout(context)
         
@@ -36,7 +38,9 @@ class DCFTouchableOpacityComponent : DCFComponent() {
         frameLayout.setOnTouchListener { view, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    Log.d(TAG, "Touch down on TouchableOpacity")
+                    Log.d(TAG, "🔵 Touch DOWN: viewId=$viewId")
+                    val viewIdTag = view.getTag(DCFTags.VIEW_ID_KEY)
+                    Log.d(TAG, "   VIEW_ID_KEY: $viewIdTag")
                     
                     propagateEvent(view, "onPressIn", mapOf(
                         "timestamp" to System.currentTimeMillis(),
@@ -51,7 +55,13 @@ class DCFTouchableOpacityComponent : DCFComponent() {
                 }
                 
                 MotionEvent.ACTION_UP -> {
-                    Log.d(TAG, "Touch up on TouchableOpacity")
+                    Log.d(TAG, "🔵 Touch UP: viewId=$viewId")
+                    val viewIdTag = view.getTag(DCFTags.VIEW_ID_KEY)
+                    val eventTypesTag = view.getTag(DCFTags.EVENT_TYPES_KEY)
+                    val callbackTag = view.getTag(DCFTags.EVENT_CALLBACK_KEY)
+                    Log.d(TAG, "   VIEW_ID_KEY: $viewIdTag")
+                    Log.d(TAG, "   EVENT_TYPES_KEY: $eventTypesTag")
+                    Log.d(TAG, "   EVENT_CALLBACK_KEY: $callbackTag")
                     
                     propagateEvent(view, "onPressOut", mapOf(
                         "timestamp" to System.currentTimeMillis(),
@@ -66,7 +76,7 @@ class DCFTouchableOpacityComponent : DCFComponent() {
                     val x = event.x
                     val y = event.y
                     if (x >= 0 && x <= view.width && y >= 0 && y <= view.height) {
-                        Log.d(TAG, "TouchableOpacity pressed")
+                        Log.d(TAG, "✅ TOUCHABLE PRESSED - Firing onPress event")
                         
                         propagateEvent(view, "onPress", mapOf(
                             "timestamp" to System.currentTimeMillis(),
@@ -77,7 +87,7 @@ class DCFTouchableOpacityComponent : DCFComponent() {
                 }
                 
                 MotionEvent.ACTION_CANCEL -> {
-                    Log.d(TAG, "Touch cancelled on TouchableOpacity")
+                    Log.d(TAG, "⚠️ Touch CANCEL: viewId=$viewId")
                     
                     propagateEvent(view, "onPressOut", mapOf(
                         "timestamp" to System.currentTimeMillis(),
@@ -140,7 +150,9 @@ class DCFTouchableOpacityComponent : DCFComponent() {
 
 
     override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {
-        Log.d(TAG, "TouchableOpacity component registered with shadow tree: $nodeId")
+        // Store viewId for logging
+        viewId = nodeId.toIntOrNull()
+        Log.d(TAG, "✅ TouchableOpacity registered with shadow tree: nodeId=$nodeId, viewId=$viewId")
     }
 
     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {

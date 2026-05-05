@@ -182,6 +182,10 @@ object DCFScreenUtilities {
      * Get current screen dimensions
      */
     fun getScreenDimensions(): Map<String, Any> {
+        // Always refresh before serving dimensions so we do not return stale/zero metrics
+        // during activity/view transitions.
+        updateDisplayMetrics()
+
         val fontScale = getFontScale()
         
         // 🔥 CRITICAL: Calculate actual safe area insets

@@ -66,9 +66,7 @@ class DCFSvgComponent: NSObject, DCFComponent {
             }
             
             if let asset = props["asset"] as? String {
-                let key = sharedFlutterViewController?.lookupKey(forAsset: asset)
-                let mainBundle = Bundle.main
-                let path = mainBundle.path(forResource: key, ofType: nil)
+                let path = DCFAssetLookup.path(forAsset: asset)
                 
                 loadSvgFromAsset(
                     asset,

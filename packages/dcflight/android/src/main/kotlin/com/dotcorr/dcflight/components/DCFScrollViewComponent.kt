@@ -118,20 +118,44 @@ class DCFScrollViewComponent : DCFComponent() {
     
     override fun applyLayout(view: View, layout: DCFNodeLayout) {
         val scrollView = view as? DCFScrollView ?: return
+
+        val parentHeight = (scrollView.parent as? View)?.height ?: 0
+        val currentViewportHeight = scrollView.height
+        val rootViewportHeight = scrollView.rootView?.height ?: 0
+
+        // Prefer an already-measured viewport height over parent height, because parent can be
+        // erroneously expanded to content height during intermediate layout passes.
+        val viewportHeight = when {
+            // If root viewport is smaller than Yoga height, prefer it to avoid content-height inflation.
+            rootViewportHeight > 0 && rootViewportHeight < layout.height -> rootViewportHeight
+            // Use current/parent only when they represent a smaller viewport than Yoga content height.
+            currentViewportHeight > 0 && currentViewportHeight < layout.height -> currentViewportHeight
+            parentHeight > 0 && parentHeight < layout.height -> parentHeight
+            // Fallbacks when Yoga height is already viewport-sized.
+            currentViewportHeight > 0 -> currentViewportHeight
+            rootViewportHeight > 0 -> rootViewportHeight
+            else -> 0
+        }
+
+        val targetHeight = if (viewportHeight > 0 && layout.height > viewportHeight) {
+            viewportHeight.toFloat()
+        } else {
+            layout.height
+        }
         
         // Apply layout to scroll view
         scrollView.layout(
             layout.left.toInt(),
             layout.top.toInt(),
             (layout.left + layout.width).toInt(),
-            (layout.top + layout.height).toInt()
+            (layout.top + targetHeight).toInt()
         )
         
         // CRITICAL: Don't update contentSize here because ScrollContentView's layout hasn't been applied yet
         // Layouts are applied parent-first, so ScrollView's layout is applied before ScrollContentView's layout
         // ScrollContentViewComponent.applyLayout will trigger updateContentSizeFromContentView after it sets its frame
         // This ensures we read the correct frame size
-        Log.d(TAG, "🔍 DCFScrollViewComponent.applyLayout: Applied frame=(${scrollView.left}, ${scrollView.top}, ${scrollView.width}, ${scrollView.height}), deferring contentSize update until ScrollContentView layout is applied")
+        Log.d(TAG, "🔍 DCFScrollViewComponent.applyLayout: Applied frame=(${scrollView.left}, ${scrollView.top}, ${scrollView.width}, ${scrollView.height}), yogaHeight=${layout.height}, targetHeight=$targetHeight, viewportHeight=$viewportHeight, parentHeight=$parentHeight, currentViewportHeight=$currentViewportHeight, rootViewportHeight=$rootViewportHeight; deferring contentSize update until ScrollContentView layout is applied")
     }
     
     override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {

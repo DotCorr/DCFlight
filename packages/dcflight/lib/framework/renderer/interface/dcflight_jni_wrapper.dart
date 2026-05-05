@@ -29,6 +29,7 @@ class DCFlightJniWrapper implements PlatformInterface {
   static DCFlightJni? _jniInstance;
   static final EventRegistry _eventRegistry = EventRegistry();
   static void Function(Map<String, dynamic>)? _screenDimensionsChangeHandler;
+  static Timer? _eventPumpTimer;
   
   bool _batchUpdateInProgress = false;
   final List<Map<String, dynamic>> _pendingBatchUpdates = [];
@@ -36,7 +37,12 @@ class DCFlightJniWrapper implements PlatformInterface {
   /// Lazy initialization - creates the JNI instance on first use
   DCFlightJni get _instance {
     if (_jniInstance == null) {
-      throw UnimplementedError('JNI bindings not generated. Run: dart run jnigen --config jnigen.yaml');
+      final applicationContext = jni.Jni.androidApplicationContext;
+      try {
+        _jniInstance = DCFlightJni(applicationContext);
+      } finally {
+        applicationContext.release();
+      }
     }
     return _jniInstance!;
   }
@@ -91,11 +97,8 @@ class DCFlightJniWrapper implements PlatformInterface {
     try {
       final result = _instance.initialize();
       if (result) {
-        final callback = _DCFlightJniEventCallback(_onNativeEvent);
-        DCFlightJni.setEventCallback(callback);
-        
-        final dimensionsCallback = _DCFlightJniScreenDimensionsCallback(_onScreenDimensionsChanged);
-        DCFlightJni.setScreenDimensionsCallback(dimensionsCallback);
+        _startEventPumpIfNeeded();
+        log('DCFlight JNI bridge initialized');
       }
       return result;
     } catch (e) {
@@ -353,6 +356,65 @@ class DCFlightJniWrapper implements PlatformInterface {
     _eventRegistry.handleEvent(viewId, eventType, eventData);
   }
 
+  void _startEventPumpIfNeeded() {
+    if (_eventPumpTimer != null) {
+      return;
+    }
+
+    _eventPumpTimer = Timer.periodic(const Duration(milliseconds: 16), (_) {
+      _pumpQueuedNativeEvents();
+    });
+  }
+
+  void _pumpQueuedNativeEvents() {
+    try {
+      final jQueuedEvents = _instance.consumePendingEvents();
+      if (jQueuedEvents == null) {
+        return;
+      }
+
+      final queuedEventsJson = jQueuedEvents.toDartString();
+      jQueuedEvents.release();
+
+      if (queuedEventsJson.isEmpty || queuedEventsJson == '[]') {
+        return;
+      }
+
+      final decoded = jsonDecode(queuedEventsJson);
+      if (decoded is! List) {
+        return;
+      }
+
+      for (final rawEvent in decoded) {
+        if (rawEvent is! Map) {
+          continue;
+        }
+
+        final viewId = rawEvent['viewId'];
+        final eventType = rawEvent['eventType'];
+        final eventDataJson = rawEvent['eventDataJson'];
+
+        if (viewId is! int || eventType is! String || eventDataJson is! String) {
+          continue;
+        }
+
+        Map<String, dynamic> eventData = {};
+        if (eventDataJson.isNotEmpty && eventDataJson != 'null') {
+          final parsed = jsonDecode(eventDataJson);
+          if (parsed is Map<String, dynamic>) {
+            eventData = parsed;
+          } else if (parsed is Map) {
+            eventData = parsed.map((key, value) => MapEntry(key.toString(), value));
+          }
+        }
+
+        _eventRegistry.handleEvent(viewId, eventType, eventData);
+      }
+    } catch (_) {
+      // Keep polling; errors here should not stop event delivery.
+    }
+  }
+
   @override
   Future<dynamic> tunnel(String componentType, String method, Map<String, dynamic> params) async {
     try {
@@ -362,6 +424,9 @@ class DCFlightJniWrapper implements PlatformInterface {
       final jParamsJson = jni.JString.fromString(paramsJson);
       try {
         final jResultJson = _instance.tunnel(jComponentType, jMethod, jParamsJson);
+        if (jResultJson == null) {
+          return null;
+        }
         try {
           final resultJson = jResultJson.toDartString();
           if (resultJson.isEmpty || resultJson == 'null') {
@@ -389,6 +454,9 @@ class DCFlightJniWrapper implements PlatformInterface {
         await wrapper.initialize();
       }
       final jDimensionsJson = _jniInstance!.getScreenDimensions();
+      if (jDimensionsJson == null) {
+        return null;
+      }
       try {
         final dimensionsJson = jDimensionsJson.toDartString();
         if (dimensionsJson.isEmpty) {
@@ -415,6 +483,9 @@ class DCFlightJniWrapper implements PlatformInterface {
         await wrapper.initialize();
       }
       final jToken = _jniInstance!.getSessionToken();
+      if (jToken == null) {
+        return null;
+      }
       try {
         return jToken.toDartString();
       } finally {
