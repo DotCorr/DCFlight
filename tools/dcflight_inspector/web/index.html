@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DCFlight Inspector</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-mark">DC</span>
+        <span class="logo-text">Flight Inspector</span>
+        <span class="badge">ALPHA</span>
+      </div>
+      <div class="header-actions">
+        <button id="btn-refresh-devices" class="btn btn-sm">Refresh Devices</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- Left Panel: Device list + controls -->
+    <aside class="panel-left">
+      <section class="section">
+        <h2 class="section-title">Devices</h2>
+        <div id="device-list" class="device-list">
+          <p class="empty-state">Loading devices…</p>
+        </div>
+      </section>
+
+      <section class="section" id="controls-section" style="display:none">
+        <h2 class="section-title">Actions</h2>
+        <div class="action-group">
+          <button class="btn btn-full" id="btn-screenshot">Screenshot</button>
+          <button class="btn btn-full" id="btn-home">Home</button>
+          <button class="btn btn-full" id="btn-back">Back (Android)</button>
+        </div>
+
+        <div class="form-group">
+          <label class="label">Launch Bundle / Package</label>
+          <div class="input-row">
+            <input type="text" id="input-bundle" class="input" placeholder="com.dotcorr.dcf_go" />
+            <button class="btn" id="btn-launch">Launch</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="label">Type Text</label>
+          <div class="input-row">
+            <input type="text" id="input-type" class="input" placeholder="Text to type…" />
+            <button class="btn" id="btn-type">Send</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="label">Tap Coordinates</label>
+          <div class="input-row">
+            <input type="number" id="input-tap-x" class="input input-sm" placeholder="X" />
+            <input type="number" id="input-tap-y" class="input input-sm" placeholder="Y" />
+            <button class="btn" id="btn-tap">Tap</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="label">Swipe (x1,y1 → x2,y2)</label>
+          <div class="swipe-row">
+            <input type="number" id="sw-x1" class="input input-sm" placeholder="x1" />
+            <input type="number" id="sw-y1" class="input input-sm" placeholder="y1" />
+            <span class="arrow">→</span>
+            <input type="number" id="sw-x2" class="input input-sm" placeholder="x2" />
+            <input type="number" id="sw-y2" class="input input-sm" placeholder="y2" />
+            <button class="btn" id="btn-swipe">Go</button>
+          </div>
+        </div>
+      </section>
+    </aside>
+
+    <!-- Center: Screenshot viewer -->
+    <main class="panel-center">
+      <div class="screenshot-container" id="screenshot-container">
+        <div class="screenshot-placeholder" id="screenshot-placeholder">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="5" width="18" height="14" rx="0"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <p>Select a device and click Screenshot</p>
+        </div>
+        <img id="screenshot-img" class="screenshot-img" style="display:none" alt="Device screenshot" />
+        <!-- Tap overlay -->
+        <canvas id="tap-overlay" class="tap-overlay" style="display:none"></canvas>
+      </div>
+      <div class="screenshot-footer">
+        <span id="screenshot-info" class="info-text"></span>
+        <label class="checkbox-label">
+          <input type="checkbox" id="chk-click-to-tap" />
+          Click image to tap
+        </label>
+        <button class="btn btn-sm" id="btn-auto-refresh" data-active="false">Auto-screenshot (3s)</button>
+      </div>
+    </main>
+
+    <!-- Right Panel: Logs -->
+    <aside class="panel-right">
+      <section class="section">
+        <div class="log-header">
+          <h2 class="section-title">Logs</h2>
+          <div class="log-actions">
+            <button class="btn btn-sm" id="btn-start-logs">Stream</button>
+            <button class="btn btn-sm" id="btn-stop-logs">Stop</button>
+            <button class="btn btn-sm" id="btn-clear-logs">Clear</button>
+          </div>
+        </div>
+        <div id="log-output" class="log-output"></div>
+      </section>
+    </aside>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
