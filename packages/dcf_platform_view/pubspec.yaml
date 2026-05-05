@@ -1,0 +1,28 @@
+name: dcf_platform_view
+description: "Cheap DCF embedding in Flutter — one platform view, FFI/JNI for surface frame (no platform channels)."
+version: 0.0.1
+homepage: https://github.com/Dotcorr/dcflight
+repository: https://github.com/Dotcorr/dcflight
+
+environment:
+  sdk: ^3.6.1
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  ffi: ^2.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  plugin:
+    platforms:
+      ios:
+        pluginClass: DCFPlatformViewPlugin
+      android:
+        package: com.dotcorr.dcf_platform_view
+        pluginClass: DCFPlatformViewPlugin

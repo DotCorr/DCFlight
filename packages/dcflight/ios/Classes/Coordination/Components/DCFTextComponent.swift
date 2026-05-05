@@ -52,7 +52,7 @@ class DCFTextComponent: NSObject, DCFComponent {
         
         textView.applyStyles(props: mergedProps.compactMapValues { $0 })
         
-        // 🔥 PURE SIGNALS: When content changes, mark text dirty and recalculate layout
+        // 🔥 PURE SIGNALS: When content changes, mark text dirty and recalculate layout IMMEDIATELY
         if needsLayoutRecalc {
             // Force shadow view to recompute text storage
             if let viewId = getViewId(from: textView),
@@ -62,8 +62,11 @@ class DCFTextComponent: NSObject, DCFComponent {
             // Request layout recalculation
             textView.setNeedsLayout()
             textView.setNeedsDisplay()
-            // Trigger layout calculation to apply changes
-            DCFLayoutManager.shared.triggerLayoutCalculation()
+            // 🎯 CRITICAL: Call calculateLayoutNow() for immediate update (no 100ms debounce)
+            // This ensures rapid text typing doesn't get dropped by the debounce timer
+            DispatchQueue.main.async {
+                DCFLayoutManager.shared.calculateLayoutNow()
+            }
         }
         
         return true

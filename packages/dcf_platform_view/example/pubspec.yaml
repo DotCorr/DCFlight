@@ -1,0 +1,21 @@
+name: dcf_platform_view_example
+description: Example Flutter app using runDCFApp and DCFPlatformView (native UI in Flutter).
+publish_to: 'none'
+version: 0.0.1
+
+environment:
+  sdk: ^3.6.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  dcf_platform_view:
+    path: ../
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

@@ -39,6 +39,9 @@ class AppRoot extends DCFStatefulComponent {
     );
     
     return DCFView(
+      styleSheet: DCFStyleSheet(
+        backgroundColor: DCFColors.black,
+      ),
       layout: DCFLayout(width: '100%', height: '100%'),
       children: [
         // Content wrapper - this changes when navigating
@@ -193,9 +196,6 @@ class AppRoot extends DCFStatefulComponent {
                           ),
                         ],
                       ),
-                      
-                      // 🎯 TEXT INPUT TEST - Pure signals for text editing
-                      TextInputSignalsTest(),
                       
                       // Feature cards
                       _ShadCard(
@@ -1280,109 +1280,6 @@ class Footer extends DCFStatelessComponent {
           content: "© 2025 DotCorr. All rights reserved.",
           textProps: DCFTextProps(fontSize: 14),
           styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray500),
-        ),
-      ],
-    );
-  }
-}
-
-/// Text input test with pure signals
-class TextInputSignalsTest extends DCFStatefulComponent {
-  @override
-  DCFComponentNode render() {
-    // 🎯 Pure signal for text input value
-    final inputValue = signal("");
-    final charCount = computed(() => inputValue().length);
-    
-    return _ShadCard(
-      title: "⌨️ Text Input Test (Pure Signals)",
-      children: [
-        DCFView(
-          layout: DCFLayout(
-            width: '100%',
-            gap: 16,
-          ),
-          children: [
-            DCFView(
-              layout: DCFLayout(
-                width: '100%',
-                padding: 12,
-                gap: 8,
-              ),
-              styleSheet: DCFStyleSheet(
-                backgroundColor: DCFColors.gray900,
-                borderRadius: 6,
-                borderWidth: 1,
-                borderColor: DCFColors.green,
-              ),
-              children: [
-                DCFText(
-                  content: "✨ PURE SIGNALS: Type fast, watch character count update directly!",
-                  textProps: DCFTextProps(
-                    fontSize: 14,
-                    fontWeight: DCFFontWeight.bold,
-                  ),
-                  styleSheet: DCFStyleSheet(primaryColor: DCFColors.green),
-                ),
-                DCFText(
-                  content: "Text input updates signal directly. No layout thrashing, no component re-render!",
-                  textProps: DCFTextProps(
-                    fontSize: 13,
-                    lineHeight: 1.6,
-                    numberOfLines: 0,
-                  ),
-                  styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray300),
-                ),
-              ],
-            ),
-            
-            // Character count - updates directly via signal
-            DCFReactiveText(
-              content: () => "Characters: ${charCount()} ${charCount() > 20 ? '🔥' : ''}",
-              textProps: DCFTextProps(
-                fontSize: 18,
-                fontWeight: DCFFontWeight.bold,
-              ),
-              styleSheet: DCFStyleSheet(
-                primaryColor: charCount() > 20 ? DCFColors.red : DCFColors.white,
-              ),
-            ),
-            
-            // Text input
-            
-                DCFTextInput( 
-                  value: inputValue.value,
-                  placeholder: "Type something fast...",
-                  onChangeText: (text) {
-                    inputValue.set(text);
-                  },
-                  fontSize: 18,
-                  styleSheet: DCFStyleSheet(
-                    backgroundColor: DCFColors.gray900,
-                    primaryColor: DCFColors.white,
-                    borderColor: DCFColors.gray700,
-                    borderWidth: 1,
-                    borderRadius: 8,
-                  ),
-                  
-                ),
-              
-            
-            // Echo text - shows what you typed via signal
-            DCFReactiveText(
-              content: () => inputValue().isEmpty 
-                ? "Start typing to see signals in action..." 
-                : "You typed: \"${inputValue()}\"",
-              textProps: DCFTextProps(
-                fontSize: 14,
-                lineHeight: 1.6,
-                numberOfLines: 0,
-              ),
-              styleSheet: DCFStyleSheet(
-                primaryColor: inputValue().isEmpty ? DCFColors.gray500 : DCFColors.blue,
-              ),
-            ),
-          ],
         ),
       ],
     );

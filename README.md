@@ -128,6 +128,7 @@ See [CLI Guide](docs/cli/CLI_GUIDE.md) for more information.
 - [Registry System](docs/REGISTRY_SYSTEM.md) - Component registration
 - [Tunnel System](docs/TUNNEL_SYSTEM.md) - Native method calls
 - [Architecture Comparison](docs/ARCHITECTURE_COMPARISON.md) - Framework comparison
+- [DCFPlatformView Design](docs/DCFPlatformView_DESIGN.md) - Cheap DCF/native embedding in Flutter (single-surface approach)
 
 ## 🏗️ Architecture
 

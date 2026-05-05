@@ -1,0 +1,22 @@
+PODS:
+  - dcf_platform_view (0.0.1):
+    - Flutter
+  - Flutter (1.0.0)
+
+DEPENDENCIES:
+  - dcf_platform_view (from `.symlinks/plugins/dcf_platform_view/ios`)
+  - Flutter (from `Flutter`)
+
+EXTERNAL SOURCES:
+  dcf_platform_view:
+    :path: ".symlinks/plugins/dcf_platform_view/ios"
+  Flutter:
+    :path: Flutter
+
+SPEC CHECKSUMS:
+  dcf_platform_view: eb4727684a0dd7ae5a0e52830376bb14c27a5fc9
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+
+PODFILE CHECKSUM: e7ba086104a4dcba0aede791a6d2271fb254b2fd
+
+COCOAPODS: 1.16.2
