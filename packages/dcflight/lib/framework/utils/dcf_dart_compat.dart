@@ -29,7 +29,16 @@ class Color {
   int get green => (0x0000ff00 & value) >> 8;
   int get blue => (0x000000ff & value) >> 0;
 
+  // Flutter 3.27+ normalized channel accessors (0.0–1.0)
+  double get a => alpha / 0xFF;
+  double get r => red / 0xFF;
+  double get g => green / 0xFF;
+  double get b => blue / 0xFF;
+
   double get opacity => alpha / 0xFF;
+
+  /// Returns the 32-bit ARGB integer value (same as [value]).
+  int toARGB32() => value;
 
   Color withOpacity(double opacity) {
     return withAlpha((opacity.clamp(0.0, 1.0) * 255).round());

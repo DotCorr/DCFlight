@@ -79,7 +79,10 @@ class HotReloadDetector {
 void installHotRestartListener(Future<void> Function() onRestart) {
   if (!kDebugMode) return;
   try {
-    PlatformDispatcher.instance.registerHotRestartListener(() {
+    // Cast to dynamic: registerHotRestartListener is a flutter_zero extension
+    // that doesn't exist in the stable dart:ui API, so we resolve it at runtime
+    // to avoid compile errors when building against stock Flutter tooling.
+    (PlatformDispatcher.instance as dynamic).registerHotRestartListener(() {
       onRestart().catchError((e) {
         // ignore: avoid_print
         print('[DCFlight] Hot restart cleanup error: $e');

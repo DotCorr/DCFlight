@@ -5,6 +5,8 @@
  * Commercial use requires a license from DotCorr.
  */
 
+import 'dart:ui' show Size, Rect;
+
 import 'package:dcflight/dcflight.dart';
 
 /// Hook for path interpolation
