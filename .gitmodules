@@ -1,0 +1,3 @@
+[submodule "engine/flutter_zero"]
+	path = engine/flutter_zero
+	url = https://github.com/DotCorr/flutter_zero.git
