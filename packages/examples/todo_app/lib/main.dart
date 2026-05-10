@@ -556,7 +556,7 @@ class TypewriterEffectWorklet extends DCFStatelessComponent {
       "Build for The Future.",
     ];
     final longestWord = words.reduce((a, b) => a.length > b.length ? a : b);
-    final estimatedWidth = longestWord.length * 12.0;
+    final estimatedWidth = longestWord.length * 11.5;
 
     return DCFView(
       layout: DCFLayout(
@@ -570,23 +570,21 @@ class TypewriterEffectWorklet extends DCFStatelessComponent {
           textProps: DCFTextProps(fontSize: 20, fontFamily: "Courier"),
           styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray400),
         ),
-        DCFView(
-          layout: DCFLayout(
-            minWidth: estimatedWidth,
+        AnimatedText(
+          worklet: typewriterWorklet,
+          layout: DCFLayout(width: estimatedWidth),
+          workletConfig: {
+            'words': words,
+            'typeSpeed': 100.0,
+            'deleteSpeed': 50.0,
+            'pauseDuration': 2000.0,
+          },
+          textProps: DCFTextProps(
+            fontSize: 20,
+            fontFamily: "Courier",
+            numberOfLines: 1,
           ),
-          children: [
-            AnimatedText(
-              worklet: typewriterWorklet,
-              workletConfig: {
-                'words': words,
-                'typeSpeed': 100.0,
-                'deleteSpeed': 50.0,
-                'pauseDuration': 2000.0,
-              },
-              textProps: DCFTextProps(fontSize: 20, fontFamily: "Courier"),
-              styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray600),
-            ),
-          ],
+          styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray600),
         ),
       ],
     );
