@@ -5,7 +5,7 @@
  * Commercial use requires a license from DotCorr.
  */
 
-import 'package:flutter/foundation.dart';
+import 'package:dcflight/framework/utils/dcf_dart_compat.dart' show kDebugMode;
 import 'package:dcflight/src/components/component.dart';
 import 'package:dcflight/src/components/dcf_element.dart';
 import 'package:dcflight/src/components/component_node.dart';

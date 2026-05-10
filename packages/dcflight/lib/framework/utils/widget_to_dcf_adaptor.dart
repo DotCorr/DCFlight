@@ -5,49 +5,43 @@
  * Commercial use requires a license from DotCorr.
  */
 
-import 'package:flutter/widgets.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// Legacy adaptor for embedding Flutter widgets inside DCFlight.
 ///
-/// DCFlight now standardizes on native rendering only. Mixed Flutter-widget
-/// embedding depended on platform channels and is intentionally disabled.
+/// DCFlight now runs on the flutter_zero runtime (no dart:ui rendering) so this
+/// adaptor is permanently disabled. It is kept as a stub so that any existing
+/// call sites produce a clear [UnsupportedError] rather than a missing-symbol
+/// compile error.
 class WidgetToDCFAdaptor extends DCFStatelessComponent {
-  /// Builder function that creates the widget - called on every render to get fresh state
-  final Widget Function() widgetBuilder;
-  
-  /// Layout properties
+  // ignore: unused_field
+  final dynamic _unused;
   final DCFLayout? layout;
-  
-  /// Style properties
   final DCFStyleSheet? styleSheet;
-  
-  /// Create a widget adaptor with a builder (recommended - widget rebuilds on state changes)
+
   WidgetToDCFAdaptor.builder({
-    required this.widgetBuilder,
+    required dynamic widgetBuilder,
     this.layout,
     this.styleSheet,
     super.key,
-  });
-  
-  /// Create a widget adaptor with a static widget (widget won't update on state changes)
-  /// Use WidgetToDCFAdaptor.builder() for reactive widgets
+  }) : _unused = widgetBuilder;
+
   WidgetToDCFAdaptor({
-    required Widget widget,
+    required dynamic widget,
     this.layout,
     this.styleSheet,
     super.key,
-  }) : widgetBuilder = (() => widget);
-  
+  }) : _unused = widget;
+
   static void clearAllForHotRestart() {
-    // Intentionally a no-op. The adaptor is disabled and no mixed widget state is kept.
+    // no-op – no mixed widget state exists.
   }
-  
+
   @override
   DCFComponentNode render() {
     throw UnsupportedError(
-      'WidgetToDCFAdaptor was removed from the active runtime because it relied on platform channels. '
-      'DCFlight now supports native rendering only through FFI on iOS and JNI on Android.',
+      'WidgetToDCFAdaptor is not available on the flutter_zero runtime. '
+      'DCFlight renders native views exclusively via FFI (iOS) and JNI (Android).',
     );
   }
 }

@@ -4,7 +4,7 @@
  * Licensed under the PolyForm Noncommercial License 1.0.0.
  * Commercial use requires a license from DotCorr.
  */
-import 'package:flutter/material.dart';
+import 'package:dcflight/framework/utils/dcf_dart_compat.dart' show Color;
 
 class DCFTheme {
   DCFTheme._();

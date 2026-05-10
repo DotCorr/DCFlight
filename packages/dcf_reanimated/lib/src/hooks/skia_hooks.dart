@@ -6,7 +6,6 @@
  */
 
 import 'package:dcflight/dcflight.dart';
-import 'package:flutter/material.dart';
 
 /// Hook for path interpolation
 /// Interpolates between different path values based on progress

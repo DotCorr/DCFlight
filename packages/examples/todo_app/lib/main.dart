@@ -39,7 +39,8 @@ class DotCorrLanding extends DCFStatelessComponent {
   DCFComponentNode render() {
     return DCFScrollView(
       layout: DCFLayout(width: '100%', height: '100%'),
-      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.black),
+      showsScrollIndicator: false,
+      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.white),
       scrollContent: [
         NavigationBar(onToggleExamples: onToggleExamples),
         HeroSection(),
@@ -126,49 +127,9 @@ class NavigationBar extends DCFStatelessComponent {
   }
 }
 
-class HeroSection extends DCFStatefulComponent {
+class HeroSection extends DCFStatelessComponent {
   @override
   DCFComponentNode render() {
-    final showTest = useState<bool>(false);
-    final textLength = "Value of showTest: $showTest.state";
-
-    if (showTest.state) {
-      // CRITICAL: Always return a View wrapper to maintain consistent structure
-      // Returning DCFText directly breaks ScrollView's single-child constraint
-      return DCFView(
-        layout: DCFLayout(
-          width: '100%',
-          paddingTop: 128,
-          paddingBottom: 80,
-          paddingHorizontal: 24,
-          flexDirection: DCFFlexDirection.column,
-          gap: 48,
-        ),
-        styleSheet: DCFStyleSheet(backgroundColor: DCFColors.white),
-        children: [
-          DCFButton(
-            styleSheet: DCFStyleSheet(backgroundColor: DCFColors.black),
-            onPress: (data) {
-              showTest.setState(!showTest.state);
-            },
-            children: [
-              DCFText(
-                content: textLength,
-                textProps: DCFTextProps(fontSize: 20),
-                styleSheet: DCFStyleSheet(primaryColor: DCFColors.white),
-              ),
-            ],
-            layout: DCFLayout(width: '100%', height: 50, padding: 2),
-          ),
-          DCFSpinner(style: "large"),
-          DCFText(
-            content: "Hello, World!",
-            textProps: DCFTextProps(fontSize: 20),
-            styleSheet: DCFStyleSheet(primaryColor: DCFColors.black),
-          ),
-        ],
-      );
-    }
     return DCFView(
       layout: DCFLayout(
         width: '100%',
@@ -308,7 +269,7 @@ class HeroSection extends DCFStatefulComponent {
                             borderRadius: 2, // Small radius like web
                           ),
                           onPress: (data) {
-                            showTest.setState(!showTest.state);
+                            // Navigate to The Lab
                           },
                           children: [
                             DCFText(

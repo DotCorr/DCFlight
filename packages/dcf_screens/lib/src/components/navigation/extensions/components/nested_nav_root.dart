@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart' show Colors;
 import 'package:dcflight/dcflight.dart';
 import 'tab_navigator_component.dart';
 
@@ -19,7 +18,7 @@ class DCFNestedNavigationRoot extends DCFStatelessComponent {
       {super.key,
       this.animationDuration,
       this.tabBarStyle =
-          const DCFTabBarStyle(selectedTintColor: Colors.blueAccent),
+          const DCFTabBarStyle(selectedTintColor: DCFColors.blue),
       this.onTabChange,
       this.onTabPress,
       required this.selectedIndex,

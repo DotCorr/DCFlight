@@ -6,7 +6,7 @@
  */
 
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:dcflight/framework/utils/dcf_dart_compat.dart' show kDebugMode;
 import 'package:dcflight/framework/renderer/interface/dcflight_ffi_wrapper.dart';
 import 'package:dcflight/framework/renderer/interface/dcflight_jni_wrapper.dart' show DCFlightJniWrapper;
 

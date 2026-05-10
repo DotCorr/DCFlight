@@ -1,4 +1,4 @@
-import "package:flutter/material.dart";
+import 'package:dcflight/framework/utils/dcf_dart_compat.dart' show Color;
 
 class DCFPushHeaderActionConfig {
   final String title;

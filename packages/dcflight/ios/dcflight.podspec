@@ -1,18 +1,22 @@
 Pod::Spec.new do |s|
   s.name = 'dcflight'
   s.version = '0.0.1'
-  s.summary = 'Build native apps in dart'
+  s.summary = 'Build native apps in Dart – flutter_zero runtime (no Skia/Impeller)'
   s.description = <<-DESC
-A crossplatform framework.
+DCFlight renders native iOS views via FFI. The Dart runtime is DotCorr/flutter_zero –
+a stripped Flutter engine with no rendering pipeline. The Flutter iOS embedding
+(FlutterEngine, FlutterAppDelegate) is retained for tooling compatibility;
+only the engine binary differs from Google Flutter.
   DESC
-  s.homepage = 'https://github.com/squirelboy360/dcflight'
+  s.homepage = 'https://github.com/Dotcorr/dcflight'
   s.license = { :file => '../LICENSE' }
   s.author = { 'Tahiru' => 'squirelwares@gmail.com' }
   s.source = { :path => '.' }
   s.source_files = 'Classes/**/*'
   s.platform = :ios, '13.5'
   
-  # Dependencies
+  # flutter_zero still provides Flutter.xcframework for the iOS embedding layer.
+  # Only the engine binary (dylib) differs – no Skia/Impeller, pure Dart runtime.
   s.dependency 'Flutter'
   s.dependency 'Yoga', '~> 3.0.0' 
   

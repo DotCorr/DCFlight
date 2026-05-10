@@ -5,7 +5,7 @@
  * Commercial use requires a license from DotCorr.
  */
 
-import 'package:flutter/material.dart';
+import 'package:dcflight/framework/utils/dcf_dart_compat.dart' show Color;
 
 /// Style processors normalize and preprocess style values before they're sent to native.
 /// This ensures consistent behavior across platforms and validates input values.

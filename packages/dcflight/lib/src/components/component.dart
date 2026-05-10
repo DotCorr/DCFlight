@@ -11,7 +11,7 @@ import 'package:dcflight/framework/hooks/context_hook.dart';
 import 'package:dcflight/framework/hooks/state_hook.dart';
 import 'package:dcflight/framework/hooks/reactive_signal.dart' show ReactiveSignal;
 import 'package:dcflight/framework/context/context.dart';
-import 'package:flutter/foundation.dart';
+import 'package:dcflight/framework/utils/dcf_dart_compat.dart' show kDebugMode;
 
 abstract class DCFStatefulComponent extends DCFComponentNode {
   final String instanceId;

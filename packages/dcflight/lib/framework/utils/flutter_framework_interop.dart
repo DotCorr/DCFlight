@@ -5,10 +5,9 @@
  * Commercial use requires a license from DotCorr.
  */
 
-
-import 'package:flutter/widgets.dart';
-
-export 'package:flutter/material.dart' hide runApp;
-export 'package:flutter/foundation.dart';
-export 'package:flutter/services.dart';
-void runWidgetApp(Widget widget)=>runApp(widget);
+// This file is intentionally empty.
+//
+// DCFlight has fully migrated to the flutter_zero runtime and no longer depends
+// on package:flutter. The Flutter shim that previously lived here has been
+// removed. All necessary primitives (Color, kDebugMode, …) are now provided by
+// dcf_dart_compat.dart.

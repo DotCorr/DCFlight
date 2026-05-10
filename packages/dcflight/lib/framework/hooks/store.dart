@@ -6,7 +6,7 @@
  */
 
 import 'dart:developer' as developer;
-import 'package:flutter/foundation.dart';
+import 'package:dcflight/framework/utils/dcf_dart_compat.dart' show kDebugMode;
 
 /// Component access tracking for store usage validation
 class _ComponentAccess {

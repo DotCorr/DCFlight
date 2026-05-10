@@ -7,17 +7,20 @@
 
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
+import 'dart:ui' show PlatformDispatcher;
 import 'package:dcflight/framework/renderer/engine/engine_api.dart';
+import 'package:dcflight/framework/utils/dcf_dart_compat.dart' show kDebugMode;
 import 'package:dcflight/framework/utils/dcf_logger.dart';
 import 'package:dcflight/framework/renderer/interface/dcflight_ffi_wrapper.dart';
-import 'package:dcflight/framework/renderer/interface/dcflight_jni_wrapper.dart' show DCFlightJniWrapper;
+import 'package:dcflight/framework/renderer/interface/dcflight_jni_wrapper.dart'
+    show DCFlightJniWrapper;
 
-/// Hot reload detection and handling system for development
-/// Uses a code change detection mechanism since DCFlight diverges from Flutter widgets
+/// Hot reload / hot restart handling for the flutter_zero runtime.
+///
+/// Flutter Zero retains [PlatformDispatcher] from dart:ui and adds
+/// [PlatformDispatcher.instance.registerHotRestartListener] for restart events.
+/// We use that for restart cleanup and keep our own [HotReloadDetector] for
+/// explicit reload triggering (invoked by the engine when needed).
 class HotReloadDetector {
   static HotReloadDetector? _instance;
   static HotReloadDetector get instance {
@@ -26,45 +29,36 @@ class HotReloadDetector {
   }
 
   bool _isInitialized = false;
-  
+
   HotReloadDetector._();
 
-  /// Initialize hot reload detection system
-  /// Hot reload is detected via reassemble() in HotReloadDetectorWidget
-  /// Flutter automatically calls reassemble() on all State objects during hot reload
+  /// Initialize the hot reload detector.
   void initialize() {
     if (!kDebugMode || _isInitialized) return;
-    
-    // Hot reload detection ready; no log by default to avoid console noise.
     _isInitialized = true;
   }
 
-  /// Cleanup the hot reload detection system
+  /// Cleanup.
   void dispose() {
     if (!_isInitialized) return;
-    
     _isInitialized = false;
   }
 
-  /// Handle hot reload - called when Flutter triggers reassemble().
-  /// Clears native views and re-syncs the engine root (signals, no VDOM).
+  /// Handle hot reload – clear native views and re-sync the engine root.
   Future<void> handleHotReload() async {
     if (!kDebugMode) return;
-
     try {
-      // CRITICAL: Clear native views so we can recreate from updated code
       await _cleanupNativeViews();
-
       final engine = DCFEngineAPI.instance;
       await engine.isReady;
       await engine.recreateRootNativeViews();
     } catch (e, stackTrace) {
       DCFLogger.error('Failed to handle hot reload: $e', tag: 'HOT_RELOAD');
-      debugPrint('Hot reload error: $e\n$stackTrace');
+      // ignore: avoid_print
+      print('Hot reload error: $e\n$stackTrace');
     }
   }
-  
-  /// Cleanup native views for hot reload (same as hot restart)
+
   Future<void> _cleanupNativeViews() async {
     try {
       if (Platform.isIOS) {
@@ -72,56 +66,37 @@ class HotReloadDetector {
       } else if (Platform.isAndroid) {
         await DCFlightJniWrapper.cleanupViews();
       }
-    } catch (e) {
-      // Non-critical; native views may already be cleared
+    } catch (_) {
+      // Non-critical.
     }
   }
 }
 
-/// A Flutter widget wrapper that detects hot reloads via reassemble()
-/// Flutter automatically calls reassemble() on all State objects during hot reload
-/// This is the standard way to detect hot reload in Flutter apps
-class HotReloadDetectorWidget extends StatefulWidget {
-  final Widget child;
-  
-  const HotReloadDetectorWidget({super.key, required this.child});
-  
-  @override
-  State<HotReloadDetectorWidget> createState() => _HotReloadDetectorWidgetState();
-}
-
-class _HotReloadDetectorWidgetState extends State<HotReloadDetectorWidget> {
-  @override
-  void initState() {
-    super.initState();
-    HotReloadDetector.instance.initialize();
-  }
-  
-  @override
-  void dispose() {
-    HotReloadDetector.instance.dispose();
-    super.dispose();
-  }
-  
-  @override
-  void reassemble() {
-    super.reassemble();
-    HotReloadDetector.instance.handleHotReload();
-  }
-  
-  @override
-  Widget build(BuildContext context) {
-    return widget.child;
+/// Install flutter_zero's hot restart listener via [PlatformDispatcher].
+///
+/// The callback fires before Dart re-runs [main()] on hot restart so we can
+/// clean up native state first.
+void installHotRestartListener(Future<void> Function() onRestart) {
+  if (!kDebugMode) return;
+  try {
+    PlatformDispatcher.instance.registerHotRestartListener(() {
+      onRestart().catchError((e) {
+        // ignore: avoid_print
+        print('[DCFlight] Hot restart cleanup error: $e');
+      });
+    });
+  } catch (_) {
+    // PlatformDispatcher may not expose this API in all engine variants –
+    // fall back silently.
   }
 }
 
-/// Global function to manually trigger hot reload for testing
+/// Manually trigger a hot reload cycle (for testing / tooling).
 void triggerManualHotReload() {
   if (kDebugMode) {
     HotReloadDetector.instance.handleHotReload().catchError((e) {
-      debugPrint('Hot reload error: $e');
+      // ignore: avoid_print
+      print('Hot reload error: $e');
     });
   }
 }
-
-
