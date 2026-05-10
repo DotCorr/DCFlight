@@ -174,6 +174,22 @@ object DCDivergerUtil {
                 
                 // 🔥 CRITICAL: Set root view in DCFScreenUtilities for safe area calculations
                 DCFScreenUtilities.setRootView(root)
+                
+                // 🔥 CRITICAL FIX: Calculate layout on initial app launch (not just on rotation)
+                // This fixes the Android blank render issue where UI won't show until device rotation
+                // The root cause: calculateLayoutForAllRoots() was only called in onConfigurationChanged()
+                // Now we also call it on initial launch after root view is attached and measured
+                root.post {
+                    val displayMetrics = activity.resources.displayMetrics
+                    root.measure(
+                        View.MeasureSpec.makeMeasureSpec(displayMetrics.widthPixels, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(displayMetrics.heightPixels, View.MeasureSpec.EXACTLY)
+                    )
+                    Log.d(TAG, "📐 Root view measured on launch: ${root.measuredWidth}x${root.measuredHeight}")
+                    
+                    YogaShadowTree.shared.calculateLayoutForAllRoots()
+                    Log.d(TAG, "✅ Initial layout calculated on app launch (fixes blank render until rotation)")
+                }
             }
 
             Log.d(TAG, "DCFlight systems initialized")

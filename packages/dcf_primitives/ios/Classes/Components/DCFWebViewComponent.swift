@@ -36,6 +36,11 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         let javaScriptEnabled = props["javaScriptEnabled"] as? Bool ?? true
         configuration.preferences.javaScriptEnabled = javaScriptEnabled
         
+        // CRITICAL: Enable WebGPU in WKWebView
+        // navigator.gpu is only available when the preferences key is set.
+        // Without this, WebGPU is disabled regardless of iOS/WebKit version.
+        configuration.preferences.setValue(true, forKey: "WebGPUEnabled")
+        
         let allowsInlineMediaPlayback = props["allowsInlineMediaPlayback"] as? Bool ?? true
         configuration.allowsInlineMediaPlayback = allowsInlineMediaPlayback
         
@@ -43,6 +48,15 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         configuration.mediaTypesRequiringUserActionForPlayback = mediaPlaybackRequiresUserAction ? .all : []
         
         let webView = WKWebView(frame: .zero, configuration: configuration)
+        
+        // CRITICAL: isInspectable=true is required on iOS 16.4+ for GPU access in local HTML
+        if #available(iOS 16.4, *) {
+            webView.isInspectable = true
+        }
+        
+        // Set dark background to prevent white flash before WebGPU content loads
+        webView.backgroundColor = UIColor(red: 8/255, green: 8/255, blue: 8/255, alpha: 1.0)
+        webView.scrollView.backgroundColor = UIColor(red: 8/255, green: 8/255, blue: 8/255, alpha: 1.0)
         
         webView.navigationDelegate = DCFWebViewComponent.sharedInstance
         webView.uiDelegate = DCFWebViewComponent.sharedInstance
@@ -149,7 +163,10 @@ class DCFWebViewComponent: NSObject, DCFComponent {
             webView.load(request)
             
         case "htmlString":
-            webView.loadHTMLString(source, baseURL: nil)
+            // CRITICAL: baseURL must NOT be nil for WebGPU (navigator.gpu) to work.
+            // When baseURL is nil, content loads as about:blank which WebKit restricts
+            // from GPU access. Using http://localhost as the base origin enables WebGPU.
+            webView.loadHTMLString(source, baseURL: URL(string: "http://localhost"))
             
         case "localFile":
             if let path = DCFAssetLookup.path(forAsset: source),

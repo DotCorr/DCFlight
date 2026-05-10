@@ -45,7 +45,9 @@ class DCFWebViewComponent : DCFComponent() {
             webView.settings.safeBrowsingEnabled = true
         }
 
-        webView.setBackgroundColor(Color.TRANSPARENT)
+        // Dark background prevents white flash before WebGPU content renders
+        webView.setBackgroundColor(android.graphics.Color.parseColor("#080808"))
+        webView.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
         webView.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
@@ -53,10 +55,25 @@ class DCFWebViewComponent : DCFComponent() {
 
         webView.setTag(DCFTags.COMPONENT_TYPE_KEY, "WebView")
 
+        val initialLoadMode = props["loadMode"] as? String ?: "url"
         props["source"]?.let { source ->
             when (source) {
                 is String -> {
-                    webView.loadUrl(source)
+                    when (initialLoadMode) {
+                        "htmlString" -> {
+                            // CRITICAL: Use loadDataWithBaseURL with http://localhost as base.
+                            // loadUrl() does not support raw HTML strings.
+                            // http://localhost origin enables WebGPU (navigator.gpu) access.
+                            webView.loadDataWithBaseURL(
+                                "http://localhost",
+                                source,
+                                "text/html",
+                                "UTF-8",
+                                null
+                            )
+                        }
+                        else -> webView.loadUrl(source)
+                    }
                 }
                 is Map<*, *> -> {
                     val uri = source["uri"] as? String
@@ -65,7 +82,7 @@ class DCFWebViewComponent : DCFComponent() {
                     when {
                         uri != null -> webView.loadUrl(uri)
                         html != null -> webView.loadDataWithBaseURL(
-                            baseUrl,
+                            baseUrl ?: "http://localhost",
                             html,
                             "text/html",
                             "UTF-8",
@@ -94,10 +111,22 @@ class DCFWebViewComponent : DCFComponent() {
         
         val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
 
+        val updateLoadMode = mergedProps["loadMode"] as? String ?: "url"
         mergedProps["source"]?.let { newSource ->
             when (newSource) {
                 is String -> {
-                    webView.loadUrl(newSource)
+                    when (updateLoadMode) {
+                        "htmlString" -> {
+                            webView.loadDataWithBaseURL(
+                                "http://localhost",
+                                newSource,
+                                "text/html",
+                                "UTF-8",
+                                null
+                            )
+                        }
+                        else -> webView.loadUrl(newSource)
+                    }
                 }
 
                 is Map<*, *> -> {
@@ -108,7 +137,7 @@ class DCFWebViewComponent : DCFComponent() {
                     when {
                         uri != null -> webView.loadUrl(uri)
                         html != null -> webView.loadDataWithBaseURL(
-                            baseUrl,
+                            baseUrl ?: "http://localhost",
                             html,
                             "text/html",
                             "UTF-8",

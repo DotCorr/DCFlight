@@ -289,8 +289,6 @@ class DCFWebGpuSurface extends DCFStatelessComponent
 
   @override
   DCFComponentNode render() {
-    final resolvedLayout = _resolveLayout(layout);
-
     return DCFWebView(
       webViewProps: DCFWebViewProps(
         source: webGpuProps.toHtml(),
@@ -303,26 +301,8 @@ class DCFWebGpuSurface extends DCFStatelessComponent
         showsScrollIndicators: webGpuProps.showsScrollIndicators,
         mediaPlaybackRequiresUserAction: false,
       ),
-      layout: resolvedLayout,
+      layout: layout,
       styleSheet: styleSheet,
     ).render();
-  }
-
-  DCFLayout _resolveLayout(DCFLayout incoming) {
-    final width = incoming.width;
-    if (width is String && width.trim().endsWith('%')) {
-      final screenUtils = ScreenUtilities.instance;
-      final safeAdjustedWidth = screenUtils.screenWidth -
-          screenUtils.safeAreaLeft -
-          screenUtils.safeAreaRight;
-
-      final fallbackWidth = (safeAdjustedWidth > 0 ? safeAdjustedWidth : 360.0)
-          .clamp(240.0, 2200.0)
-          .toDouble();
-
-      return incoming.copyWith(width: fallbackWidth);
-    }
-
-    return incoming;
   }
 }

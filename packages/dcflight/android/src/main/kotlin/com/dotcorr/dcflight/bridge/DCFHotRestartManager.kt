@@ -60,6 +60,17 @@ class DCFHotRestartManager {
                     com.dotcorr.dcflight.layout.ViewRegistry.shared.clearAllExceptRoot()
                     Log.d(TAG, "ViewRegistry cleared (except root)")
                     
+                    // CRITICAL FIX: Restore root view visibility after cleanup.
+                    // prepareForHotRestart() sets ALL views to INVISIBLE/alpha=0, including
+                    // the root container (viewId=0). After cleanup, child views mount inside
+                    // an invisible root and never appear. Root must be visible to show children.
+                    val rootView = com.dotcorr.dcflight.layout.ViewRegistry.shared.getView(0)
+                    if (rootView != null) {
+                        rootView.visibility = android.view.View.VISIBLE
+                        rootView.alpha = 1.0f
+                        Log.d(TAG, "✅ Root view made visible after hot restart cleanup")
+                    }
+                    
                     Log.d(TAG, "Hot restart cleanup completed successfully")
                 } catch (e: Exception) {
                     Log.e(TAG, "Error during hot restart cleanup", e)

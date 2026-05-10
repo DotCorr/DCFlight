@@ -193,6 +193,10 @@ class ScreenUtilities {
     const maxRetries = 2;
     const retryDelayMs = 100;
     
+    developer.log(
+        '📐 refreshDimensions() called - current state: ${_screenWidth.toInt()}x${_screenHeight.toInt()} (valid: ${_screenWidth > _kDimensionEpsilon && _screenHeight > _kDimensionEpsilon})',
+        name: 'ScreenUtilities');
+    
     for (int attempt = 0; attempt < maxRetries; attempt++) {
       try {
         if (attempt > 0) {
@@ -213,9 +217,16 @@ class ScreenUtilities {
         final hasValidSize =
             incomingWidth > _kDimensionEpsilon && incomingHeight > _kDimensionEpsilon;
 
+        developer.log(
+            '📐 Native dimension result (attempt $attempt): ${incomingWidth.toInt()}x${incomingHeight.toInt()} (valid: $hasValidSize)',
+            name: 'ScreenUtilities');
+
         if (!hasValidSize) {
           if (_screenWidth > _kDimensionEpsilon && _screenHeight > _kDimensionEpsilon) {
             // Keep existing good values; native can temporarily report 0x0 during transitions.
+            developer.log(
+                '⚠️  Native returned invalid size, keeping cached: ${_screenWidth.toInt()}x${_screenHeight.toInt()}',
+                name: 'ScreenUtilities');
             continue;
           }
           if (attempt < maxRetries - 1) continue;
@@ -244,6 +255,10 @@ class ScreenUtilities {
         _safeAreaLeft = result['safeAreaLeft'] as double? ?? 0.0;
         _safeAreaRight = result['safeAreaRight'] as double? ?? 0.0;
 
+        developer.log(
+            '✅ Dimensions refreshed: ${oldWidth.toInt()}x${oldHeight.toInt()} → ${_screenWidth.toInt()}x${_screenHeight.toInt()}',
+            name: 'ScreenUtilities');
+
         final sizeChanged = _dimensionChanged(oldWidth, _screenWidth) ||
             _dimensionChanged(oldHeight, _screenHeight);
         final safeAreaChanged = _dimensionChanged(oldSafeAreaTop, _safeAreaTop) ||
@@ -265,8 +280,14 @@ class ScreenUtilities {
         } else {
           if (attempt < maxRetries - 1) continue;
           // Native not ready yet (e.g. right after hot restart); skip silently.
+          developer.log(
+              '⚠️  Native not ready on final attempt, skipping refresh',
+              name: 'ScreenUtilities');
         }
       } catch (e) {
+        developer.log(
+            '❌ Exception during refreshDimensions (attempt $attempt): $e',
+            name: 'ScreenUtilities');
         if (attempt < maxRetries - 1) continue;
         // Skip silently; set verboseLogging to log.
       }
@@ -279,10 +300,16 @@ class ScreenUtilities {
         _screenWidth = view.physicalSize.width / view.devicePixelRatio;
         _screenHeight = view.physicalSize.height / view.devicePixelRatio;
         _scaleFactor = view.devicePixelRatio;
+        developer.log(
+            '⚠️  Fell back to Flutter view dimensions: ${_screenWidth.toInt()}x${_screenHeight.toInt()}',
+            name: 'ScreenUtilities');
       } else {
         _screenWidth = 400;
         _screenHeight = 800;
         _scaleFactor = 2.0;
+        developer.log(
+            '⚠️  Fell back to default dimensions: ${_screenWidth.toInt()}x${_screenHeight.toInt()}',
+            name: 'ScreenUtilities');
       }
     }
   }
@@ -411,3 +438,4 @@ class ScreenUtilities {
     clearDimensionChangeListeners();
   }
 }
+
