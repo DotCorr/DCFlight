@@ -281,6 +281,7 @@ class HeroSection extends DCFStatefulComponent {
                         width: '100%', // CRITICAL: Constrain width to prevent overflow
                         height: 80, // h-20 = 80px (matches web)
                         justifyContent: DCFJustifyContent.center,
+                        alignItems: DCFAlign.center, // Center typewriter row horizontally
                         marginBottom: 40, // mb-10 = 40px (matches web)
                         overflow: DCFOverflow.hidden, // Clip content that exceeds bounds
                       ),
@@ -559,9 +560,9 @@ class TypewriterEffectWorklet extends DCFStatelessComponent {
 
     return DCFView(
       layout: DCFLayout(
-        width: '100%', // CRITICAL: Constrain width to prevent overflow
         flexDirection: DCFFlexDirection.row,
         alignItems: DCFAlign.center,
+        alignSelf: DCFAlign.center,
       ),
       children: [
         DCFText(

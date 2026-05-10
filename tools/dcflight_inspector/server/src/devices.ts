@@ -82,7 +82,11 @@ export async function takeScreenshot(deviceId: string, platform: 'ios' | 'androi
   } else {
     const adbPath = '/opt/homebrew/bin/adb';
     const deviceTmpPath = '/sdcard/dcfinspector_ss.png';
-    // Capture to device storage then pull — avoids exec-out buffer limits
+    // Wake the screen so the captured frame shows app content, not an off/ambient display
+    await execAsync(`${adbPath} -s "${deviceId}" shell input keyevent KEYCODE_WAKEUP`).catch(() => {});
+    await new Promise(r => setTimeout(r, 500));
+    // Capture to device storage then pull — avoids exec-out buffer limits.
+    // shell screencap writes warning to stderr so the PNG file is not corrupted.
     await execAsync(`${adbPath} -s "${deviceId}" shell screencap -p "${deviceTmpPath}"`);
     await execAsync(`${adbPath} -s "${deviceId}" pull "${deviceTmpPath}" "${tmpPng}"`, { maxBuffer: 50 * 1024 * 1024 });
     await execAsync(`${adbPath} -s "${deviceId}" shell rm -f "${deviceTmpPath}"`);

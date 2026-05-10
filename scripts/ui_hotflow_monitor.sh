@@ -16,6 +16,7 @@ ANDROID_TAP_X="${ANDROID_TAP_X:-540}"
 ANDROID_TAP_Y="${ANDROID_TAP_Y:-1100}"
 IOS_TAP_X="${IOS_TAP_X:-195}"
 IOS_TAP_Y="${IOS_TAP_Y:-740}"
+ANDROID_BUNDLE_ID="${ANDROID_BUNDLE_ID:-com.dotcorr.dcf_go}"
 
 mkdir -p "$OUT_DIR"
 RUN_STAMP="$(date +%Y%m%d-%H%M%S)"
@@ -70,6 +71,11 @@ take_cycle() {
   local after_json="${prefix}_after.json"
   local tap_json="${prefix}_tap.json"
   local logs_json="${prefix}_logs.json"
+
+  # Keep Android in foreground during hot-reload cycles to avoid launcher black captures.
+  if [[ "$platform" == "android" ]]; then
+    api_post "/api/launch" "{\"deviceId\":\"$device_id\",\"platform\":\"android\",\"bundleId\":\"$ANDROID_BUNDLE_ID\"}" "${prefix}_launch.json"
+  fi
 
   api_post "/api/screenshot" "{\"deviceId\":\"$device_id\",\"platform\":\"$platform\"}" "$before_json"
   decode_screenshot "$before_json" "${prefix}_before.jpg" >/dev/null
