@@ -5,8 +5,7 @@
  * Commercial use requires a license from DotCorr.
  */
 
-import 'dart:ui' show Size, Rect;
-
+// Size and Rect come from dcflight's compat layer (dart:ui is stripped in flutter_zero)
 import 'package:dcflight/dcflight.dart';
 
 /// Hook for path interpolation

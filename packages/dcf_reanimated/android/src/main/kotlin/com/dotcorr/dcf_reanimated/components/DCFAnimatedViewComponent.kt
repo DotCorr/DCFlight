@@ -181,6 +181,7 @@ class DCFAnimatedViewComponent : DCFComponent() {
             newFrame.right.toInt(),
             newFrame.bottom.toInt()
         )
+        reanimatedView.markInitialLayoutApplied()
     }
 
     override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {
@@ -242,15 +243,17 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     private var frameCallback: Choreographer.FrameCallback? = null
     var isAnimating = false
     private var animationStartTime = 0L
+    private var hasReceivedInitialLayout = false
     
     // MARK: - DCFLayoutIndependent Interface
     
     /**
      * Opt-out of layout updates when animating to prevent stuttering
-     * This makes the view layout-independent during animation
+     * Always allow the first layout to apply so that fixed widths (e.g. AnimatedText width)
+     * are honored before the worklet starts blocking layout updates.
      */
     override val shouldSkipLayout: Boolean
-        get() = isAnimating
+        get() = isAnimating && hasReceivedInitialLayout
     
     // Animation configuration
     private var animationConfig: Map<String, Any?> = emptyMap()
@@ -260,6 +263,7 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     internal var workletConfig: Map<String, Any?>? = null
     private var workletExecutionConfig: Map<String, Any?>? = null
     internal var isUsingWorklet = false
+    private var lastRenderedText: String? = null
     
     // 🔥 PERFORMANCE: Cache WorkletViewProxy directly (not just viewId) to avoid ANY lookups per frame
     // This is the real fix - native animations don't do lookups, they just update properties
@@ -268,6 +272,11 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     
     // Identifiers for callbacks
     var nodeId: String? = null
+    
+    // Mark that the first layout has been applied
+    fun markInitialLayoutApplied() {
+        hasReceivedInitialLayout = true
+    }
     
     // ============================================================================
     // WORKLET CONFIGURATION - UI THREAD EXECUTION
@@ -472,6 +481,7 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
         Log.d(TAG, "🛑 PURE REANIMATED: Stopping pure UI thread animation")
         
         isAnimating = false
+        lastRenderedText = null
         stopFrameCallback()
         
         // CRITICAL: When animation stops, ensure layout is synchronized
@@ -807,9 +817,11 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
             }
         }
         
-        // 🔥 PERFORMANCE: Removed logging - update text directly
-        // Update child text component directly on UI thread
-        updateChildText(resultText)
+        // Avoid redundant updates when text hasn't changed.
+        if (resultText != lastRenderedText) {
+            lastRenderedText = resultText
+            updateChildText(resultText)
+        }
     }
     
     /**

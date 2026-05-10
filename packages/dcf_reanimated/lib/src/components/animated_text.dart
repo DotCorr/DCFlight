@@ -113,8 +113,10 @@ class AnimatedText extends DCFStatelessComponent {
           content: '', // Will be updated by worklet on UI thread via tunnel
           textProps: textProps,
           textColor: textColor,
-          layout: const DCFLayout(),
-          styleSheet: const DCFStyleSheet(),
+          // Match parent AnimatedText width so native text layout doesn't collapse
+          // to intrinsic single-character widths on Android.
+          layout: const DCFLayout(width: '100%'),
+          styleSheet: styleSheet ?? const DCFStyleSheet(),
         ),
       ],
     );

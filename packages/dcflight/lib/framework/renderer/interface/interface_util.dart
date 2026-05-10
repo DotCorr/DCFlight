@@ -23,16 +23,16 @@ Map<String, dynamic> preprocessProps(Map<String, dynamic> props) {
         }
       } else if (value is Color) {
         // Use dcf: prefix to distinguish black from transparent
-        final alpha = (value.a * 255.0).round() & 0xff;
+        final alpha = value.alpha & 0xff;
         if (alpha == 0) {
           processedProps[key] = 'dcf:transparent';
         } else if (value.value == 0xFF000000) {
           processedProps[key] = 'dcf:black';
         } else if (alpha == 255) {
-          final hexValue = value.toARGB32() & 0xFFFFFF;
+          final hexValue = value.value & 0xFFFFFF;
           processedProps[key] = 'dcf:#${hexValue.toRadixString(16).padLeft(6, '0')}';
         } else {
-          final argbValue = value.toARGB32();
+          final argbValue = value.value;
           processedProps[key] = 'dcf:#${argbValue.toRadixString(16).padLeft(8, '0')}';
         }
       } else if (value == double.infinity) {

@@ -67,6 +67,30 @@ class Color {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Minimal geometry types (dart:ui stripped in flutter_zero)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Minimal 2D size substitute for environments where dart:ui is stripped.
+class Size {
+  final double width;
+  final double height;
+  const Size(this.width, this.height);
+  static const Size zero = Size(0, 0);
+}
+
+/// Minimal axis-aligned rectangle substitute for environments where dart:ui is stripped.
+class Rect {
+  final double left;
+  final double top;
+  final double right;
+  final double bottom;
+  const Rect.fromLTRB(this.left, this.top, this.right, this.bottom);
+  double get width => right - left;
+  double get height => bottom - top;
+  static const Rect zero = Rect.fromLTRB(0, 0, 0, 0);
+}
+
 // Debug / build-mode constants
 // ─────────────────────────────────────────────────────────────────────────────
 

@@ -83,14 +83,14 @@ class DCFGradient extends Equatable {
     final map = <String, dynamic>{
       'type': type.name,
       'colors': colors.map((color) {
-        final alpha = (color.a * 255.0).round() & 0xff;
+        final alpha = color.alpha & 0xff;
         if (alpha == 0) {
           return 'transparent';
         } else if (alpha == 255) {
-          final hexValue = color.toARGB32() & 0xFFFFFF;
+          final hexValue = color.value & 0xFFFFFF;
           return '#${hexValue.toRadixString(16).padLeft(6, '0')}';
         } else {
-          final argbValue = color.toARGB32();
+          final argbValue = color.value;
           return '#${argbValue.toRadixString(16).padLeft(8, '0')}';
         }
       }).toList(),

@@ -15,11 +15,11 @@ class ColorUtils {
   /// Convert a Color to hex string
   /// Returns 'transparent' for transparent colors, otherwise returns '#RRGGBB'
   static String colorToHex(Color color) {
-    final alpha = (color.a * 255.0).round() & 0xff;
+    final alpha = color.alpha & 0xff;
     if (alpha == 0) {
       return 'transparent';
     } else {
-      final hexValue = color.toARGB32() & 0xFFFFFF;
+      final hexValue = color.value & 0xFFFFFF;
       return '#${hexValue.toRadixString(16).padLeft(6, '0')}';
     }
   }
