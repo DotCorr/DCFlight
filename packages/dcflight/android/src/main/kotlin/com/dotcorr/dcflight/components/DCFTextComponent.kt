@@ -274,7 +274,15 @@ class DCFTextComponent : DCFComponent() {
         // 2. Shadow node's Yoga layout width (if calculated) - accurate after layout
         // 3. Parent's width constraint (if available) - reasonable estimate
         // 4. Screen width as last resort (prevents overflow on small devices, much better than 10000)
+        val parentViewWidth = (textView.parent as? android.view.ViewGroup)?.width ?: 0
+        val isInPureReanimatedView = textView.parent?.javaClass?.simpleName == "PureReanimatedView"
+
         val maxWidth: Int = when {
+            // AnimatedText runs inside PureReanimatedView; prefer parent width when child
+            // width is still intrinsic (e.g. 33px) to prevent aggressive truncation.
+            isInPureReanimatedView && parentViewWidth > textView.width -> {
+                parentViewWidth
+            }
             textView.width > 0 -> {
                 // View has been laid out - use actual width
                 textView.width

@@ -44,7 +44,6 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         
         let webView = WKWebView(frame: .zero, configuration: configuration)
         
-        
         webView.navigationDelegate = DCFWebViewComponent.sharedInstance
         webView.uiDelegate = DCFWebViewComponent.sharedInstance
         
@@ -53,7 +52,9 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         let userContentController = webView.configuration.userContentController
         userContentController.add(DCFWebViewComponent.sharedInstance, name: "dcfMessage")
         
-        webView.translatesAutoresizingMaskIntoConstraints = false
+        // DCF layout applies frames directly; keep autoresizing-mask translation enabled
+        // to avoid AutoLayout collapsing WKWebView when no constraints are provided.
+        webView.translatesAutoresizingMaskIntoConstraints = true
         webView.isOpaque = true
         
         let allowsZoom = props["allowsZoom"] as? Bool ?? true
@@ -70,8 +71,6 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         if let userAgent = props["userAgent"] as? String {
             webView.customUserAgent = userAgent
         }
-        
-        
         
         DispatchQueue.main.async {
             DCFWebViewComponent.sharedInstance.loadContent(webView: webView, props: props)
@@ -126,7 +125,6 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         let loadMode = props["loadMode"] as? String ?? "url"
         let contentType = props["contentType"] as? String ?? "html"
         
-        
         currentURL = source
         
         webView.isHidden = false
@@ -147,7 +145,6 @@ class DCFWebViewComponent: NSObject, DCFComponent {
             request.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1", forHTTPHeaderField: "User-Agent")
             request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
             request.timeoutInterval = 30.0
-            
             
             webView.load(request)
             
@@ -324,3 +321,4 @@ extension DCFWebViewComponent: WKScriptMessageHandler {
         return nil
     }
 }
+

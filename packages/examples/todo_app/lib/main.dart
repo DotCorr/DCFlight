@@ -16,6 +16,71 @@ class AppRoot extends DCFStatefulComponent {
   DCFComponentNode render() {
     final showExamples = useState<bool>(false);
 
+    if (showExamples.state) {
+      return DCFView(
+        layout: const DCFLayout(width: '100%', height: '100%'),
+        styleSheet: DCFStyleSheet(backgroundColor: DCFColors.black),
+        children: [
+          DCFView(
+            layout: const DCFLayout(
+              width: '100%',
+              height: '100%',
+              paddingHorizontal: 24,
+              paddingVertical: 40,
+              gap: 20,
+            ),
+            children: [
+              DCFButton(
+                layout: const DCFLayout(
+                  alignSelf: DCFAlign.flexStart,
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                ),
+                styleSheet: DCFStyleSheet(
+                  backgroundColor: DCFColors.gray900,
+                  borderRadius: 4,
+                  borderWidth: 1,
+                  borderColor: DCFColors.gray700,
+                ),
+                onPress: (_) => showExamples.setState(false),
+                children: [
+                  DCFText(
+                    content: "← Back",
+                    textProps: DCFTextProps(fontSize: 14),
+                    styleSheet: DCFStyleSheet(primaryColor: DCFColors.white),
+                  ),
+                ],
+              ),
+              DCFText(
+                content: "The Lab",
+                textProps: DCFTextProps(
+                  fontSize: 36,
+                  fontWeight: DCFFontWeight.medium,
+                  letterSpacing: -1,
+                ),
+                styleSheet: DCFStyleSheet(primaryColor: DCFColors.white),
+              ),
+              DCFWebGpuSurface(
+                webGpuProps: const DCFWebGpuSurfaceProps(
+                  scene: DCFWebGpuScene.cubeLogo,
+                  sceneLabel: 'the lab preview',
+                  centerGlyph: 'DC',
+                  rotationSpeed: 1.1,
+                ),
+                layout: const DCFLayout(width: '100%', height: 260),
+                styleSheet: DCFStyleSheet(
+                  borderWidth: 1,
+                  borderColor: DCFColors.gray700,
+                  borderRadius: 12,
+                  backgroundColor: DCFColors.black,
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
     return DCFView(layout: DCFLayout(width: '100%', height: '100%'), children: [
       // Content wrapper - this changes when navigating
 
@@ -43,7 +108,7 @@ class DotCorrLanding extends DCFStatelessComponent {
       styleSheet: DCFStyleSheet(backgroundColor: DCFColors.white),
       scrollContent: [
         NavigationBar(onToggleExamples: onToggleExamples),
-        HeroSection(),
+        HeroSection(onEnterLab: onToggleExamples),
         // EcosystemSection(),
         BuildersAndMachinesSection(),
         TechnologyEcosystemSection(),
@@ -128,6 +193,10 @@ class NavigationBar extends DCFStatelessComponent {
 }
 
 class HeroSection extends DCFStatelessComponent {
+  final VoidCallback? onEnterLab;
+
+  HeroSection({this.onEnterLab, super.key});
+
   @override
   DCFComponentNode render() {
     return DCFView(
@@ -153,11 +222,7 @@ class HeroSection extends DCFStatelessComponent {
             DCFView(
               layout: DCFLayout(width: '100%', gap: 32),
               children: [
-                Motion(
-                  initial: AnimationProperties(opacity: 0, y: 20),
-                  animate: AnimationProperties(opacity: 1, y: 0),
-                  transition: Transition(duration: 800),
-                  autoStart: false,
+                DCFView(
                   layout: DCFLayout(gap: 24),
                   children: [
                     // Split text to match web styling - "For The" in gray
@@ -236,17 +301,18 @@ class HeroSection extends DCFStatelessComponent {
                       ],
                     ),
 
-                    // Typewriter Effect (Worklet-based - runs on UI thread)
+                    // Stable typewriter path for Android while Motion/Reanimated
+                    // is being replaced by native animation APIs + WebGPU effects.
                     DCFView(
                       layout: DCFLayout(
                         width: '100%', // CRITICAL: Constrain width to prevent overflow
                         height: 80, // h-20 = 80px (matches web)
                         justifyContent: DCFJustifyContent.center,
-                        alignItems: DCFAlign.center, // Center typewriter row horizontally
+                        alignItems: DCFAlign.flexStart,
                         marginBottom: 40, // mb-10 = 40px (matches web)
                         overflow: DCFOverflow.hidden, // Clip content that exceeds bounds
                       ),
-                      children: [TypewriterEffectWorklet()],
+                      children: [TypewriterEffect()],
                     ),
 
                     // Button
@@ -269,7 +335,7 @@ class HeroSection extends DCFStatelessComponent {
                             borderRadius: 2, // Small radius like web
                           ),
                           onPress: (data) {
-                            // Navigate to The Lab
+                            onEnterLab?.call();
                           },
                           children: [
                             DCFText(
@@ -290,6 +356,48 @@ class HeroSection extends DCFStatelessComponent {
                               ),
                               styleSheet: DCFStyleSheet(
                                 primaryColor: DCFColors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+
+                    // WebGPU migration scaffold:
+                    // Motion remains native-animation abstraction; draw-heavy visual
+                    // scenes live in the exposed WebGPU surface abstraction.
+                    DCFView(
+                      layout: DCFLayout(
+                        width: '100%',
+                        marginTop: 20,
+                      ),
+                      children: [
+                        DCFView(
+                          layout: DCFLayout(width: '100%', gap: 8),
+                          children: [
+                            DCFText(
+                              content: "Lab GPU Surface",
+                              textProps: DCFTextProps(
+                                fontSize: 12,
+                                fontWeight: DCFFontWeight.medium,
+                                letterSpacing: 0.4,
+                              ),
+                              styleSheet: DCFStyleSheet(
+                                primaryColor: DCFColors.gray500,
+                              ),
+                            ),
+                            DCFWebGpuSurface(
+                              webGpuProps: const DCFWebGpuSurfaceProps(
+                                scene: DCFWebGpuScene.cubeLogo,
+                                sceneLabel: 'hero gpu preview',
+                                centerGlyph: 'DC',
+                              ),
+                              layout: const DCFLayout(width: '100%', height: 160),
+                              styleSheet: DCFStyleSheet(
+                                borderWidth: 1,
+                                borderColor: DCFColors.gray200,
+                                borderRadius: 8,
+                                backgroundColor: DCFColors.black,
                               ),
                             ),
                           ],
@@ -341,8 +449,9 @@ class TypewriterEffect extends DCFStatefulComponent {
     ];
 
     final index = useState<int>(0);
-    final subIndex = useState<int>(1);
+    final subIndex = useState<int>(0);
     final reverse = useState<bool>(false);
+    final holdTicks = useState<int>(0);
     final blink = useState<bool>(true);
 
     // Cursor blinking effect - runs independently
@@ -353,58 +462,39 @@ class TypewriterEffect extends DCFStatefulComponent {
       return () => timer.cancel();
     }, dependencies: []);
 
-    // Typewriter logic - matches web version behavior
-    // The framework ensures this effect runs reliably on mount and only re-runs when dependencies change
-    // This prevents unnecessary cleanup during reconciliation loops
+    // Single ticker avoids race conditions between nested timers.
     useEffect(() {
-      Timer? timer;
-      final currentWord = words[index.state];
-      final wordLength = currentWord.length;
-      final currentSubIndex = subIndex.state;
-      final isReversing = reverse.state;
+      final timer = Timer.periodic(const Duration(milliseconds: 85), (_) {
+        if (holdTicks.state > 0) {
+          holdTicks.setState(holdTicks.state - 1);
+          return;
+        }
 
-      // If we've typed past the end, wait then start deleting
-      if (currentSubIndex == wordLength && !isReversing) {
-        timer = Timer(Duration(milliseconds: 2000), () {
-          if (subIndex.state == wordLength && !reverse.state) {
-            reverse.setState(true);
+        final currentWordLength = words[index.state].length;
+        final currentSubIndex = subIndex.state;
+
+        if (!reverse.state) {
+          if (currentSubIndex < currentWordLength) {
+            subIndex.setState(currentSubIndex + 1);
+            return;
           }
-        });
-        return () => timer?.cancel();
-      }
 
-      // If we've deleted everything and reversing, move to next word
-      if (currentSubIndex == 0 && isReversing) {
+          reverse.setState(true);
+          holdTicks.setState(14);
+          return;
+        }
+
+        if (currentSubIndex > 0) {
+          subIndex.setState(currentSubIndex - 1);
+          return;
+        }
+
         reverse.setState(false);
         index.setState((index.state + 1) % words.length);
-        subIndex.setState(1);
-        // Don't set timer here - let the effect re-run with new state
-        return () {};
-      }
-
-      // Default: continue typing or deleting
-      // This handles initial state (0, false) and all in-progress states
-      final speed = isReversing ? 50 : 100;
-      timer = Timer(Duration(milliseconds: speed), () {
-        // Get fresh state values to avoid stale closures
-        final currentReverse = reverse.state;
-        final currentSub = subIndex.state;
-        final currentWordLen = words[index.state].length;
-
-        if (currentReverse) {
-          // Deleting - move backwards
-          if (currentSub > 0) {
-            subIndex.setState(currentSub - 1);
-          }
-        } else {
-          // Typing - move forwards (including initial state 0 -> 1)
-          if (currentSub < currentWordLen) {
-            subIndex.setState(currentSub + 1);
-          }
-        }
+        holdTicks.setState(3);
       });
-      return () => timer?.cancel();
-    }, dependencies: [subIndex.state, index.state, reverse.state]);
+      return () => timer.cancel();
+    }, dependencies: []);
 
     final currentText = words[index.state].substring(0, subIndex.state);
     final cursorChar =
@@ -413,24 +503,39 @@ class TypewriterEffect extends DCFStatefulComponent {
     // Combine text and cursor in a single text component for proper positioning
     // Use a fixed-width container to prevent layout jumps when switching words
     final longestWord = words.reduce((a, b) => a.length > b.length ? a : b);
-    final estimatedWidth =
-        longestWord.length * 12.0; // Approximate width per character
+    final estimatedWidth = longestWord.length * 13.0;
 
     return DCFView(
       layout: DCFLayout(
         flexDirection: DCFFlexDirection.row,
         alignItems: DCFAlign.center,
-        minWidth: estimatedWidth, // Prevent layout shifts
+        width: estimatedWidth + 40, // Prevent layout shifts and wrapping churn
+        minWidth: estimatedWidth + 40,
+        maxWidth: estimatedWidth + 40,
       ),
       children: [
         DCFText(
           content: "\$ ",
-          textProps: DCFTextProps(fontSize: 20, fontFamily: "Courier"),
+          textProps: DCFTextProps(
+            fontSize: 20,
+            fontFamily: "monospace",
+            textAlign: DCFTextAlign.left,
+          ),
           styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray400),
         ),
         DCFText(
           content: "$currentText$cursorChar",
-          textProps: DCFTextProps(fontSize: 20, fontFamily: "Courier"),
+          textProps: DCFTextProps(
+            fontSize: 20,
+            fontFamily: "monospace",
+            numberOfLines: 1,
+            textAlign: DCFTextAlign.left,
+          ),
+          layout: DCFLayout(
+            width: estimatedWidth,
+            minWidth: estimatedWidth,
+            maxWidth: estimatedWidth,
+          ),
           styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray600),
         ),
       ],
@@ -528,24 +633,35 @@ class TypewriterEffectWorklet extends DCFStatelessComponent {
       children: [
         DCFText(
           content: "\$ ",
-          textProps: DCFTextProps(fontSize: 20, fontFamily: "Courier"),
+          textProps: DCFTextProps(fontSize: 20, fontFamily: "monospace"),
           styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray400),
         ),
-        AnimatedText(
-          worklet: typewriterWorklet,
-          layout: DCFLayout(width: estimatedWidth),
-          workletConfig: {
-            'words': words,
-            'typeSpeed': 100.0,
-            'deleteSpeed': 50.0,
-            'pauseDuration': 2000.0,
-          },
-          textProps: DCFTextProps(
-            fontSize: 20,
-            fontFamily: "Courier",
-            numberOfLines: 1,
+        DCFView(
+          layout: DCFLayout(
+            width: estimatedWidth,
+            minWidth: estimatedWidth,
+            maxWidth: estimatedWidth,
+            alignItems: DCFAlign.flexStart,
+            justifyContent: DCFJustifyContent.center,
           ),
-          styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray600),
+          children: [
+            AnimatedText(
+              worklet: typewriterWorklet,
+              layout: const DCFLayout(width: '100%'),
+              workletConfig: {
+                'words': words,
+                'typeSpeed': 100.0,
+                'deleteSpeed': 50.0,
+                'pauseDuration': 2000.0,
+              },
+              textProps: DCFTextProps(
+                fontSize: 20,
+                fontFamily: "monospace",
+                numberOfLines: 1,
+              ),
+              styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray600),
+            ),
+          ],
         ),
       ],
     );
@@ -557,21 +673,15 @@ class InfrastructureVisual extends DCFStatelessComponent {
   DCFComponentNode render() {
     final size = 200.0;
 
-    // Mimicking the 3D structure from web using Reanimated transforms
-    return ReanimatedView(
+    // Temporary native-safe visual while Motion/Reanimated low-level behavior
+    // is being phased out in favor of native animation APIs and WebGPU effects.
+    return DCFView(
       layout: DCFLayout(
         width: size,
         height: size,
         alignItems: DCFAlign.center,
         justifyContent: DCFJustifyContent.center,
       ),
-      initial: AnimationProperties(rotateX: 0, rotateZ: 0, scale: 0.8),
-      animate: AnimationProperties(rotateX: 60, rotateZ: 45, scale: 1.0),
-      transition: Transition(
-        duration: 2500, // Match web duration
-        cubicBezier: [0.16, 1, 0.3, 1], // Smooth ease-out like web
-      ),
-      autoStart: false,
       children: [
         // Base (Black background)
         DCFView(
@@ -587,8 +697,8 @@ class InfrastructureVisual extends DCFStatelessComponent {
           ),
         ),
 
-        // Tower (White square rising up with 3D translateZ)
-        ReanimatedView(
+        // Tower (static placeholder)
+        DCFView(
           layout: DCFLayout(
             width: size * 0.35,
             height: size * 0.35,
@@ -601,16 +711,6 @@ class InfrastructureVisual extends DCFStatelessComponent {
             shadowRadius: 20,
             shadowOpacity: 0.4,
           ),
-          initial: AnimationProperties(translateZ: 0),
-          animate: AnimationProperties(
-            translateZ: 80,
-          ), // Tower height in 3D space
-          transition: Transition(
-            duration: 2000,
-            delay: 800,
-            curve: AnimationCurve.easeOut,
-          ),
-          autoStart: false,
           children: [],
         ),
       ],
@@ -910,3 +1010,4 @@ class Footer extends DCFStatelessComponent {
     );
   }
 }
+

@@ -11,10 +11,13 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.PointF
+import android.os.Build
 import android.view.View
+import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.webkit.WebChromeClient
+import android.webkit.WebSettings
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
@@ -27,6 +30,26 @@ class DCFWebViewComponent : DCFComponent() {
         val webView = WebView(context)
 
         webView.settings.javaScriptEnabled = true
+        webView.settings.domStorageEnabled = true
+        webView.settings.databaseEnabled = true
+        webView.settings.allowFileAccess = true
+        webView.settings.allowContentAccess = true
+        webView.settings.allowFileAccessFromFileURLs = true
+        webView.settings.allowUniversalAccessFromFileURLs = true
+        webView.settings.setSupportZoom(false)
+        webView.settings.builtInZoomControls = false
+        webView.settings.displayZoomControls = false
+        webView.settings.cacheMode = WebSettings.LOAD_DEFAULT
+        webView.settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            webView.settings.safeBrowsingEnabled = true
+        }
+
+        webView.setBackgroundColor(Color.TRANSPARENT)
+        webView.layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        )
 
         webView.setTag(DCFTags.COMPONENT_TYPE_KEY, "WebView")
 
@@ -161,6 +184,10 @@ class DCFWebViewComponent : DCFComponent() {
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                view?.post {
+                    view.requestLayout()
+                    view.invalidate()
+                }
                 if (view != null) {
                     propagateEvent(view, "onLoadEnd", mapOf(
                         "url" to (url ?: ""),
@@ -211,6 +238,30 @@ class DCFWebViewComponent : DCFComponent() {
         }
 
         webView.applyStyles(nonNullProps)
+
+        fun tryExpandCollapsedWidth(attempt: Int = 0) {
+            webView.post {
+                val parentWidth = (webView.parent as? View)?.width ?: 0
+                if (webView.width <= 24 && parentWidth > 0) {
+                    val params = webView.layoutParams
+                    params.width = parentWidth
+                    webView.layoutParams = params
+                    webView.requestLayout()
+                    webView.invalidate()
+                    return@post
+                }
+
+                if (webView.width <= 24 && attempt < 8) {
+                    webView.postDelayed({ tryExpandCollapsedWidth(attempt + 1) }, 16)
+                }
+            }
+        }
+
+        val requestedWidth = mergedProps["width"]
+        if ((requestedWidth is String && requestedWidth.trim().endsWith("%")) || webView.width <= 24) {
+            tryExpandCollapsedWidth()
+        }
+
         return true
     }
 
