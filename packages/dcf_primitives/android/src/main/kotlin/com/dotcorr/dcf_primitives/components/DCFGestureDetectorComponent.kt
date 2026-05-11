@@ -27,6 +27,26 @@ class DCFGestureDetectorComponent : DCFComponent() {
         val frameLayout = FrameLayout(context)
         
         frameLayout.setTag(DCFTags.COMPONENT_TYPE_KEY, "GestureDetector")
+
+        val hasGestureCallbacks = listOf(
+            "onTap",
+            "onLongPress",
+            "onSwipeLeft",
+            "onSwipeRight",
+            "onSwipeUp",
+            "onSwipeDown",
+            "onPanStart",
+            "onPanUpdate",
+            "onPanEnd",
+            "onDoubleTap",
+            "onPinchStart",
+            "onPinchUpdate",
+            "onPinchEnd",
+            "onRotationStart",
+            "onRotationUpdate",
+            "onRotationEnd",
+            "onHover"
+        ).any { props[it] != null }
         
         var panStartX = 0f
         var panStartY = 0f
@@ -201,10 +221,12 @@ class DCFGestureDetectorComponent : DCFComponent() {
         frameLayout.setOnTouchListener { _, event ->
             val currentTime = System.currentTimeMillis()
             val pointerCount = event.pointerCount
+            var consumed = false
             
             // Handle pinch/scale first
             if (pointerCount >= 2) {
                 scaleGestureDetector.onTouchEvent(event)
+                consumed = true
                 
                 // Handle rotation (two-finger rotation)
                 if (pointerCount == 2) {
@@ -236,6 +258,7 @@ class DCFGestureDetectorComponent : DCFComponent() {
                                     "timestamp" to currentTime,
                                     "fromUser" to true
                                 ))
+                                consumed = true
                             }
                         }
                         MotionEvent.ACTION_MOVE -> {
@@ -258,6 +281,7 @@ class DCFGestureDetectorComponent : DCFComponent() {
                                 
                                 lastRotationAngle = currentAngle
                                 lastRotationTime = currentTime
+                                consumed = true
                             }
                         }
                         MotionEvent.ACTION_POINTER_UP -> {
@@ -277,6 +301,7 @@ class DCFGestureDetectorComponent : DCFComponent() {
                                 ))
                                 
                                 isRotating = false
+                                consumed = true
                             }
                         }
                     }
@@ -298,6 +323,7 @@ class DCFGestureDetectorComponent : DCFComponent() {
                     lastPanTime = currentTime
                     isPanning = false
                     gestureDetector.onTouchEvent(event)
+                    consumed = consumed || hasGestureCallbacks
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val deltaX = event.x - panStartX
@@ -305,6 +331,7 @@ class DCFGestureDetectorComponent : DCFComponent() {
                     val distance = kotlin.math.sqrt((deltaX * deltaX + deltaY * deltaY).toDouble())
                     
                     // Start panning if moved more than threshold (10 pixels)
+                        consumed = true
                     if (!isPanning && distance > 10) {
                         isPanning = true
                         propagateEvent(frameLayout, "onPanStart", mapOf(
@@ -344,6 +371,7 @@ class DCFGestureDetectorComponent : DCFComponent() {
                         lastPanX = event.x
                         lastPanY = event.y
                         lastPanTime = currentTime
+                        consumed = true
                     } else {
                         gestureDetector.onTouchEvent(event)
                     }
@@ -369,6 +397,7 @@ class DCFGestureDetectorComponent : DCFComponent() {
                             "fromUser" to true
                         ))
                         isPanning = false
+                        consumed = true
                     } else {
                         gestureDetector.onTouchEvent(event)
                     }
@@ -377,7 +406,7 @@ class DCFGestureDetectorComponent : DCFComponent() {
                     gestureDetector.onTouchEvent(event)
                 }
             }
-            true
+            consumed || hasGestureCallbacks || isPanning || isPinching || isRotating
         }
         
         // Hover support (for mouse/trackpad on tablets/desktop)

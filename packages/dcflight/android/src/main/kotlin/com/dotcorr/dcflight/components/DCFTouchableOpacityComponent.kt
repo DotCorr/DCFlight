@@ -32,13 +32,25 @@ class DCFTouchableOpacityComponent : DCFComponent() {
         val frameLayout = FrameLayout(context)
         
         frameLayout.setTag(DCFTags.COMPONENT_TYPE_KEY, "TouchableOpacity")
+        frameLayout.isClickable = true
+        frameLayout.isFocusable = true
+        frameLayout.isFocusableInTouchMode = true
         
         originalAlpha = 1.0f
+
+        frameLayout.setOnClickListener { view ->
+            Log.e(TAG, "✅ Click listener fired: viewId=$viewId")
+
+            propagateEvent(view, "onPress", mapOf(
+                "timestamp" to System.currentTimeMillis(),
+                "fromUser" to true
+            ))
+        }
         
         frameLayout.setOnTouchListener { view, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    Log.d(TAG, "🔵 Touch DOWN: viewId=$viewId")
+                    Log.e(TAG, "🔵 Touch DOWN: viewId=$viewId")
                     val viewIdTag = view.getTag(DCFTags.VIEW_ID_KEY)
                     Log.d(TAG, "   VIEW_ID_KEY: $viewIdTag")
                     
@@ -55,7 +67,7 @@ class DCFTouchableOpacityComponent : DCFComponent() {
                 }
                 
                 MotionEvent.ACTION_UP -> {
-                    Log.d(TAG, "🔵 Touch UP: viewId=$viewId")
+                    Log.e(TAG, "🔵 Touch UP: viewId=$viewId")
                     val viewIdTag = view.getTag(DCFTags.VIEW_ID_KEY)
                     val eventTypesTag = view.getTag(DCFTags.EVENT_TYPES_KEY)
                     val callbackTag = view.getTag(DCFTags.EVENT_CALLBACK_KEY)
@@ -76,12 +88,8 @@ class DCFTouchableOpacityComponent : DCFComponent() {
                     val x = event.x
                     val y = event.y
                     if (x >= 0 && x <= view.width && y >= 0 && y <= view.height) {
-                        Log.d(TAG, "✅ TOUCHABLE PRESSED - Firing onPress event")
-                        
-                        propagateEvent(view, "onPress", mapOf(
-                            "timestamp" to System.currentTimeMillis(),
-                            "fromUser" to true
-                        ))
+                        Log.e(TAG, "✅ TOUCHABLE PRESSED - Dispatching performClick()")
+                        view.performClick()
                     }
                     true
                 }

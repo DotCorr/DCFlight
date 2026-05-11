@@ -17,6 +17,11 @@ import dcflight
     @objc public static func registerComponents() {
         DCFSvgComponent.initializeSVGKit()
 
+            // Defer prewarm so app first frame is not blocked by WebKit initialization.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                DCFWebViewComponent.prewarm(count: 1)
+            }
+
         // NOTE: View, Text, ScrollView, and ScrollContentView are CORE framework components
         // They are registered in FrameworkComponentsReg, NOT here!
 

@@ -8,15 +8,104 @@
 import Foundation
 import UIKit
 import WebKit
+import ObjectiveC.runtime
 import dcflight
 
 class DCFWebViewComponent: NSObject, DCFComponent {
     private static let sharedInstance = DCFWebViewComponent()
-    
-    private var currentURL: String?
+    private static var fillScrollContentKey: UInt8 = 0
+    private static var sourceKey: UInt8 = 0
+
+        // MARK: - Warm Pool
+        // Pre-initialized WKWebViews kept offscreen so that when a surface mounts,
+        // the WebKit rendering process is already running (eliminates ~200-350ms cold-start).
+        private static var warmPool: [WKWebView] = []
+
+        /// Call once after startup to warm the WebKit process without blocking first frame.
+        static func prewarm(count: Int = 1) {
+            guard Thread.isMainThread else {
+                DispatchQueue.main.async { prewarm(count: count) }
+                return
+            }
+            let toCreate = max(0, count - warmPool.count)
+            guard toCreate > 0 else { return }
+
+            for _ in 0..<toCreate {
+                let config = WKWebViewConfiguration()
+                config.preferences.javaScriptEnabled = true
+                config.allowsInlineMediaPlayback = true
+                config.mediaTypesRequiringUserActionForPlayback = []
+                config.userContentController.add(sharedInstance, name: "dcfMessage")
+
+                // Place well offscreen so it is invisible but fully initialized
+                let warmView = WKWebView(
+                    frame: CGRect(x: -9999, y: -9999, width: 393, height: 852),
+                    configuration: config
+                )
+                if #available(iOS 16.4, *) { warmView.isInspectable = true }
+                warmView.backgroundColor = UIColor(red: 8/255, green: 8/255, blue: 8/255, alpha: 1.0)
+                warmView.scrollView.backgroundColor = UIColor(red: 8/255, green: 8/255, blue: 8/255, alpha: 1.0)
+                warmView.translatesAutoresizingMaskIntoConstraints = true
+                warmView.isOpaque = true
+                warmView.isHidden = true
+
+                warmPool.append(warmView)
+            }
+            print("🔥 DCFWebViewComponent: prewarmed \(toCreate) WebViews, pool size=\(warmPool.count)")
+        }
+
+        private static func popWarmView() -> WKWebView? {
+            guard !warmPool.isEmpty else { return nil }
+            let view = warmPool.removeLast()
+            view.removeFromSuperview()
+            view.isHidden = false
+            view.navigationDelegate = sharedInstance
+            view.uiDelegate = sharedInstance
+            view.addObserver(sharedInstance, forKeyPath: "estimatedProgress", options: .new, context: nil)
+
+            // Replenish pool asynchronously so future mounts are also instant
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                prewarm(count: 1)
+            }
+            print("🔥 DCFWebViewComponent: popped warm WebView from pool, remaining=\(warmPool.count)")
+            return view
+        }
     
     required override init() {
         super.init()
+    }
+
+    private func setFillScrollContent(_ webView: WKWebView, enabled: Bool) {
+        objc_setAssociatedObject(
+            webView,
+            &DCFWebViewComponent.fillScrollContentKey,
+            enabled,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+    }
+
+    private func isFillScrollContent(_ webView: WKWebView) -> Bool {
+        objc_getAssociatedObject(webView, &DCFWebViewComponent.fillScrollContentKey) as? Bool ?? false
+    }
+
+    private func updateFillScrollContentFlag(_ webView: WKWebView, props: [String: Any]) {
+        let flexGrowValue = numericValue(props["flexGrow"])
+        let flexShrinkValue = numericValue(props["flexShrink"])
+        let enabled = (flexGrowValue ?? 0) > 0 && (flexShrinkValue ?? 1) <= 0
+        setFillScrollContent(webView, enabled: enabled)
+    }
+
+    private func numericValue(_ value: Any?) -> CGFloat? {
+        if let number = value as? NSNumber {
+            return CGFloat(truncating: number)
+        }
+        if let doubleValue = value as? Double {
+            return CGFloat(doubleValue)
+        }
+        if let intValue = value as? Int {
+            return CGFloat(intValue)
+        }
+        return nil
     }
     
     func createView(props: [String: Any]) -> UIView {
@@ -31,18 +120,39 @@ class DCFWebViewComponent: NSObject, DCFComponent {
             }
         }
         
-        let configuration = WKWebViewConfiguration()
+            // ── Fast path: reuse a pre-warmed WebView (no cold-start latency) ──────────
+            if let warmView = DCFWebViewComponent.popWarmView() {
+                warmView.scrollView.isScrollEnabled = props["scrollEnabled"] as? Bool ?? true
+                warmView.scrollView.showsHorizontalScrollIndicator = props["showsScrollIndicators"] as? Bool ?? true
+                warmView.scrollView.showsVerticalScrollIndicator = props["showsScrollIndicators"] as? Bool ?? true
+                warmView.scrollView.bounces = props["bounces"] as? Bool ?? true
+
+                if let userAgent = props["userAgent"] as? String {
+                    warmView.customUserAgent = userAgent
+                }
+                if #available(iOS 11.0, *) {
+                    warmView.scrollView.contentInsetAdjustmentBehavior =
+                        (props["automaticallyAdjustContentInsets"] as? Bool ?? true) ? .automatic : .never
+                }
+                updateFillScrollContentFlag(warmView, props: props)
+                DispatchQueue.main.async {
+                    DCFWebViewComponent.sharedInstance.loadContent(webView: warmView, props: props)
+                }
+                return warmView
+            }
+
+            // ── Cold path: create a fresh WebView (pool was empty) ───────────────────
+            let configuration = WKWebViewConfiguration()
+
+            let javaScriptEnabled = props["javaScriptEnabled"] as? Bool ?? true
+            configuration.preferences.javaScriptEnabled = javaScriptEnabled
+
+            // Do not set private/undefined WKPreferences keys here.
+            // KVC with unsupported keys (like "WebGPUEnabled" on some runtimes)
+            // crashes the app with NSUnknownKeyException.
         
-        let javaScriptEnabled = props["javaScriptEnabled"] as? Bool ?? true
-        configuration.preferences.javaScriptEnabled = javaScriptEnabled
-        
-        // Do not set private/undefined WKPreferences keys here.
-        // KVC with unsupported keys (like "WebGPUEnabled" on some runtimes)
-        // crashes the app with NSUnknownKeyException.
-        
-        let allowsInlineMediaPlayback = props["allowsInlineMediaPlayback"] as? Bool ?? true
-        configuration.allowsInlineMediaPlayback = allowsInlineMediaPlayback
-        
+            let allowsInlineMediaPlayback = props["allowsInlineMediaPlayback"] as? Bool ?? true
+            configuration.allowsInlineMediaPlayback = allowsInlineMediaPlayback
         let mediaPlaybackRequiresUserAction = props["mediaPlaybackRequiresUserAction"] as? Bool ?? true
         configuration.mediaTypesRequiringUserActionForPlayback = mediaPlaybackRequiresUserAction ? .all : []
         
@@ -84,6 +194,8 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         if let userAgent = props["userAgent"] as? String {
             webView.customUserAgent = userAgent
         }
+
+        updateFillScrollContentFlag(webView, props: props)
         
         DispatchQueue.main.async {
             DCFWebViewComponent.sharedInstance.loadContent(webView: webView, props: props)
@@ -98,12 +210,21 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         }
         
         let source = props["source"] as? String ?? ""
-        
-        if DCFWebViewComponent.sharedInstance.currentURL != source {
+        let previousSource = objc_getAssociatedObject(webView, &DCFWebViewComponent.sourceKey) as? String
+
+        if previousSource != source {
             DispatchQueue.main.async {
                 DCFWebViewComponent.sharedInstance.loadContent(webView: webView, props: props)
             }
+            objc_setAssociatedObject(
+                webView,
+                &DCFWebViewComponent.sourceKey,
+                source,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
         }
+
+        updateFillScrollContentFlag(webView, props: props)
         
         webView.scrollView.isScrollEnabled = props["scrollEnabled"] as? Bool ?? true
         webView.scrollView.showsHorizontalScrollIndicator = props["showsScrollIndicators"] as? Bool ?? true
@@ -115,9 +236,12 @@ class DCFWebViewComponent: NSObject, DCFComponent {
     }
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
+        guard let webView = view as? WKWebView else { return }
+
         let layoutWidth = CGFloat(layout.width)
         let layoutHeight = CGFloat(layout.height)
         let needsWidthFallback = layoutWidth <= 1 || layoutWidth < 100
+        let fillScrollContent = isFillScrollContent(webView)
 
         // Return the first ancestor that is meaningfully wider than the current
         // Yoga width. This addresses nested percentage-width containers that can
@@ -148,7 +272,11 @@ class DCFWebViewComponent: NSObject, DCFComponent {
 
         var targetX = CGFloat(layout.left)
         var targetWidth = resolvedWidth
-        if resolvedWidth > layoutWidth + 1,
+        if fillScrollContent {
+            targetX = 0
+            let viewportWidth = webView.window?.bounds.width ?? UIScreen.main.bounds.width
+            targetWidth = max(viewportWidth, resolvedWidth)
+        } else if resolvedWidth > layoutWidth + 1,
            let parent = view.superview,
            let ancestor = promotedAncestor {
             let promotedRectInParent = parent.convert(ancestor.bounds, from: ancestor)
@@ -170,27 +298,34 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         print("📐 DCFWebViewComponent applyLayout frame=\(targetFrame) layout=(\(layoutWidth), \(layoutHeight))")
         view.frame = targetFrame
 
-        guard let webView = view as? WKWebView else { return }
-
         // After layout settles, one more reconciliation pass ensures the webview
         // catches up if parent widths finalize after this apply call.
         DispatchQueue.main.async {
-                if let ancestor = findPromotedAncestor(from: webView, currentWidth: webView.frame.width),
-                   let parent = webView.superview,
-                   webView.frame.width + 1 < ancestor.bounds.width {
-                    let promotedRectInParent = parent.convert(ancestor.bounds, from: ancestor)
-                    let clampedRect = promotedRectInParent.intersection(parent.bounds)
-                    let finalRect: CGRect
-                    if !clampedRect.isNull && clampedRect.width > 1 {
-                        finalRect = clampedRect
-                    } else {
-                        finalRect = promotedRectInParent
-                    }
-                    print("📐 DCFWebViewComponent async reconcile frame=\(finalRect)")
+            if fillScrollContent {
+                let viewportWidth = webView.window?.bounds.width ?? UIScreen.main.bounds.width
+                let finalRect = CGRect(x: 0, y: webView.frame.origin.y, width: viewportWidth, height: webView.frame.height)
+                if abs(webView.frame.width - finalRect.width) > 1 || webView.frame.origin.x != 0 {
+                    print("📐 DCFWebViewComponent async reconcile pin=\(finalRect)")
+                    webView.frame = finalRect
+                    webView.setNeedsLayout()
+                    webView.layoutIfNeeded()
+                }
+            } else if let ancestor = findPromotedAncestor(from: webView, currentWidth: webView.frame.width),
+                      let parent = webView.superview,
+                      webView.frame.width + 1 < ancestor.bounds.width {
+                let promotedRectInParent = parent.convert(ancestor.bounds, from: ancestor)
+                let clampedRect = promotedRectInParent.intersection(parent.bounds)
+                let finalRect: CGRect
+                if !clampedRect.isNull && clampedRect.width > 1 {
+                    finalRect = clampedRect
+                } else {
+                    finalRect = promotedRectInParent
+                }
+                print("📐 DCFWebViewComponent async reconcile frame=\(finalRect)")
                 webView.frame = CGRect(
-                        x: finalRect.origin.x,
+                    x: finalRect.origin.x,
                     y: webView.frame.origin.y,
-                        width: finalRect.width,
+                    width: finalRect.width,
                     height: webView.frame.height
                 )
                 webView.setNeedsLayout()
@@ -214,8 +349,6 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         let source = props["source"] as? String ?? ""
         let loadMode = props["loadMode"] as? String ?? "url"
         let contentType = props["contentType"] as? String ?? "html"
-        
-        currentURL = source
         
         webView.isHidden = false
         webView.alpha = 1.0

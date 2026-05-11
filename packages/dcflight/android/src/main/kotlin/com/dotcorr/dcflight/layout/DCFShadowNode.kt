@@ -29,9 +29,16 @@ open class DCFShadowNode {
     companion object {
         private const val TAG = "DCFShadowNode"
         private const val NO_INTRINSIC_METRIC = -1f
+        private const val VERBOSE_LAYOUT_LOGS = false
         
         // Shared Yoga config - matches iOS
         val yogaConfig: YogaConfig = YogaConfigFactory.create()
+    }
+
+    private fun logLayoutD(message: String) {
+        if (VERBOSE_LAYOUT_LOGS) {
+            Log.d(TAG, message)
+        }
     }
     
     // MARK: - Lifecycle
@@ -409,36 +416,36 @@ open class DCFShadowNode {
         )
         
         // DEBUG: Log ALL frames during layout to trace the issue
-        Log.d(TAG, "🔍 DCFShadowNode.applyLayoutNode: viewId=$viewId")
-        Log.d(TAG, "   Yoga layout: left=${node.layoutX}, top=${node.layoutY}, width=${node.layoutWidth}, height=${node.layoutHeight}")
-        Log.d(TAG, "   absolutePosition=$absolutePosition")
-        Log.d(TAG, "   Calculated relative frame=$newFrame")
-        Log.d(TAG, "   Current frame (before update)=$frame")
+        logLayoutD("🔍 DCFShadowNode.applyLayoutNode: viewId=$viewId")
+        logLayoutD("   Yoga layout: left=${node.layoutX}, top=${node.layoutY}, width=${node.layoutWidth}, height=${node.layoutHeight}")
+        logLayoutD("   absolutePosition=$absolutePosition")
+        logLayoutD("   Calculated relative frame=$newFrame")
+        logLayoutD("   Current frame (before update)=$frame")
         
         // Get parent info for debugging
         val parentNode = node.parent
         if (parentNode != null) {
             val parentShadowNode = YogaShadowTree.shared.getShadowNode(parentNode)
             if (parentShadowNode != null) {
-                Log.d(TAG, "   Parent (viewId=${parentShadowNode.viewId}) frame=${parentShadowNode.frame}")
-                Log.d(TAG, "   Parent Yoga layout: left=${parentNode.layoutX}, top=${parentNode.layoutY}, width=${parentNode.layoutWidth}, height=${parentNode.layoutHeight}")
+                logLayoutD("   Parent (viewId=${parentShadowNode.viewId}) frame=${parentShadowNode.frame}")
+                logLayoutD("   Parent Yoga layout: left=${parentNode.layoutX}, top=${parentNode.layoutY}, width=${parentNode.layoutWidth}, height=${parentNode.layoutHeight}")
             } else {
-                Log.d(TAG, "   Parent shadow node not found")
+                logLayoutD("   Parent shadow node not found")
             }
         } else {
-            Log.d(TAG, "   This is the root node (no parent)")
+            logLayoutD("   This is the root node (no parent)")
         }
         
         // DEBUG: Log problematic frames (negative Y or zero height)
         // NOTE: Negative positions are valid in Yoga (e.g., for overflow scenarios)
         // We match iOS behavior exactly - don't clamp, trust Yoga's calculations
         if (newFrame.top < 0 || newFrame.height() == 0) {
-            Log.d(TAG, "🔍 DCFShadowNode: viewId=$viewId has frame with negative Y or zero height:")
-            Log.d(TAG, "   Yoga values: left=${node.layoutX}, top=${node.layoutY}, width=${node.layoutWidth}, height=${node.layoutHeight}")
-            Log.d(TAG, "   absolutePosition=$absolutePosition")
-            Log.d(TAG, "   absoluteTopLeft=$absoluteTopLeft, absoluteBottomRight=$absoluteBottomRight")
-            Log.d(TAG, "   Calculated frame=$newFrame")
-            Log.d(TAG, "   Parent frame=$frame")
+            logLayoutD("🔍 DCFShadowNode: viewId=$viewId has frame with negative Y or zero height:")
+            logLayoutD("   Yoga values: left=${node.layoutX}, top=${node.layoutY}, width=${node.layoutWidth}, height=${node.layoutHeight}")
+            logLayoutD("   absolutePosition=$absolutePosition")
+            logLayoutD("   absoluteTopLeft=$absoluteTopLeft, absoluteBottomRight=$absoluteBottomRight")
+            logLayoutD("   Calculated frame=$newFrame")
+            logLayoutD("   Parent frame=$frame")
         }
         
         // CRITICAL: Match iOS behavior exactly - use Yoga's calculated frame without clamping
@@ -463,7 +470,7 @@ open class DCFShadowNode {
                 if (view != null && newFrame.width() > 0 && newFrame.height() > 0) {
                     val pendingFrameKey = "pendingFrame".hashCode()
                     view.setTag(pendingFrameKey, newFrame)
-                    Log.d(TAG, "✅ DCFShadowNode.applyLayoutNode: Set pendingFrame=$newFrame on viewId=$viewId (synchronously on main thread)")
+                    logLayoutD("✅ DCFShadowNode.applyLayoutNode: Set pendingFrame=$newFrame on viewId=$viewId (synchronously on main thread)")
                 }
             } else {
                 // Not on main thread, use CountDownLatch to set synchronously
@@ -474,7 +481,7 @@ open class DCFShadowNode {
                         if (view != null && newFrame.width() > 0 && newFrame.height() > 0) {
                             val pendingFrameKey = "pendingFrame".hashCode()
                             view.setTag(pendingFrameKey, newFrame)
-                            Log.d(TAG, "✅ DCFShadowNode.applyLayoutNode: Set pendingFrame=$newFrame on viewId=$viewId (synchronously via CountDownLatch)")
+                            logLayoutD("✅ DCFShadowNode.applyLayoutNode: Set pendingFrame=$newFrame on viewId=$viewId (synchronously via CountDownLatch)")
                         }
                     } finally {
                         latch.countDown()
@@ -502,7 +509,7 @@ open class DCFShadowNode {
         absolutePosition: android.graphics.PointF
     ) {
         val childCount = node.childCount
-        Log.d(TAG, "🔍 DCFShadowNode.applyLayoutToChildren: viewId=$viewId, childCount=$childCount, current frame=$frame, absolutePosition=$absolutePosition")
+        logLayoutD("🔍 DCFShadowNode.applyLayoutToChildren: viewId=$viewId, childCount=$childCount, current frame=$frame, absolutePosition=$absolutePosition")
         
         // CRITICAL: Match iOS exactly - use _subviews array for order, but fall back to Yoga node if needed
         // iOS: for i in 0..<Int(childCount) {
@@ -523,7 +530,7 @@ open class DCFShadowNode {
             }
             
             if (childShadowNode != null) {
-                Log.d(TAG, "   Processing child $i: viewId=${childShadowNode.viewId}, Yoga layout: left=${childNode.layoutX}, top=${childNode.layoutY}, width=${childNode.layoutWidth}, height=${childNode.layoutHeight}")
+                logLayoutD("   Processing child $i: viewId=${childShadowNode.viewId}, Yoga layout: left=${childNode.layoutX}, top=${childNode.layoutY}, width=${childNode.layoutWidth}, height=${childNode.layoutHeight}")
                 childShadowNode.applyLayoutNode(childNode, viewsWithNewFrame, absolutePosition)
             } else {
             }

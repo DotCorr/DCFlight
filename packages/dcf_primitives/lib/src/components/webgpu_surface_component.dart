@@ -133,6 +133,54 @@ class DCFWebGpuSurfaceProps {
         height: 100%;
         display: block;
       }
+      #boot {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        pointer-events: none;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 50% 45%, rgba(125, 211, 252, 0.14), transparent 40%),
+          radial-gradient(circle at 18% 20%, rgba(255, 255, 255, 0.06), transparent 25%),
+          radial-gradient(circle at 82% 78%, rgba(255, 255, 255, 0.04), transparent 22%),
+          linear-gradient(180deg, rgba(10, 10, 10, 0.98), rgba(4, 4, 4, 0.98));
+        opacity: 1;
+        transition: opacity 180ms ease;
+      }
+      #boot.ready { opacity: 0; }
+      #bootCard {
+        width: min(84%, 360px);
+        aspect-ratio: 1.25;
+        border-radius: 18px;
+        border: 1px solid rgba(125, 211, 252, 0.30);
+        background:
+          linear-gradient(90deg, rgba(125, 211, 252, 0.14) 1px, transparent 1px),
+          linear-gradient(180deg, rgba(125, 211, 252, 0.14) 1px, transparent 1px),
+          rgba(0, 0, 0, 0.72);
+        background-size: 22px 22px, 22px 22px, auto;
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+        position: relative;
+        overflow: hidden;
+      }
+      #bootCard::before {
+        content: '';
+        position: absolute;
+        inset: 18% 14%;
+        border-radius: 999px;
+        border: 1px solid rgba(125, 211, 252, 0.15);
+      }
+      #bootCard::after {
+        content: '$escapedGlyph';
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        font-size: 42px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        color: rgba(229, 229, 229, 0.9);
+      }
       #status {
         position: absolute;
         left: 10px;
@@ -150,16 +198,21 @@ class DCFWebGpuSurfaceProps {
   </head>
   <body>
     <canvas id="surface"></canvas>
+    <div id="boot">
+      <div id="bootCard"></div>
+    </div>
     <div id="status">checking gpu...</div>
     <script>
       (function () {
         const canvas = document.getElementById('surface');
         const status = document.getElementById('status');
+        const boot = document.getElementById('boot');
         const ctx = canvas.getContext('2d');
         const scene = '$sceneToken';
         const sceneLabel = '$escapedLabel';
         const glyph = '$escapedGlyph';
         const speed = ${speed.toStringAsFixed(4)};
+        let bootHidden = false;
 
         function resize() {
           const dpr = Math.max(1, window.devicePixelRatio || 1);
@@ -212,6 +265,11 @@ class DCFWebGpuSurfaceProps {
           const w = window.innerWidth;
           const h = window.innerHeight;
           ctx.clearRect(0, 0, w, h);
+
+          if (!bootHidden) {
+            boot.classList.add('ready');
+            bootHidden = true;
+          }
 
           if (scene === 'gridPulse') {
             const cell = Math.max(16, Math.min(w, h) * 0.08);
@@ -271,12 +329,14 @@ class DCFWebGpuSurfaceProps {
 }
 
 /// Exposed WebGPU surface component backed by DCFWebView.
-class DCFWebGpuSurface extends DCFStatelessComponent
+class DCFWebGpuSurface extends DCFStatefulComponent
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.low;
 
   final DCFWebGpuSurfaceProps webGpuProps;
+  final String _htmlSource;
+  final String _webViewKey;
   final DCFLayout layout;
   final DCFStyleSheet styleSheet;
   final bool fillWidth;
@@ -290,47 +350,39 @@ class DCFWebGpuSurface extends DCFStatelessComponent
     this.fillWidth = false,
     this.fillHeight = false,
     this.fillScrollContent = false,
+    String? webViewKey,
     super.key,
-  });
+  })  : _htmlSource = webGpuProps.toHtml(),
+        _webViewKey = webViewKey ??
+            'webgpu-${webGpuProps.scene.name}-${webGpuProps.sceneLabel.hashCode}-${webGpuProps.centerGlyph.hashCode}-${layout.hashCode}-${styleSheet.hashCode}-${fillWidth ? 1 : 0}-${fillHeight ? 1 : 0}-${fillScrollContent ? 1 : 0}';
 
   @override
   DCFComponentNode render() {
-    final mergedLayout = <String, dynamic>{...layout.toMap()};
-
-    if (fillWidth) {
-      mergedLayout['width'] = '100%';
-      mergedLayout['minWidth'] = '100%';
-      mergedLayout['alignSelf'] = 'stretch';
-    }
-
-    if (fillHeight) {
-      mergedLayout['height'] = '100%';
-      mergedLayout['minHeight'] = '100%';
-    }
-
-    if (fillScrollContent) {
-      mergedLayout['flexGrow'] = 1;
-      mergedLayout['flexShrink'] = 0;
-    }
-
-    return DCFElement(
-      type: 'WebView',
-      elementProps: {
-        ...DCFWebViewProps(
-          source: webGpuProps.toHtml(),
-          loadMode: DCFWebViewLoadMode.htmlString,
-          contentType: DCFWebViewContentType.html,
-          javaScriptEnabled: webGpuProps.javaScriptEnabled,
-          allowsZoom: webGpuProps.allowsZoom,
-          bounces: webGpuProps.bounces,
-          scrollEnabled: webGpuProps.scrollEnabled,
-          showsScrollIndicators: webGpuProps.showsScrollIndicators,
-          mediaPlaybackRequiresUserAction: false,
-        ).toMap(),
-        ...mergedLayout,
-        ...styleSheet.toMap(),
-      },
-      children: const [],
+    final mergedLayout = layout.copyWith(
+      width: fillWidth ? '100%' : layout.width,
+      minWidth: fillWidth ? '100%' : layout.minWidth,
+      alignSelf: fillWidth ? DCFAlign.stretch : layout.alignSelf,
+      height: fillHeight ? '100%' : layout.height,
+      minHeight: fillHeight ? '100%' : layout.minHeight,
+      flexGrow: fillScrollContent ? 1 : layout.flexGrow,
+      flexShrink: fillScrollContent ? 0 : layout.flexShrink,
     );
+
+    return DCFWebView(
+      layout: mergedLayout,
+      styleSheet: styleSheet,
+      webViewProps: DCFWebViewProps(
+        source: _htmlSource,
+        loadMode: DCFWebViewLoadMode.htmlString,
+        contentType: DCFWebViewContentType.html,
+        javaScriptEnabled: webGpuProps.javaScriptEnabled,
+        allowsZoom: webGpuProps.allowsZoom,
+        bounces: webGpuProps.bounces,
+        scrollEnabled: webGpuProps.scrollEnabled,
+        showsScrollIndicators: webGpuProps.showsScrollIndicators,
+        mediaPlaybackRequiresUserAction: false,
+      ),
+      key: _webViewKey,
+    ).renderedNode;
   }
 }

@@ -33,10 +33,17 @@ class DCFTextComponent : DCFComponent() {
     companion object {
         private const val TAG = "DCFTextComponent"
         private const val DEFAULT_FONT_SIZE = 17f
+        private const val VERBOSE_TEXT_LOGS = false
+    }
+
+    private fun logD(message: String) {
+        if (VERBOSE_TEXT_LOGS) {
+            android.util.Log.d(TAG, message)
+        }
     }
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
-        android.util.Log.d(TAG, "📱 createView called with props: $props")
+        logD("📱 createView called with props: $props")
         
         val textView = DCFTextView(context)
         textView.setTag(DCFTags.COMPONENT_TYPE_KEY, "Text")
@@ -54,7 +61,7 @@ class DCFTextComponent : DCFComponent() {
     }
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
-        android.util.Log.d(TAG, "🔄 updateView called with props: $props")
+        logD("🔄 updateView called with props: $props")
         
         val textView = view as? DCFTextView ?: return false
         
@@ -68,7 +75,7 @@ class DCFTextComponent : DCFComponent() {
         val systemVersionChanged = oldSystemVersion != null && newSystemVersion != null && oldSystemVersion != newSystemVersion
         
         if (systemVersionChanged) {
-            android.util.Log.d(TAG, "🔄 System version changed: $oldSystemVersion → $newSystemVersion - forcing re-measurement and layout recalculation")
+            logD("🔄 System version changed: $oldSystemVersion → $newSystemVersion - forcing re-measurement and layout recalculation")
         }
         
         storeProps(textView, mergedProps)
@@ -84,7 +91,7 @@ class DCFTextComponent : DCFComponent() {
         // 🔥 CRITICAL: When system version changes, force layout recalculation
         // This ensures Yoga recalculates text size with new font scale
         if (systemVersionChanged) {
-            android.util.Log.d(TAG, "🔄 Requesting layout recalculation due to system version change")
+            logD("🔄 Requesting layout recalculation due to system version change")
             textView.requestLayout()
             // Also invalidate to ensure redraw
             textView.invalidate()
@@ -107,7 +114,7 @@ class DCFTextComponent : DCFComponent() {
             return
         }
         
-        android.util.Log.d(TAG, "🔍 Getting shadow node for viewId=$viewIdInt")
+        logD("🔍 Getting shadow node for viewId=$viewIdInt")
         
         val shadowNode = com.dotcorr.dcflight.layout.YogaShadowTree.shared.getShadowNode(viewIdInt) as? DCFVirtualTextShadowNode
         
@@ -115,15 +122,15 @@ class DCFTextComponent : DCFComponent() {
             return
         }
         
-        android.util.Log.d(TAG, "✅ Found shadow node for viewId=$viewIdInt")
+        logD("✅ Found shadow node for viewId=$viewIdInt")
         
         // Transfer content prop to shadow node's text property
         val content = props["content"]?.toString() ?: ""
-        android.util.Log.d(TAG, "📝 Transferring content='$content' to shadow node")
+        logD("📝 Transferring content='$content' to shadow node")
         
         if (shadowNode.text != content) {
             shadowNode.text = content
-            android.util.Log.d(TAG, "✅ Text set on shadow node, shadow node text is now='${shadowNode.text}'")
+            logD("✅ Text set on shadow node, shadow node text is now='${shadowNode.text}'")
         }
         
         // Transfer styling props
@@ -132,7 +139,7 @@ class DCFTextComponent : DCFComponent() {
         // This ensures the span is updated correctly, especially on first initialization
         // The property setter will handle the conversion and span update
         shadowNode.fontSize = fontSize
-        android.util.Log.d(TAG, "✅ fontSize set to $fontSize (current shadowNode.fontSize=${shadowNode.fontSize})")
+        logD("✅ fontSize set to $fontSize (current shadowNode.fontSize=${shadowNode.fontSize})")
         
         // Transfer fontWeight - now expects numeric weight (100-900) from Dart
         val fontWeight = (props["fontWeight"] as? Number)?.toInt()
@@ -169,16 +176,16 @@ class DCFTextComponent : DCFComponent() {
             // Convert Int color to Double (ARGB32 integer stored as Double, matching iOS behavior)
             val colorDouble = colorInt.toLong().toDouble()
             shadowNode.setTextColor(colorDouble)
-            android.util.Log.d(TAG, "✅ Text color set: ${ColorUtilities.hexString(colorInt)}")
+            logD("✅ Text color set: ${ColorUtilities.hexString(colorInt)}")
         } else {
-            android.util.Log.d(TAG, "⚠️ No text color found in props")
+            logD("⚠️ No text color found in props")
         }
         
-        android.util.Log.d(TAG, "✅ All props transferred to shadow node")
+        logD("✅ All props transferred to shadow node")
     }
     
     private fun updateTextView(textView: DCFTextView, props: Map<String, Any?>) {
-        android.util.Log.d(TAG, "🎨 updateTextView called")
+        logD("🎨 updateTextView called")
         
         val shadowNode = nodeId?.toIntOrNull()?.let { viewId ->
             com.dotcorr.dcflight.layout.YogaShadowTree.shared.getShadowNode(viewId)
@@ -187,7 +194,7 @@ class DCFTextComponent : DCFComponent() {
         // Get text from shadow node (includes all spans)
         val text: CharSequence = if (shadowNode != null) {
             val collectedText = shadowNode.getText()
-            android.util.Log.d(TAG, "📖 Got text from shadow node: '$collectedText' (length=${collectedText.length})")
+            logD("📖 Got text from shadow node: '$collectedText' (length=${collectedText.length})")
             collectedText
         } else {
             val fallbackText = props["content"]?.toString() ?: ""
@@ -228,7 +235,7 @@ class DCFTextComponent : DCFComponent() {
             )
         }
         
-        android.util.Log.d(TAG, "🔤 Font size: ${fontSizePixels}px")
+        logD("🔤 Font size: ${fontSizePixels}px")
         
         // Create paint
             val paint = TextPaint(TextPaint.ANTI_ALIAS_FLAG)
@@ -257,7 +264,7 @@ class DCFTextComponent : DCFComponent() {
             )
             // Convert to em units (Android's letterSpacing is in em units)
             paint.letterSpacing = letterSpacingPixels / fontSizePixels
-            android.util.Log.d(TAG, "📏 Letter spacing: ${letterSpacing}pt → ${letterSpacingPixels}px → ${paint.letterSpacing}em (fontSize=${fontSizePixels}px)")
+            logD("📏 Letter spacing: ${letterSpacing}pt → ${letterSpacingPixels}px → ${paint.letterSpacing}em (fontSize=${fontSizePixels}px)")
         }
         
         // Get alignment
@@ -318,7 +325,7 @@ class DCFTextComponent : DCFComponent() {
             }
         }
         
-        android.util.Log.d(TAG, "📏 Creating layout with maxWidth=$maxWidth (viewWidth=${textView.width}, yogaWidth=${shadowNode?.yogaNode?.layoutWidth}), alignment=$alignment")
+        logD("📏 Creating layout with maxWidth=$maxWidth (viewWidth=${textView.width}, yogaWidth=${shadowNode?.yogaNode?.layoutWidth}), alignment=$alignment")
         
         // Create layout
         val layout = createTextLayout(
@@ -331,7 +338,7 @@ class DCFTextComponent : DCFComponent() {
             fontSizePixels
         )
         
-        android.util.Log.d(TAG, "✅ Layout created: width=${layout.width}, height=${layout.height}, lineCount=${layout.lineCount}")
+        logD("✅ Layout created: width=${layout.width}, height=${layout.height}, lineCount=${layout.lineCount}")
         
         textView.textLayout = layout
         textView.textFrameLeft = 0f
@@ -344,21 +351,21 @@ class DCFTextComponent : DCFComponent() {
     private var nodeId: String? = null
 
     override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {
-        android.util.Log.d(TAG, "🌳 viewRegisteredWithShadowTree called with nodeId=$nodeId")
+        logD("🌳 viewRegisteredWithShadowTree called with nodeId=$nodeId")
         
         this.nodeId = nodeId
         view.setTag("nodeId".hashCode(), nodeId)
         
         // CRITICAL: Transfer initial props to shadow node NOW
         val props = getStoredProps(view)
-        android.util.Log.d(TAG, "📦 Stored props: $props")
+        logD("📦 Stored props: $props")
         
         updateShadowNodeProps(props)
         
         // Initial text setup - applyLayout will be called later for final positioning
         val textView = view as? DCFTextView
         if (textView != null) {
-            android.util.Log.d(TAG, "📝 Initial updateTextView call from viewRegisteredWithShadowTree")
+            logD("📝 Initial updateTextView call from viewRegisteredWithShadowTree")
             updateTextView(textView, props)
         }
     }
@@ -366,7 +373,7 @@ class DCFTextComponent : DCFComponent() {
     override fun applyLayout(view: View, layout: DCFNodeLayout) {
         super.applyLayout(view, layout)
         
-        android.util.Log.d(TAG, "📐 applyLayout called: width=${layout.width}, height=${layout.height}")
+        logD("📐 applyLayout called: width=${layout.width}, height=${layout.height}")
         
         val textView = view as? DCFTextView ?: return
         
@@ -440,7 +447,7 @@ class DCFTextComponent : DCFComponent() {
         // This prevents overflow and respects Yoga's layout constraints
         if (layoutWidth == 0) {
             layoutWidth = 1 // Minimum width for StaticLayout, but text will be clipped
-            android.util.Log.d(TAG, "📏 Layout width is 0, using 1 for StaticLayout (text will be clipped)")
+            logD("📏 Layout width is 0, using 1 for StaticLayout (text will be clipped)")
         }
         
         // Apply font family and weight to paint
@@ -515,10 +522,10 @@ class DCFTextComponent : DCFComponent() {
         if (parent is android.view.View) {
             val parentViewId = parent.getTag(com.dotcorr.dcflight.components.DCFTags.VIEW_ID_KEY) as? Int
             val parentNodeId = parent.getTag("nodeId".hashCode())?.toString()
-            android.util.Log.d(TAG, "🔍 [CONTAINER DEBUG] applyLayout: textView viewId=$viewNodeId, layout=(${layout.width}x${layout.height})")
-            android.util.Log.d(TAG, "🔍 [CONTAINER DEBUG] Parent: type=${parent.javaClass.simpleName}, viewId=$parentViewId, nodeId=$parentNodeId")
-            android.util.Log.d(TAG, "🔍 [CONTAINER DEBUG] Parent size: width=${parent.width}, height=${parent.height}, measuredWidth=${parent.measuredWidth}, measuredHeight=${parent.measuredHeight}")
-            android.util.Log.d(TAG, "🔍 [CONTAINER DEBUG] TextView size: width=${textView.width}, height=${textView.height}, measuredWidth=${textView.measuredWidth}, measuredHeight=${textView.measuredHeight}")
+            logD("🔍 [CONTAINER DEBUG] applyLayout: textView viewId=$viewNodeId, layout=(${layout.width}x${layout.height})")
+            logD("🔍 [CONTAINER DEBUG] Parent: type=${parent.javaClass.simpleName}, viewId=$parentViewId, nodeId=$parentNodeId")
+            logD("🔍 [CONTAINER DEBUG] Parent size: width=${parent.width}, height=${parent.height}, measuredWidth=${parent.measuredWidth}, measuredHeight=${parent.measuredHeight}")
+            logD("🔍 [CONTAINER DEBUG] TextView size: width=${textView.width}, height=${textView.height}, measuredWidth=${textView.measuredWidth}, measuredHeight=${textView.measuredHeight}")
             
             // Check if parent has a shadow node
             if (parentNodeId != null) {
@@ -526,8 +533,8 @@ class DCFTextComponent : DCFComponent() {
                     com.dotcorr.dcflight.layout.YogaShadowTree.shared.getShadowNode(viewId)
                 }
                 if (parentShadowNode != null) {
-                    android.util.Log.d(TAG, "🔍 [CONTAINER DEBUG] Parent Yoga: width=${parentShadowNode.yogaNode.layoutWidth}, height=${parentShadowNode.yogaNode.layoutHeight}")
-                    android.util.Log.d(TAG, "🔍 [CONTAINER DEBUG] Parent frame: ${parentShadowNode.frame}")
+                    logD("🔍 [CONTAINER DEBUG] Parent Yoga: width=${parentShadowNode.yogaNode.layoutWidth}, height=${parentShadowNode.yogaNode.layoutHeight}")
+                    logD("🔍 [CONTAINER DEBUG] Parent frame: ${parentShadowNode.frame}")
                 } else {
                 }
             }

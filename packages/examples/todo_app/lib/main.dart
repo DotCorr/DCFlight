@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:async';
 
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcf_reanimated/dcf_reanimated.dart';
@@ -69,8 +68,9 @@ class AppRoot extends DCFStatefulComponent {
                   centerGlyph: 'DC',
                   rotationSpeed: 1.1,
                 ),
-                fillWidth: true,
-                layout: const DCFLayout(width: '100%', height: 260),
+                fillWidth: false,
+                fillScrollContent: false,
+                layout: const DCFLayout(width: '100%', minWidth: 0, maxWidth: '100%', height: 260),
                 styleSheet: DCFStyleSheet(
                   borderWidth: 1,
                   borderColor: DCFColors.gray700,
@@ -93,7 +93,7 @@ class AppRoot extends DCFStatefulComponent {
           showExamples.setState(true);
         },
       )
-    ]);
+    ], styleSheet: DCFStyleSheet(backgroundColor: DCFColors.black));
   }
 }
 
@@ -108,7 +108,7 @@ class DotCorrLanding extends DCFStatelessComponent {
     return DCFScrollView(
       layout: DCFLayout(width: '100%', height: '100%'),
       showsScrollIndicator: false,
-      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.white),
+      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.black),
       scrollContent: [
         NavigationBar(onToggleExamples: onToggleExamples),
         HeroSection(onEnterLab: onToggleExamples),
@@ -143,9 +143,9 @@ class NavigationBar extends DCFStatelessComponent {
         alignItems: DCFAlign.center,
       ),
       styleSheet: DCFStyleSheet(
-        backgroundColor: DCFColors.white,
+        backgroundColor: DCFColors.black,
         borderBottomWidth: 1,
-        borderBottomColor: DCFColors.gray100,
+        borderBottomColor: DCFColors.gray900,
       ),
       children: [
         // Logo Area - CRITICAL: Add flexShrink to prevent overflow
@@ -168,7 +168,7 @@ class NavigationBar extends DCFStatelessComponent {
                 fontWeight: DCFFontWeight.medium,
                 numberOfLines: 1, // Single line with truncation
               ),
-              styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray600),
+              styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray400),
               layout: DCFLayout(
                 flexShrink: 1, // Allow text to shrink
                 minWidth: 0, // CRITICAL: Allow shrinking below content size
@@ -182,7 +182,7 @@ class NavigationBar extends DCFStatelessComponent {
                 fontWeight: DCFFontWeight.medium,
                 numberOfLines: 1, // Single line with truncation
               ),
-              styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray600),
+              styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray400),
               layout: DCFLayout(
                 flexShrink: 1, // Allow text to shrink
                 minWidth: 0, // CRITICAL: Allow shrinking below content size
@@ -211,7 +211,7 @@ class HeroSection extends DCFStatelessComponent {
         flexDirection: DCFFlexDirection.column,
         gap: 48,
       ),
-      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.white),
+      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.black),
       children: [
         // Main content row (left text + right visual)
         DCFView(
@@ -249,7 +249,7 @@ class HeroSection extends DCFStatelessComponent {
                             letterSpacing: -1.5,
                           ),
                           styleSheet: DCFStyleSheet(
-                            primaryColor: DCFColors.black,
+                            primaryColor: DCFColors.white,
                           ),
                         ),
                         DCFText(
@@ -261,7 +261,7 @@ class HeroSection extends DCFStatelessComponent {
                             letterSpacing: -1.5,
                           ),
                           styleSheet: DCFStyleSheet(
-                            primaryColor: DCFColors.black,
+                            primaryColor: DCFColors.white,
                           ),
                         ),
                         DCFView(
@@ -299,7 +299,7 @@ class HeroSection extends DCFStatelessComponent {
                                 letterSpacing: -1.5,
                               ),
                               styleSheet: DCFStyleSheet(
-                                primaryColor: DCFColors.black,
+                                  primaryColor: DCFColors.white,
                               ),
                             ),
                           ],
@@ -319,7 +319,7 @@ class HeroSection extends DCFStatelessComponent {
                         overflow: DCFOverflow.hidden, // Clip content that exceeds bounds
                       ),
                       children: [
-                        TypewriterEffect(),
+                        TypewriterEffectWorklet(),
                       ],
                     ),
 
@@ -377,11 +377,14 @@ class HeroSection extends DCFStatelessComponent {
                     DCFView(
                       layout: DCFLayout(
                         width: '100%',
+                        minWidth: 0,
+                        maxWidth: '100%',
                         marginTop: 20,
+                        overflow: DCFOverflow.hidden,
                       ),
                       children: [
                         DCFView(
-                          layout: DCFLayout(width: '100%', gap: 8),
+                          layout: DCFLayout(width: '100%', minWidth: 0, maxWidth: '100%', gap: 8),
                           children: [
                             DCFText(
                               content: "Lab GPU Surface",
@@ -403,9 +406,9 @@ class HeroSection extends DCFStatelessComponent {
                                 rotationSpeed: 1.2,
                                 accentColor: '#6ee7ff',
                               ),
-                              fillWidth: true,
-                              fillScrollContent: true,
-                              layout: const DCFLayout(width: '100%', height: 220),
+                              fillWidth: false,
+                              fillScrollContent: false,
+                              layout: const DCFLayout(width: '100%', minWidth: 0, maxWidth: '100%', height: 220),
                               styleSheet: DCFStyleSheet(
                                 borderWidth: 1,
                                 borderColor: DCFColors.gray200,
@@ -529,7 +532,6 @@ class TypewriterEffect extends DCFStatefulComponent {
     final frame = _computeFrame(elapsedMs, words);
     final cursorVisible = ((elapsedMs ~/ 450) % 2) == 0;
     final cursorChar = (cursorVisible || frame.keepCursorOn) ? '▊' : ' ';
-    print("🧪 TypewriterFrame elapsed=$elapsedMs text='${frame.text}' rebuild=${forceRebuild.state}");
 
     // Combine text and cursor in a single text component for proper positioning
     // Use a fixed-width container to prevent layout jumps when switching words

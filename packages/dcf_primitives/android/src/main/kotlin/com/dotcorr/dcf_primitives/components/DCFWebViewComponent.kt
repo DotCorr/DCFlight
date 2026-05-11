@@ -27,6 +27,11 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
 
 class DCFWebViewComponent : DCFComponent() {
 
+    private companion object {
+        private const val TAG_LAST_SOURCE = -2001001
+        private const val TAG_LAST_LOAD_MODE = -2001002
+    }
+
     override fun applyLayout(view: View, layout: DCFNodeLayout) {
         val parent = view.parent as? ViewGroup
 
@@ -71,44 +76,6 @@ class DCFWebViewComponent : DCFComponent() {
 
         webView.setTag(DCFTags.COMPONENT_TYPE_KEY, "WebView")
 
-        val initialLoadMode = props["loadMode"] as? String ?: "url"
-        props["source"]?.let { source ->
-            when (source) {
-                is String -> {
-                    when (initialLoadMode) {
-                        "htmlString" -> {
-                            // CRITICAL: Use loadDataWithBaseURL with http://localhost as base.
-                            // loadUrl() does not support raw HTML strings.
-                            // http://localhost origin enables WebGPU (navigator.gpu) access.
-                            webView.loadDataWithBaseURL(
-                                "http://localhost",
-                                source,
-                                "text/html",
-                                "UTF-8",
-                                null
-                            )
-                        }
-                        else -> webView.loadUrl(source)
-                    }
-                }
-                is Map<*, *> -> {
-                    val uri = source["uri"] as? String
-                    val html = source["html"] as? String
-                    val baseUrl = source["baseUrl"] as? String
-                    when {
-                        uri != null -> webView.loadUrl(uri)
-                        html != null -> webView.loadDataWithBaseURL(
-                            baseUrl ?: "http://localhost",
-                            html,
-                            "text/html",
-                            "UTF-8",
-                            null
-                        )
-                    }
-                }
-            }
-        }
-
         updateView(webView, props)
 
         val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
@@ -128,7 +95,23 @@ class DCFWebViewComponent : DCFComponent() {
         val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
 
         val updateLoadMode = mergedProps["loadMode"] as? String ?: "url"
-        mergedProps["source"]?.let { newSource ->
+        val newSource = mergedProps["source"]
+        val sourceFingerprint = when (newSource) {
+            is String -> "s:$newSource"
+            is Map<*, *> -> {
+                val uri = newSource["uri"] as? String
+                val html = newSource["html"] as? String
+                val baseUrl = newSource["baseUrl"] as? String
+                "m:${uri ?: ""}|${baseUrl ?: ""}|${html ?: ""}"
+            }
+            else -> null
+        }
+        val previousSource = webView.getTag(TAG_LAST_SOURCE) as? String
+        val previousLoadMode = webView.getTag(TAG_LAST_LOAD_MODE) as? String
+        val shouldReload = sourceFingerprint != null &&
+            (sourceFingerprint != previousSource || updateLoadMode != previousLoadMode)
+
+        if (shouldReload) {
             when (newSource) {
                 is String -> {
                     when (updateLoadMode) {
@@ -162,6 +145,8 @@ class DCFWebViewComponent : DCFComponent() {
                     }
                 }
             }
+            webView.setTag(TAG_LAST_SOURCE, sourceFingerprint)
+            webView.setTag(TAG_LAST_LOAD_MODE, updateLoadMode)
         }
 
         mergedProps["javaScriptEnabled"]?.let { enabled ->
