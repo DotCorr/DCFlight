@@ -34,6 +34,7 @@ class YogaShadowTree private constructor() {
 
     companion object {
         private const val TAG = "YogaShadowTree"
+        private const val VERBOSE_LAYOUT_LOGS = false
         
         @JvmField
         val shared = YogaShadowTree()
@@ -946,7 +947,9 @@ class YogaShadowTree private constructor() {
             
         } finally {
             isLayoutCalculating = false
-            Log.d(TAG, "calculateAndApplyLayout: EXIT - isLayoutCalculating reset to false")
+            if (VERBOSE_LAYOUT_LOGS) {
+                Log.d(TAG, "calculateAndApplyLayout: EXIT - isLayoutCalculating reset to false")
+            }
         }
     }
 

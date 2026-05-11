@@ -5,7 +5,7 @@ import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcf_reanimated/dcf_reanimated.dart';
 import 'package:dcflight/dcflight.dart';
 
-bool get kEnableLiveGpuSurfaces => Platform.isIOS;
+bool get kEnableLiveGpuSurfaces => Platform.isIOS || Platform.isAndroid;
 
 
 void main() async {

@@ -6,7 +6,6 @@
  */
 
 import 'package:dcflight/dcflight.dart';
-import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 
 import 'webview_component.dart';
 
@@ -359,16 +358,6 @@ class DCFWebGpuSurface extends DCFStatefulComponent
 
   @override
   DCFComponentNode render() {
-    // Android WebView currently emits continuous NaN frame-rate requests in this scene path.
-    // Hard-disable the WebView-backed surface on Android until native handling is fixed.
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      return DCFView(
-        layout: layout,
-        styleSheet: styleSheet,
-        children: const [],
-      ).renderedNode;
-    }
-
     final mergedLayout = layout.copyWith(
       width: fillWidth ? '100%' : layout.width,
       minWidth: fillWidth ? '100%' : layout.minWidth,
