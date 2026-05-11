@@ -1,10 +1,11 @@
 import 'dart:math' as math;
+import 'dart:io' show Platform;
 
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcf_reanimated/dcf_reanimated.dart';
 import 'package:dcflight/dcflight.dart';
 
-const bool kEnableLiveGpuSurfaces = true;
+bool get kEnableLiveGpuSurfaces => Platform.isIOS;
 
 
 void main() async {
@@ -90,13 +91,7 @@ class AppRoot extends DCFStatefulComponent {
                     borderRadius: 12,
                     backgroundColor: DCFColors.black,
                   ),
-                  children: [
-                    DCFText(
-                      content: "GPU preview paused for stability",
-                      textProps: DCFTextProps(fontSize: 14, fontWeight: DCFFontWeight.medium),
-                      styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray400),
-                    ),
-                  ],
+                  children: const [],
                 ),
             ],
           ),
@@ -339,7 +334,7 @@ class HeroSection extends DCFStatelessComponent {
                         overflow: DCFOverflow.hidden, // Clip content that exceeds bounds
                       ),
                       children: [
-                        TypewriterEffectWorklet(),
+                        TypewriterEffect(),
                       ],
                     ),
 
@@ -446,13 +441,7 @@ class HeroSection extends DCFStatelessComponent {
                                   borderRadius: 8,
                                   backgroundColor: DCFColors.black,
                                 ),
-                                children: [
-                                  DCFText(
-                                    content: "GPU surface temporarily disabled",
-                                    textProps: DCFTextProps(fontSize: 13, fontWeight: DCFFontWeight.medium),
-                                    styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray500),
-                                  ),
-                                ],
+                                children: const [],
                               ),
                           ],
                         ),
@@ -595,7 +584,6 @@ class TypewriterEffect extends DCFStatefulComponent {
           styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray400),
         ),
         DCFText(
-          key: 'typewriter-animated-${elapsedMs ~/ 70}',
           content: "${frame.text}$cursorChar",
           textProps: DCFTextProps(
             fontSize: 20,
