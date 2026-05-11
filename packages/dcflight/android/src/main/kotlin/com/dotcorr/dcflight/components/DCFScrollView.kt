@@ -58,9 +58,17 @@ class DCFCustomScrollView(context: Context) : NestedScrollView(context) {
     var expectedContentHeight: Int
         get() = _expectedContentHeight
         set(value) {
+            val screenHeight = context.resources.displayMetrics.heightPixels
+            val hasLargeEstablishedHeight = _expectedContentHeight > screenHeight
+            val suspiciousDownwardOverride = hasLargeEstablishedHeight && value in 1 until _expectedContentHeight
+            if (suspiciousDownwardOverride) {
+                Log.w("DCFCustomScrollView", "⚠️ expectedContentHeight: Ignoring suspicious downgrade from $_expectedContentHeight to $value")
+                return
+            }
+
             if (_expectedContentHeight != value) {
-                val wasPlaceholder = _expectedContentHeight > 0 && _expectedContentHeight == context.resources.displayMetrics.heightPixels
-                val isRealValue = value > 0 && value != context.resources.displayMetrics.heightPixels
+                val wasPlaceholder = _expectedContentHeight > 0 && _expectedContentHeight == screenHeight
+                val isRealValue = value > 0 && value != screenHeight
                 _expectedContentHeight = value
                 
                 // CRITICAL: Only trigger re-layout if we're NOT currently measuring
@@ -391,17 +399,35 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
         // NestedScrollView compares the child's height to its own height to determine if scrolling is needed
         val layoutParams = contentView.layoutParams
         val actualHeight = contentView.height
+        val expectedHeight = _scrollView.expectedContentHeight
         val scrollViewHeight = _scrollView.height
+        val reconciledHeight = when {
+            actualHeight > 0 && expectedHeight > 0 -> max(actualHeight, expectedHeight)
+            actualHeight > 0 -> actualHeight
+            expectedHeight > 0 -> expectedHeight
+            else -> 0
+        }
+
+        // If the content view temporarily collapsed to a tiny measured value while Yoga already
+        // provided a larger expected size, force the frame back to the reconciled height.
+        if (reconciledHeight > 0 && contentView.height != reconciledHeight) {
+            contentView.layout(
+                contentView.left,
+                contentView.top,
+                contentView.right,
+                contentView.top + reconciledHeight
+            )
+        }
         
         // CRITICAL: Always use explicit height from Yoga's calculation (actualHeight)
         // This ensures NestedScrollView can properly determine if scrolling is needed
         // If actualHeight is 0 or invalid, use WRAP_CONTENT as fallback
         if (layoutParams == null || layoutParams !is android.widget.FrameLayout.LayoutParams) {
             // Create new FrameLayout.LayoutParams with explicit height
-            val newParams = if (actualHeight > 0) {
+            val newParams = if (reconciledHeight > 0) {
                 FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    actualHeight.coerceAtLeast(0)
+                    reconciledHeight.coerceAtLeast(0)
                 )
             } else {
                 FrameLayout.LayoutParams(
@@ -413,8 +439,8 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
             Log.d(TAG, "🔍 DCFScrollView.updateContentSizeFromContentView: Created new FrameLayout.LayoutParams (${newParams.width}, ${newParams.height})")
         } else {
             // Update existing layout params to use explicit height
-            val newHeight = if (actualHeight > 0) {
-                actualHeight.coerceAtLeast(0)
+            val newHeight = if (reconciledHeight > 0) {
+                reconciledHeight.coerceAtLeast(0)
             } else {
                 ViewGroup.LayoutParams.WRAP_CONTENT
             }
@@ -422,16 +448,16 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
             if (layoutParams.height != newHeight) {
                 layoutParams.height = newHeight
                 contentView.layoutParams = layoutParams
-                Log.d(TAG, "🔍 DCFScrollView.updateContentSizeFromContentView: Updated layout params height to $newHeight (actualHeight=$actualHeight, scrollViewHeight=$scrollViewHeight)")
+                Log.d(TAG, "🔍 DCFScrollView.updateContentSizeFromContentView: Updated layout params height to $newHeight (actualHeight=$actualHeight, expectedHeight=$expectedHeight, scrollViewHeight=$scrollViewHeight)")
             }
         }
         
         // Use contentView.frame.size directly
         // ScrollContentView is in the Yoga tree, so Yoga has already calculated its size
         // DCFScrollContentViewComponent.applyLayout sets contentView.frame from Yoga layout
-        val contentSize = PointF(contentView.width.toFloat(), contentView.height.toFloat())
+        val contentSize = PointF(contentView.width.toFloat(), reconciledHeight.toFloat())
         val childCount = if (contentView is ViewGroup) contentView.childCount else 0
-        Log.d(TAG, "🔍 DCFScrollView.updateContentSizeFromContentView: contentView.frame=(${contentView.left}, ${contentView.top}, ${contentView.width}, ${contentView.height}), contentSize=$contentSize, scrollView size=(${_scrollView.width}, ${_scrollView.height}), subviews.count=$childCount")
+        Log.d(TAG, "🔍 DCFScrollView.updateContentSizeFromContentView: contentView.frame=(${contentView.left}, ${contentView.top}, ${contentView.width}, ${contentView.height}), contentSize=$contentSize, expectedHeight=$expectedHeight, scrollView size=(${_scrollView.width}, ${_scrollView.height}), subviews.count=$childCount")
         
         // CRITICAL: Request layout on both contentView and scrollView to ensure proper sizing
         // This ensures NestedScrollView recalculates its content size based on the child

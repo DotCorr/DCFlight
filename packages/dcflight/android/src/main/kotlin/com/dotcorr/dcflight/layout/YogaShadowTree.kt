@@ -191,6 +191,13 @@ class YogaShadowTree private constructor() {
             val view = DCFLayoutManager.shared.getView(viewIdInt)
             val componentType = nodeTypes[nodeId] ?: "View"
             val componentInstance = getComponentInstance(componentType)
+
+            // WebView should use Yoga style dimensions directly (including percentages)
+            // and not generic intrinsic leaf measurement, which can collapse width.
+            if (componentType == "WebView") {
+                node.setMeasureFunction(null)
+                return
+            }
             
             if (view != null && componentInstance != null) {
                 node.setMeasureFunction { yogaNode, width, widthMode, height, heightMode ->
@@ -939,7 +946,7 @@ class YogaShadowTree private constructor() {
             
         } finally {
             isLayoutCalculating = false
-            Log.e(TAG, "🔥🔥🔥 calculateAndApplyLayout: EXIT - isLayoutCalculating reset to false")
+            Log.d(TAG, "calculateAndApplyLayout: EXIT - isLayoutCalculating reset to false")
         }
     }
 

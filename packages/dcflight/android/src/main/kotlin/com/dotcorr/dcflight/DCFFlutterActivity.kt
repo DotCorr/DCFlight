@@ -87,6 +87,9 @@ open class DCFFlutterActivity : FlutterActivity(), LifecycleOwner, SavedStateReg
                 Log.d(TAG, "Activity restarted - preserving existing native UI")
                 // Ensure root view is visible and properly attached
                 ensureRootViewVisible()
+                // Reconcile native visibility/layout after hot restart or resume.
+                // Dart may have recreated the tree while native views were cleaned up.
+                forceLayoutReconciliation()
             }
         }
     }
@@ -98,6 +101,7 @@ open class DCFFlutterActivity : FlutterActivity(), LifecycleOwner, SavedStateReg
         // 🔥 CRITICAL: Ensure root view is visible and properly attached on resume
         // This fixes cases where views exist but aren't visible or attached
         ensureRootViewVisible()
+        forceLayoutReconciliation()
     }
     
     /**
@@ -121,6 +125,41 @@ open class DCFFlutterActivity : FlutterActivity(), LifecycleOwner, SavedStateReg
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to ensure root view visible", e)
+        }
+    }
+
+    /**
+     * Force native layout reconciliation after restart/resume.
+     *
+     * This ensures views are visible and Yoga calculates with the latest screen
+     * dimensions after Dart recreates nodes on hot restart.
+     */
+    private fun forceLayoutReconciliation() {
+        try {
+            val rootView = com.dotcorr.dcflight.layout.ViewRegistry.shared.getView(0)
+            if (rootView == null) {
+                Log.w(TAG, "forceLayoutReconciliation skipped: root view missing")
+                return
+            }
+
+            DCFLayoutManager.shared.makeAllViewsVisible()
+
+            rootView.post {
+                try {
+                    val metrics = resources.displayMetrics
+                    rootView.measure(
+                        View.MeasureSpec.makeMeasureSpec(metrics.widthPixels, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(metrics.heightPixels, View.MeasureSpec.EXACTLY)
+                    )
+                    DCFScreenUtilities.refreshScreenDimensions()
+                    YogaShadowTree.shared.calculateLayoutForAllRoots()
+                    Log.d(TAG, "✅ Forced layout reconciliation after restart/resume")
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Failed layout reconciliation post()", e)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed forceLayoutReconciliation", e)
         }
     }
 

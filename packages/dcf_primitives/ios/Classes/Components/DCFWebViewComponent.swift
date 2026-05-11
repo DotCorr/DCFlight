@@ -36,10 +36,9 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         let javaScriptEnabled = props["javaScriptEnabled"] as? Bool ?? true
         configuration.preferences.javaScriptEnabled = javaScriptEnabled
         
-        // CRITICAL: Enable WebGPU in WKWebView
-        // navigator.gpu is only available when the preferences key is set.
-        // Without this, WebGPU is disabled regardless of iOS/WebKit version.
-        configuration.preferences.setValue(true, forKey: "WebGPUEnabled")
+        // Do not set private/undefined WKPreferences keys here.
+        // KVC with unsupported keys (like "WebGPUEnabled" on some runtimes)
+        // crashes the app with NSUnknownKeyException.
         
         let allowsInlineMediaPlayback = props["allowsInlineMediaPlayback"] as? Bool ?? true
         configuration.allowsInlineMediaPlayback = allowsInlineMediaPlayback

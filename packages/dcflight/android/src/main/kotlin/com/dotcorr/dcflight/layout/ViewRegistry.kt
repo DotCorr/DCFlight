@@ -78,6 +78,13 @@ class ViewRegistry private constructor() {
     fun clearAllExceptRoot() {
         Log.d(TAG, "Clearing all views except root (tag 0) from ViewRegistry")
         val rootViewInfo = registry[0]
+        
+        // Properly unregister non-root views from DCFLayoutManager to avoid ghost entries
+        val nonRootIds = registry.keys.filter { it != 0 }
+        for (id in nonRootIds) {
+            DCFLayoutManager.shared.unregisterView(id)
+        }
+        
         registry.clear()
         
         if (rootViewInfo != null) {
@@ -85,6 +92,6 @@ class ViewRegistry private constructor() {
             Log.d(TAG, "Preserved root view during cleanup")
         }
         
-        Log.d(TAG, "Cleared ${registry.size - (if (rootViewInfo != null) 1 else 0)} views, keeping root")
+        Log.d(TAG, "Cleared ${nonRootIds.size} views, keeping root")
     }
 }

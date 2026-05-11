@@ -19,12 +19,28 @@ import android.webkit.WebViewClient
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.DCFNodeLayout
 import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
 
 class DCFWebViewComponent : DCFComponent() {
+
+    override fun applyLayout(view: View, layout: DCFNodeLayout) {
+        val parent = view.parent as? ViewGroup
+
+        // WebView sometimes receives a transiently tiny Yoga frame during navigation
+        // while parent dimensions are already correct. Prefer parent bounds in that case.
+        val useParentBounds = layout.width in 1f..99f && parent != null && parent.width > 200 && parent.height > 100
+
+        if (useParentBounds) {
+            view.layout(0, 0, parent.width, parent.height)
+            return
+        }
+
+        super.applyLayout(view, layout)
+    }
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val webView = WebView(context)

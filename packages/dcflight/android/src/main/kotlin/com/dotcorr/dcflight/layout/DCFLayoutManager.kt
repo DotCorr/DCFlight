@@ -49,6 +49,7 @@ class DCFLayoutManager private constructor() {
 
     private val pendingLayouts = ConcurrentHashMap<Int, Rect>()
     private val isLayoutUpdateScheduled = AtomicBoolean(false)
+    private val webViewReflowGuard = ConcurrentHashMap.newKeySet<Int>()
     
     // Layout animation configuration
     var layoutAnimationEnabled = false
@@ -391,6 +392,24 @@ class DCFLayoutManager private constructor() {
                 val componentType = ViewRegistry.shared.getViewType(viewId) 
                     ?: view.getTag(DCFTags.COMPONENT_TYPE_KEY) as? String
                     ?: "View"
+
+                // If a WebView is temporarily measured to an obviously invalid tiny width
+                // while its parent is already wide, queue exactly one reflow pass.
+                // This stabilizes transition-time sizing without changing component APIs.
+                if (componentType == "WebView" && layout.width in 1f..99f) {
+                    val parentWidth = (view.parent as? ViewGroup)?.width ?: 0
+                    if (parentWidth > 300 && webViewReflowGuard.add(viewId)) {
+                        Log.w(
+                            TAG,
+                            "WebView tiny width detected for viewId=$viewId (width=${layout.width}, parentWidth=$parentWidth) - scheduling reflow"
+                        )
+                        mainHandler.post {
+                            triggerLayoutCalculation()
+                            // Allow future reflow if this happens again after stabilization.
+                            mainHandler.postDelayed({ webViewReflowGuard.remove(viewId) }, 500L)
+                        }
+                    }
+                }
                 
                 val componentClass = DCFComponentRegistry.shared.getComponentType(componentType)
                 
