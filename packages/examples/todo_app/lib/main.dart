@@ -545,17 +545,18 @@ class TypewriterEffect extends DCFStatefulComponent {
       "Build for The Future.",
     ];
 
-    final forceRebuild = useState<int>(0);
+    final frameTickMs = useState<int>(DateTime.now().millisecondsSinceEpoch);
 
-    // Periodic pump to force rebuild, avoiding state-update stalls on iOS.
+    // Periodic pump to force rebuild. Use wall-clock ticks so every update is
+    // unique across platforms and never stalls on stale closure state.
     useEffect(() {
       final timer = Timer.periodic(const Duration(milliseconds: 70), (_) {
-        forceRebuild.setState(forceRebuild.state + 1);
+        frameTickMs.setState(DateTime.now().millisecondsSinceEpoch);
       });
       return () => timer.cancel();
     }, dependencies: []);
 
-    final elapsedMs = DateTime.now().millisecondsSinceEpoch - _startMs;
+    final elapsedMs = frameTickMs.state - _startMs;
     final frame = _computeFrame(elapsedMs, words);
     final cursorVisible = ((elapsedMs ~/ 450) % 2) == 0;
     final cursorChar = (cursorVisible || frame.keepCursorOn) ? '▊' : ' ';

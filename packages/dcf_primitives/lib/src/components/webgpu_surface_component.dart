@@ -120,6 +120,7 @@ class DCFWebGpuSurfaceProps {
       }
       html, body {
         margin: 0;
+        padding: 0;
         width: 100%;
         height: 100%;
         overflow: hidden;
@@ -132,6 +133,8 @@ class DCFWebGpuSurfaceProps {
         width: 100%;
         height: 100%;
         display: block;
+        min-width: 1px;
+        min-height: 1px;
       }
       #boot {
         position: absolute;

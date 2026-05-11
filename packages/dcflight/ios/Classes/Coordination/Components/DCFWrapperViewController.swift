@@ -74,6 +74,8 @@ import dcflight
         // UINavigationController doesn't end up resetting the frames for
         // contentView which is a DCFlight-managed view.
         _wrapperView = UIView(frame: _contentView.bounds)
+        _wrapperView?.backgroundColor = .black
+        _contentView.backgroundColor = .clear
         _wrapperView?.addSubview(_contentView)
         self.view = _wrapperView
     }

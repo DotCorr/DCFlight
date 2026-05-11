@@ -68,8 +68,6 @@ class DCFWebViewComponent : DCFComponent() {
 
         // Dark background prevents white flash before WebGPU content renders
         webView.setBackgroundColor(android.graphics.Color.parseColor("#080808"))
-        // Let Chromium choose the optimal compositor path per device/runtime.
-        // Forcing a hardware layer has correlated with NaN frame-rate spam on some Android builds.
         webView.setLayerType(android.view.View.LAYER_TYPE_NONE, null)
         webView.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,

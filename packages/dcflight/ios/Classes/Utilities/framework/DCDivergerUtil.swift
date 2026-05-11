@@ -31,7 +31,7 @@ import Flutter
         }
         
         let nativeRootVC = UIViewController()
-        nativeRootVC.view.backgroundColor = .white
+        nativeRootVC.view.backgroundColor = .black
         nativeRootVC.title = "Root View (DCFlight)"
         
         // CRITICAL: Disable automatic safe area adjustments

@@ -45,9 +45,13 @@ class DCFWebViewComponent: NSObject, DCFComponent {
                 if #available(iOS 16.4, *) { warmView.isInspectable = true }
                 warmView.backgroundColor = UIColor(red: 8/255, green: 8/255, blue: 8/255, alpha: 1.0)
                 warmView.scrollView.backgroundColor = UIColor(red: 8/255, green: 8/255, blue: 8/255, alpha: 1.0)
+                if #available(iOS 15.0, *) {
+                    warmView.underPageBackgroundColor = UIColor(red: 8/255, green: 8/255, blue: 8/255, alpha: 1.0)
+                }
                 warmView.translatesAutoresizingMaskIntoConstraints = true
-                warmView.isOpaque = true
+                warmView.isOpaque = false
                 warmView.isHidden = true
+                warmView.alpha = 0.0
 
                 warmPool.append(warmView)
             }
@@ -166,6 +170,9 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         // Set dark background to prevent white flash before WebGPU content loads
         webView.backgroundColor = UIColor(red: 8/255, green: 8/255, blue: 8/255, alpha: 1.0)
         webView.scrollView.backgroundColor = UIColor(red: 8/255, green: 8/255, blue: 8/255, alpha: 1.0)
+        if #available(iOS 15.0, *) {
+            webView.underPageBackgroundColor = UIColor(red: 8/255, green: 8/255, blue: 8/255, alpha: 1.0)
+        }
         
         webView.navigationDelegate = DCFWebViewComponent.sharedInstance
         webView.uiDelegate = DCFWebViewComponent.sharedInstance
@@ -178,7 +185,8 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         // DCF layout applies frames directly; keep autoresizing-mask translation enabled
         // to avoid AutoLayout collapsing WKWebView when no constraints are provided.
         webView.translatesAutoresizingMaskIntoConstraints = true
-        webView.isOpaque = true
+        webView.isOpaque = false
+        webView.alpha = 0.0
         
         let allowsZoom = props["allowsZoom"] as? Bool ?? true
         webView.scrollView.isScrollEnabled = props["scrollEnabled"] as? Bool ?? true
@@ -350,8 +358,10 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         let loadMode = props["loadMode"] as? String ?? "url"
         let contentType = props["contentType"] as? String ?? "html"
         
+        // Keep the surface dark/hidden until first real paint completes to avoid
+        // the transient white WebKit splash on iOS during navigation transitions.
         webView.isHidden = false
-        webView.alpha = 1.0
+        webView.alpha = 0.0
         
         switch loadMode {
         case "url":
@@ -438,6 +448,11 @@ extension DCFWebViewComponent: WKNavigationDelegate {
             webView.setNeedsLayout()
             webView.layoutIfNeeded()
             webView.evaluateJavaScript("window.dispatchEvent(new Event('resize'));", completionHandler: nil)
+            if webView.alpha < 1.0 {
+                UIView.animate(withDuration: 0.12) {
+                    webView.alpha = 1.0
+                }
+            }
         }
         
         propagateEvent(on: webView, eventName: "onLoadEnd", data: [
@@ -447,6 +462,7 @@ extension DCFWebViewComponent: WKNavigationDelegate {
     }
     
     public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        webView.alpha = 1.0
         
         propagateEvent(on: webView, eventName: "onLoadError", data: [
             "error": error.localizedDescription,
@@ -456,6 +472,7 @@ extension DCFWebViewComponent: WKNavigationDelegate {
     }
     
     public func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        webView.alpha = 1.0
         
         propagateEvent(on: webView, eventName: "onLoadError", data: [
             "error": error.localizedDescription,
