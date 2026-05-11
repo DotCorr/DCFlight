@@ -279,30 +279,58 @@ class DCFWebGpuSurface extends DCFStatelessComponent
   final DCFWebGpuSurfaceProps webGpuProps;
   final DCFLayout layout;
   final DCFStyleSheet styleSheet;
+  final bool fillWidth;
+  final bool fillHeight;
+  final bool fillScrollContent;
 
   DCFWebGpuSurface({
     required this.webGpuProps,
     this.layout = const DCFLayout(width: '100%', height: 180),
     this.styleSheet = const DCFStyleSheet(),
+    this.fillWidth = false,
+    this.fillHeight = false,
+    this.fillScrollContent = false,
     super.key,
   });
 
   @override
   DCFComponentNode render() {
-    return DCFWebView(
-      webViewProps: DCFWebViewProps(
-        source: webGpuProps.toHtml(),
-        loadMode: DCFWebViewLoadMode.htmlString,
-        contentType: DCFWebViewContentType.html,
-        javaScriptEnabled: webGpuProps.javaScriptEnabled,
-        allowsZoom: webGpuProps.allowsZoom,
-        bounces: webGpuProps.bounces,
-        scrollEnabled: webGpuProps.scrollEnabled,
-        showsScrollIndicators: webGpuProps.showsScrollIndicators,
-        mediaPlaybackRequiresUserAction: false,
-      ),
-      layout: layout,
-      styleSheet: styleSheet,
-    ).render();
+    final mergedLayout = <String, dynamic>{...layout.toMap()};
+
+    if (fillWidth) {
+      mergedLayout['width'] = '100%';
+      mergedLayout['minWidth'] = '100%';
+      mergedLayout['alignSelf'] = 'stretch';
+    }
+
+    if (fillHeight) {
+      mergedLayout['height'] = '100%';
+      mergedLayout['minHeight'] = '100%';
+    }
+
+    if (fillScrollContent) {
+      mergedLayout['flexGrow'] = 1;
+      mergedLayout['flexShrink'] = 0;
+    }
+
+    return DCFElement(
+      type: 'WebView',
+      elementProps: {
+        ...DCFWebViewProps(
+          source: webGpuProps.toHtml(),
+          loadMode: DCFWebViewLoadMode.htmlString,
+          contentType: DCFWebViewContentType.html,
+          javaScriptEnabled: webGpuProps.javaScriptEnabled,
+          allowsZoom: webGpuProps.allowsZoom,
+          bounces: webGpuProps.bounces,
+          scrollEnabled: webGpuProps.scrollEnabled,
+          showsScrollIndicators: webGpuProps.showsScrollIndicators,
+          mediaPlaybackRequiresUserAction: false,
+        ).toMap(),
+        ...mergedLayout,
+        ...styleSheet.toMap(),
+      },
+      children: const [],
+    );
   }
 }

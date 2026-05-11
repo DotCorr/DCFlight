@@ -146,6 +146,7 @@ DCFlight follows a layered architecture:
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
+- Read [Iterative Development Playbook](ITERATIVE_DEV_PLAYBOOK.md) for the canonical local workflow used by contributors and AI agents.
 - Read [Framework Guidelines](FRAMEWORK_GUIDELINES.md) for development practices
 - Check [Component Protocol](docs/COMPONENT_PROTOCOL.md) for component development
 - Follow our [Code of Conduct](CONTRIBUTING.md#code-of-conduct)

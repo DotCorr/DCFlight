@@ -197,6 +197,8 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
             x: newFrame.midX,
             y: newFrame.midY
         )
+
+        reanimatedView.markInitialLayoutApplied()
     }
     
     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
@@ -248,13 +250,18 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
     private var frameCount = 0
     var isAnimating = false
     private var logCounter = 0 // Counter for reducing log spam
+    private var hasReceivedInitialLayout = false
     
     // MARK: - DCFLayoutIndependent Protocol
     
     /// Opt-out of layout updates when animating to prevent stuttering
     /// This makes the view layout-independent during animation
     var shouldSkipLayout: Bool {
-        return isAnimating
+        return isAnimating && hasReceivedInitialLayout
+    }
+
+    func markInitialLayoutApplied() {
+        hasReceivedInitialLayout = true
     }
     
     // Animation state
@@ -656,14 +663,9 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
             return
         }
         
-        // 🔥 LIFECYCLE FIX: Check if view is still in hierarchy
-        // If view was removed from superview (deleted/replaced), stop worklet immediately
+        // Wait for the view to attach before consuming frames.
+        // createView can start the worklet before UIKit finishes attaching the view.
         if superview == nil {
-            print("🛑 WORKLET: View removed from hierarchy, stopping orphaned worklet")
-            isAnimating = false
-            workletConfig = nil
-            isUsingWorklet = false
-            stopDisplayLink()
             return
         }
         
@@ -901,8 +903,6 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
     // Guard to prevent infinite loops
     private var isUpdatingText = false
     private var lastUpdatedText: String = ""
-    private var consecutiveFailures = 0
-    private let maxConsecutiveFailures = 10
     private var isWorkletDisabled = false
     
     /**
@@ -920,21 +920,10 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
             return // Already updating, skip this call
         }
         
-        // Skip if text hasn't changed
-        if text == lastUpdatedText {
-            return
-        }
-        
         isUpdatingText = true
         defer { 
             isUpdatingText = false
-            // Reset failure counter on success
-            if consecutiveFailures > 0 {
-                consecutiveFailures = 0
-            }
         }
-        
-        lastUpdatedText = text
         
         // Only log every 100th call to reduce spam
         if arc4random_uniform(100) == 0 {
@@ -1000,26 +989,8 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
                         // No component-specific glue code needed!
                         if let viewProxy = dcflight.WorkletRuntime.getView(viewId) {
                             viewProxy.setProperty("text", text)
-                            consecutiveFailures = 0 // Reset on success
-                                        return
-                                    } else {
-                            consecutiveFailures += 1
-                            if consecutiveFailures >= maxConsecutiveFailures {
-                                isWorkletDisabled = true
-                                print("❌ WORKLET: Disabled worklet after \(maxConsecutiveFailures) consecutive failures (WorkletRuntime.getView failed)")
-                                return
-                            }
-                                }
-                            } else {
-                        consecutiveFailures += 1
-                        if consecutiveFailures >= maxConsecutiveFailures {
-                            isWorkletDisabled = true
-                            print("❌ WORKLET: Disabled worklet after \(maxConsecutiveFailures) consecutive failures (shadowView is nil)")
+                            lastUpdatedText = text
                             return
-                        }
-                        // Only log failure occasionally to reduce spam
-                        if arc4random_uniform(100) == 0 {
-                            print("⚠️ WORKLET: Could not get shadowView for viewId=\(viewId)")
                         }
                     }
                 } else {

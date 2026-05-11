@@ -67,7 +67,6 @@ class DCFWebViewProps {
   /// User agent string
   final String? userAgent;
 
-
   /// Create webview props
   const DCFWebViewProps({
     required this.source,
@@ -107,7 +106,7 @@ class DCFWebViewProps {
 class DCFWebView extends DCFStatelessComponent
     implements ComponentPriorityInterface {
   @override
-  ComponentPriority get priority => ComponentPriority.low;
+  ComponentPriority get priority => ComponentPriority.high;
 
   /// The webview properties
   final DCFWebViewProps webViewProps;
@@ -197,3 +196,4 @@ class DCFWebView extends DCFStatelessComponent
     );
   }
 }
+

@@ -1,8 +1,10 @@
 import 'dart:math' as math;
+import 'dart:async';
 
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcf_reanimated/dcf_reanimated.dart';
 import 'package:dcflight/dcflight.dart';
+
 
 void main() async {
   await DCFlight.go(app: AppRoot());
@@ -67,6 +69,7 @@ class AppRoot extends DCFStatefulComponent {
                   centerGlyph: 'DC',
                   rotationSpeed: 1.1,
                 ),
+                fillWidth: true,
                 layout: const DCFLayout(width: '100%', height: 260),
                 styleSheet: DCFStyleSheet(
                   borderWidth: 1,
@@ -223,7 +226,10 @@ class HeroSection extends DCFStatelessComponent {
               layout: DCFLayout(width: '100%', gap: 32),
               children: [
                 DCFView(
-                  layout: DCFLayout(gap: 24),
+                  layout: DCFLayout(
+                    width: '100%',
+                    gap: 24,
+                  ),
                   children: [
                     // Split text to match web styling - "For The" in gray
                     DCFView(
@@ -312,7 +318,9 @@ class HeroSection extends DCFStatelessComponent {
                         marginBottom: 40, // mb-10 = 40px (matches web)
                         overflow: DCFOverflow.hidden, // Clip content that exceeds bounds
                       ),
-                      children: [TypewriterEffect()],
+                      children: [
+                        TypewriterEffect(),
+                      ],
                     ),
 
                     // Button
@@ -388,11 +396,16 @@ class HeroSection extends DCFStatelessComponent {
                             ),
                             DCFWebGpuSurface(
                               webGpuProps: const DCFWebGpuSurfaceProps(
-                                scene: DCFWebGpuScene.cubeLogo,
+                                scene: DCFWebGpuScene.gridPulse,
                                 sceneLabel: 'hero gpu preview',
                                 centerGlyph: 'DC',
+                                showStatus: false,
+                                rotationSpeed: 1.2,
+                                accentColor: '#6ee7ff',
                               ),
-                              layout: const DCFLayout(width: '100%', height: 160),
+                              fillWidth: true,
+                              fillScrollContent: true,
+                              layout: const DCFLayout(width: '100%', height: 220),
                               styleSheet: DCFStyleSheet(
                                 borderWidth: 1,
                                 borderColor: DCFColors.gray200,
@@ -438,6 +451,60 @@ class HeroSection extends DCFStatelessComponent {
 /// - Zero bridge calls during animation
 /// - 60fps guaranteed, cannot be blocked
 class TypewriterEffect extends DCFStatefulComponent {
+  late final int _startMs = DateTime.now().millisecondsSinceEpoch;
+
+  _TypewriterFrame _computeFrame(int elapsedMs, List<String> words) {
+    const int typeMsPerChar = 85;
+    const int deleteMsPerChar = 50;
+    const int holdFullWordMs = 1200;
+    const int holdEmptyMs = 220;
+
+    int cycleMs = 0;
+    for (final word in words) {
+      cycleMs += (word.length * typeMsPerChar) +
+          holdFullWordMs +
+          (word.length * deleteMsPerChar) +
+          holdEmptyMs;
+    }
+
+    if (cycleMs <= 0) {
+      return const _TypewriterFrame('', true);
+    }
+
+    int t = elapsedMs % cycleMs;
+
+    for (final word in words) {
+      final typeDuration = word.length * typeMsPerChar;
+      final deleteDuration = word.length * deleteMsPerChar;
+
+      if (t < typeDuration) {
+        final chars = (t ~/ typeMsPerChar) + 1;
+        final visible = chars.clamp(1, word.length);
+        return _TypewriterFrame(word.substring(0, visible), true);
+      }
+      t -= typeDuration;
+
+      if (t < holdFullWordMs) {
+        return _TypewriterFrame(word, true);
+      }
+      t -= holdFullWordMs;
+
+      if (t < deleteDuration) {
+        final charsToDelete = t ~/ deleteMsPerChar;
+        final remaining = (word.length - charsToDelete).clamp(1, word.length);
+        return _TypewriterFrame(word.substring(0, remaining), false);
+      }
+      t -= deleteDuration;
+
+      if (t < holdEmptyMs) {
+        return const _TypewriterFrame('', false);
+      }
+      t -= holdEmptyMs;
+    }
+
+    return const _TypewriterFrame('', true);
+  }
+
   @override
   DCFComponentNode render() {
     final words = [
@@ -448,57 +515,21 @@ class TypewriterEffect extends DCFStatefulComponent {
       "Build for The Future.",
     ];
 
-    final index = useState<int>(0);
-    final subIndex = useState<int>(0);
-    final reverse = useState<bool>(false);
-    final holdTicks = useState<int>(0);
-    final blink = useState<bool>(true);
+    final forceRebuild = useState<int>(0);
 
-    // Cursor blinking effect - runs independently
+    // Periodic pump to force rebuild, avoiding state-update stalls on iOS.
     useEffect(() {
-      final timer = Timer.periodic(Duration(milliseconds: 500), (_) {
-        blink.setState(!blink.state);
+      final timer = Timer.periodic(const Duration(milliseconds: 70), (_) {
+        forceRebuild.setState(forceRebuild.state + 1);
       });
       return () => timer.cancel();
     }, dependencies: []);
 
-    // Single ticker avoids race conditions between nested timers.
-    useEffect(() {
-      final timer = Timer.periodic(const Duration(milliseconds: 85), (_) {
-        if (holdTicks.state > 0) {
-          holdTicks.setState(holdTicks.state - 1);
-          return;
-        }
-
-        final currentWordLength = words[index.state].length;
-        final currentSubIndex = subIndex.state;
-
-        if (!reverse.state) {
-          if (currentSubIndex < currentWordLength) {
-            subIndex.setState(currentSubIndex + 1);
-            return;
-          }
-
-          reverse.setState(true);
-          holdTicks.setState(14);
-          return;
-        }
-
-        if (currentSubIndex > 0) {
-          subIndex.setState(currentSubIndex - 1);
-          return;
-        }
-
-        reverse.setState(false);
-        index.setState((index.state + 1) % words.length);
-        holdTicks.setState(3);
-      });
-      return () => timer.cancel();
-    }, dependencies: []);
-
-    final currentText = words[index.state].substring(0, subIndex.state);
-    final cursorChar =
-        blink.state ? '▊' : ' '; // Use block character for cursor
+    final elapsedMs = DateTime.now().millisecondsSinceEpoch - _startMs;
+    final frame = _computeFrame(elapsedMs, words);
+    final cursorVisible = ((elapsedMs ~/ 450) % 2) == 0;
+    final cursorChar = (cursorVisible || frame.keepCursorOn) ? '▊' : ' ';
+    print("🧪 TypewriterFrame elapsed=$elapsedMs text='${frame.text}' rebuild=${forceRebuild.state}");
 
     // Combine text and cursor in a single text component for proper positioning
     // Use a fixed-width container to prevent layout jumps when switching words
@@ -524,7 +555,8 @@ class TypewriterEffect extends DCFStatefulComponent {
           styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray400),
         ),
         DCFText(
-          content: "$currentText$cursorChar",
+          key: 'typewriter-animated-${elapsedMs ~/ 70}',
+          content: "${frame.text}$cursorChar",
           textProps: DCFTextProps(
             fontSize: 20,
             fontFamily: "monospace",
@@ -541,6 +573,13 @@ class TypewriterEffect extends DCFStatefulComponent {
       ],
     );
   }
+}
+
+class _TypewriterFrame {
+  final String text;
+  final bool keepCursorOn;
+
+  const _TypewriterFrame(this.text, this.keepCursorOn);
 }
 
 /// Worklet-based Typewriter Effect (runs on UI thread)
@@ -626,14 +665,19 @@ class TypewriterEffectWorklet extends DCFStatelessComponent {
 
     return DCFView(
       layout: DCFLayout(
-        flexDirection: DCFFlexDirection.row,
-        alignItems: DCFAlign.center,
+        flexDirection: DCFFlexDirection.column,
+        alignItems: DCFAlign.flexStart,
         alignSelf: DCFAlign.center,
+        gap: 8,
       ),
       children: [
         DCFText(
-          content: "\$ ",
-          textProps: DCFTextProps(fontSize: 20, fontFamily: "monospace"),
+          content: "Live signal",
+          textProps: DCFTextProps(
+            fontSize: 12,
+            fontWeight: DCFFontWeight.medium,
+            letterSpacing: 0.6,
+          ),
           styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray400),
         ),
         DCFView(

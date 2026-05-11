@@ -105,9 +105,16 @@ public class DCFTextShadowView: DCFShadowView {
      * Matches approach: measurement returns text size only, padding handled separately
      */
     private func measureText(node: YGNodeRef?, width: Float, widthMode: YGMeasureMode, height: Float, heightMode: YGMeasureMode) -> YGSize {
-        // Match approach: Yoga passes available width (after padding) to measure function
-        // When widthMode is undefined, use CGFLOAT_MAX for unlimited width
-        let availableWidth: CGFloat = widthMode == .undefined ? CGFloat.greatestFiniteMagnitude : CGFloat(width)
+        // Match approach: Yoga passes available width (after padding) to measure function.
+        // Prefer the parent constraint when Yoga has not resolved an explicit width yet,
+        // so text inside animated containers does not collapse to an intrinsic sliver.
+        let availableWidth: CGFloat
+        let parentWidth = superview?.availableSize.width ?? 0
+        if widthMode == .undefined || width <= 1 || CGFloat(width) <= 1 {
+            availableWidth = parentWidth > 0 ? parentWidth : CGFloat.greatestFiniteMagnitude
+        } else {
+            availableWidth = CGFloat(width)
+        }
         let textStorage = buildTextStorageForWidth(availableWidth, widthMode: widthMode)
         
         // Get the layout manager and text container

@@ -115,12 +115,89 @@ class DCFWebViewComponent: NSObject, DCFComponent {
     }
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        view.frame = CGRect(
-            x: CGFloat(layout.left),
+        let layoutWidth = CGFloat(layout.width)
+        let layoutHeight = CGFloat(layout.height)
+        let needsWidthFallback = layoutWidth <= 1 || layoutWidth < 100
+
+        // Return the first ancestor that is meaningfully wider than the current
+        // Yoga width. This addresses nested percentage-width containers that can
+        // transiently report a narrow value during early layout passes.
+        func findPromotedAncestor(from v: UIView, currentWidth: CGFloat) -> UIView? {
+            var node: UIView? = v.superview
+            while let current = node {
+                let w = current.bounds.width
+                if w > 100 && w > currentWidth + 40 {
+                    return current
+                }
+                node = current.superview
+            }
+            return nil
+        }
+
+        let promotedAncestor = findPromotedAncestor(from: view, currentWidth: layoutWidth)
+        let shouldPromoteNarrowWidth = promotedAncestor != nil && layoutWidth < 320
+
+        let resolvedWidth: CGFloat
+        if needsWidthFallback {
+            resolvedWidth = promotedAncestor?.bounds.width ?? layoutWidth
+        } else if shouldPromoteNarrowWidth {
+            resolvedWidth = promotedAncestor?.bounds.width ?? layoutWidth
+        } else {
+            resolvedWidth = layoutWidth
+        }
+
+        var targetX = CGFloat(layout.left)
+        var targetWidth = resolvedWidth
+        if resolvedWidth > layoutWidth + 1,
+           let parent = view.superview,
+           let ancestor = promotedAncestor {
+            let promotedRectInParent = parent.convert(ancestor.bounds, from: ancestor)
+            let clampedRect = promotedRectInParent.intersection(parent.bounds)
+            if !clampedRect.isNull && clampedRect.width > 1 {
+                targetX = clampedRect.origin.x
+                targetWidth = clampedRect.width
+            } else {
+                targetX = promotedRectInParent.origin.x
+                targetWidth = promotedRectInParent.width
+            }
+        }
+        let targetFrame = CGRect(
+            x: targetX,
             y: CGFloat(layout.top),
-            width: CGFloat(layout.width),
-            height: CGFloat(layout.height)
+            width: targetWidth,
+            height: layoutHeight
         )
+        print("📐 DCFWebViewComponent applyLayout frame=\(targetFrame) layout=(\(layoutWidth), \(layoutHeight))")
+        view.frame = targetFrame
+
+        guard let webView = view as? WKWebView else { return }
+
+        // After layout settles, one more reconciliation pass ensures the webview
+        // catches up if parent widths finalize after this apply call.
+        DispatchQueue.main.async {
+                if let ancestor = findPromotedAncestor(from: webView, currentWidth: webView.frame.width),
+                   let parent = webView.superview,
+                   webView.frame.width + 1 < ancestor.bounds.width {
+                    let promotedRectInParent = parent.convert(ancestor.bounds, from: ancestor)
+                    let clampedRect = promotedRectInParent.intersection(parent.bounds)
+                    let finalRect: CGRect
+                    if !clampedRect.isNull && clampedRect.width > 1 {
+                        finalRect = clampedRect
+                    } else {
+                        finalRect = promotedRectInParent
+                    }
+                    print("📐 DCFWebViewComponent async reconcile frame=\(finalRect)")
+                webView.frame = CGRect(
+                        x: finalRect.origin.x,
+                    y: webView.frame.origin.y,
+                        width: finalRect.width,
+                    height: webView.frame.height
+                )
+                webView.setNeedsLayout()
+                webView.layoutIfNeeded()
+            }
+            webView.evaluateJavaScript("window.dispatchEvent(new Event('resize'));", completionHandler: nil)
+        }
     }
     
     func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {
@@ -227,6 +304,7 @@ extension DCFWebViewComponent: WKNavigationDelegate {
         DispatchQueue.main.async {
             webView.setNeedsLayout()
             webView.layoutIfNeeded()
+            webView.evaluateJavaScript("window.dispatchEvent(new Event('resize'));", completionHandler: nil)
         }
         
         propagateEvent(on: webView, eventName: "onLoadEnd", data: [
