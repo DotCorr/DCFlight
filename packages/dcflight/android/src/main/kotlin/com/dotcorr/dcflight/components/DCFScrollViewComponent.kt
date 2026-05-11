@@ -25,6 +25,13 @@ class DCFScrollViewComponent : DCFComponent() {
     
     companion object {
         private const val TAG = "DCFScrollViewComponent"
+        private const val VERBOSE_SCROLL_COMPONENT_LOGS = false
+
+        private fun logD(message: String) {
+            if (VERBOSE_SCROLL_COMPONENT_LOGS) {
+                Log.d(TAG, message)
+            }
+        }
     }
     
     override fun createView(context: Context, props: Map<String, Any?>): View {
@@ -155,7 +162,7 @@ class DCFScrollViewComponent : DCFComponent() {
         // Layouts are applied parent-first, so ScrollView's layout is applied before ScrollContentView's layout
         // ScrollContentViewComponent.applyLayout will trigger updateContentSizeFromContentView after it sets its frame
         // This ensures we read the correct frame size
-        Log.d(TAG, "🔍 DCFScrollViewComponent.applyLayout: Applied frame=(${scrollView.left}, ${scrollView.top}, ${scrollView.width}, ${scrollView.height}), yogaHeight=${layout.height}, targetHeight=$targetHeight, viewportHeight=$viewportHeight, parentHeight=$parentHeight, currentViewportHeight=$currentViewportHeight, rootViewportHeight=$rootViewportHeight; deferring contentSize update until ScrollContentView layout is applied")
+        logD("🔍 DCFScrollViewComponent.applyLayout: Applied frame=(${scrollView.left}, ${scrollView.top}, ${scrollView.width}, ${scrollView.height}), yogaHeight=${layout.height}, targetHeight=$targetHeight, viewportHeight=$viewportHeight, parentHeight=$parentHeight, currentViewportHeight=$currentViewportHeight, rootViewportHeight=$rootViewportHeight; deferring contentSize update until ScrollContentView layout is applied")
     }
     
     override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {

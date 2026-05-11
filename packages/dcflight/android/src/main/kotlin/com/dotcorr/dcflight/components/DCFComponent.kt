@@ -12,6 +12,8 @@ import android.view.View
 import android.view.ViewGroup
 import com.dotcorr.dcflight.extensions.applyStyles
 
+private const val VERBOSE_COMPONENT_EVENT_LOGS = false
+
 /**
  * Interface that views can implement to opt-out of layout updates during certain states.
  * 
@@ -83,6 +85,13 @@ abstract class DCFComponent {
     
     companion object {
         private const val TAG = "DCFComponent"
+        private const val VERBOSE_COMPONENT_LOGS = false
+
+        private fun logD(message: String) {
+            if (VERBOSE_COMPONENT_LOGS) {
+                android.util.Log.d(TAG, message)
+            }
+        }
     }
 
     /**
@@ -196,9 +205,9 @@ abstract class DCFComponent {
         val viewId = view.getTag(DCFTags.VIEW_ID_KEY) as? Int
         val nodeId = view.getTag("nodeId".hashCode())?.toString()
         val componentType = view.getTag(DCFTags.COMPONENT_TYPE_KEY) as? String ?: "Unknown"
-        android.util.Log.d("DCFComponent", "🔍 [CONTAINER LAYOUT] applyLayout: component=$componentType, viewId=$viewId, nodeId=$nodeId")
-        android.util.Log.d("DCFComponent", "🔍 [CONTAINER LAYOUT] layout: left=${layout.left}, top=${layout.top}, width=${layout.width}, height=${layout.height}")
-        android.util.Log.d("DCFComponent", "🔍 [CONTAINER LAYOUT] view current: width=${view.width}, height=${view.height}, measuredWidth=${view.measuredWidth}, measuredHeight=${view.measuredHeight}")
+        logD("🔍 [CONTAINER LAYOUT] applyLayout: component=$componentType, viewId=$viewId, nodeId=$nodeId")
+        logD("🔍 [CONTAINER LAYOUT] layout: left=${layout.left}, top=${layout.top}, width=${layout.width}, height=${layout.height}")
+        logD("🔍 [CONTAINER LAYOUT] view current: width=${view.width}, height=${view.height}, measuredWidth=${view.measuredWidth}, measuredHeight=${view.measuredHeight}")
         
         // Match iOS exactly: just set the frame, nothing else
         // Framework handles all transforms, lifecycle, state - components don't need to know
@@ -209,7 +218,7 @@ abstract class DCFComponent {
             (layout.top + layout.height).toInt()
         )
         
-        android.util.Log.d("DCFComponent", "🔍 [CONTAINER LAYOUT] view after layout: width=${view.width}, height=${view.height}")
+        logD("🔍 [CONTAINER LAYOUT] view after layout: width=${view.width}, height=${view.height}")
         
         // Check if this container has text children
         if (view is android.view.ViewGroup) {
@@ -219,11 +228,11 @@ abstract class DCFComponent {
                 if (child.getTag(DCFTags.COMPONENT_TYPE_KEY) == "Text") {
                     textChildCount++
                     val childViewId = child.getTag(DCFTags.VIEW_ID_KEY) as? Int
-                    android.util.Log.d("DCFComponent", "🔍 [CONTAINER LAYOUT] Text child $i: viewId=$childViewId, width=${child.width}, height=${child.height}")
+                    logD("🔍 [CONTAINER LAYOUT] Text child $i: viewId=$childViewId, width=${child.width}, height=${child.height}")
                 }
             }
             if (textChildCount > 0) {
-                android.util.Log.d("DCFComponent", "🔍 [CONTAINER LAYOUT] Container has $textChildCount text children")
+                logD("🔍 [CONTAINER LAYOUT] Container has $textChildCount text children")
             }
         }
     }
@@ -303,17 +312,23 @@ fun propagateEvent(
         val eventTypes = view.getTag(DCFTags.EVENT_TYPES_KEY) as? Set<String>
         val eventCallback = view.getTag(DCFTags.EVENT_CALLBACK_KEY) as? (String, Map<String, Any?>) -> Unit
 
-        android.util.Log.d("DCFComponent", "🔥 propagateEvent: eventName=$eventName, viewId=$viewId")
-        android.util.Log.d("DCFComponent", "🔥 propagateEvent: eventTypes=$eventTypes")
-        android.util.Log.d("DCFComponent", "🔥 propagateEvent: eventCallback=$eventCallback")
+        if (VERBOSE_COMPONENT_EVENT_LOGS) {
+            android.util.Log.d("DCFComponent", "🔥 propagateEvent: eventName=$eventName, viewId=$viewId")
+            android.util.Log.d("DCFComponent", "🔥 propagateEvent: eventTypes=$eventTypes")
+            android.util.Log.d("DCFComponent", "🔥 propagateEvent: eventCallback=$eventCallback")
+        }
 
         if (viewId != null && eventTypes != null && eventCallback != null) {
             val normalizedEventName = normalizeEventNameForPropagation(eventName)
-            android.util.Log.d("DCFComponent", "🔥 propagateEvent: normalizedEventName=$normalizedEventName")
+            if (VERBOSE_COMPONENT_EVENT_LOGS) {
+                android.util.Log.d("DCFComponent", "🔥 propagateEvent: normalizedEventName=$normalizedEventName")
+            }
             
             if (eventTypes.contains(normalizedEventName) || eventTypes.contains(eventName) ||
                 ((eventName == "onPressIn" || eventName == "onPressOut") && (eventTypes.contains("onPress") || eventTypes.contains("press")))) {
-                android.util.Log.d("DCFComponent", "🚀 FIRING EVENT: $eventName to Flutter!")
+                if (VERBOSE_COMPONENT_EVENT_LOGS) {
+                    android.util.Log.d("DCFComponent", "🚀 FIRING EVENT: $eventName to Flutter!")
+                }
                 eventCallback(eventName, data)
             } else {
             }

@@ -4,6 +4,8 @@ import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcf_reanimated/dcf_reanimated.dart';
 import 'package:dcflight/dcflight.dart';
 
+const bool kEnableLiveGpuSurfaces = true;
+
 
 void main() async {
   await DCFlight.go(app: AppRoot());
@@ -61,23 +63,41 @@ class AppRoot extends DCFStatefulComponent {
                 ),
                 styleSheet: DCFStyleSheet(primaryColor: DCFColors.white),
               ),
-              DCFWebGpuSurface(
-                webGpuProps: const DCFWebGpuSurfaceProps(
-                  scene: DCFWebGpuScene.cubeLogo,
-                  sceneLabel: 'the lab preview',
-                  centerGlyph: 'DC',
-                  rotationSpeed: 1.1,
+              if (kEnableLiveGpuSurfaces)
+                DCFWebGpuSurface(
+                  webGpuProps: const DCFWebGpuSurfaceProps(
+                    scene: DCFWebGpuScene.cubeLogo,
+                    sceneLabel: 'the lab preview',
+                    centerGlyph: 'DC',
+                    rotationSpeed: 1.1,
+                  ),
+                  fillWidth: false,
+                  fillScrollContent: false,
+                  layout: const DCFLayout(width: '100%', minWidth: 0, maxWidth: '100%', height: 260),
+                  styleSheet: DCFStyleSheet(
+                    borderWidth: 1,
+                    borderColor: DCFColors.gray700,
+                    borderRadius: 12,
+                    backgroundColor: DCFColors.black,
+                  ),
+                )
+              else
+                DCFView(
+                  layout: const DCFLayout(width: '100%', minWidth: 0, maxWidth: '100%', height: 260, alignItems: DCFAlign.center, justifyContent: DCFJustifyContent.center),
+                  styleSheet: DCFStyleSheet(
+                    borderWidth: 1,
+                    borderColor: DCFColors.gray700,
+                    borderRadius: 12,
+                    backgroundColor: DCFColors.black,
+                  ),
+                  children: [
+                    DCFText(
+                      content: "GPU preview paused for stability",
+                      textProps: DCFTextProps(fontSize: 14, fontWeight: DCFFontWeight.medium),
+                      styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray400),
+                    ),
+                  ],
                 ),
-                fillWidth: false,
-                fillScrollContent: false,
-                layout: const DCFLayout(width: '100%', minWidth: 0, maxWidth: '100%', height: 260),
-                styleSheet: DCFStyleSheet(
-                  borderWidth: 1,
-                  borderColor: DCFColors.gray700,
-                  borderRadius: 12,
-                  backgroundColor: DCFColors.black,
-                ),
-              ),
             ],
           ),
         ],
@@ -397,25 +417,43 @@ class HeroSection extends DCFStatelessComponent {
                                 primaryColor: DCFColors.gray500,
                               ),
                             ),
-                            DCFWebGpuSurface(
-                              webGpuProps: const DCFWebGpuSurfaceProps(
-                                scene: DCFWebGpuScene.gridPulse,
-                                sceneLabel: 'hero gpu preview',
-                                centerGlyph: 'DC',
-                                showStatus: false,
-                                rotationSpeed: 1.2,
-                                accentColor: '#6ee7ff',
+                            if (kEnableLiveGpuSurfaces)
+                              DCFWebGpuSurface(
+                                webGpuProps: const DCFWebGpuSurfaceProps(
+                                  scene: DCFWebGpuScene.gridPulse,
+                                  sceneLabel: 'hero gpu preview',
+                                  centerGlyph: 'DC',
+                                  showStatus: false,
+                                  rotationSpeed: 1.2,
+                                  accentColor: '#6ee7ff',
+                                ),
+                                fillWidth: false,
+                                fillScrollContent: false,
+                                layout: const DCFLayout(width: '100%', minWidth: 0, maxWidth: '100%', height: 220),
+                                styleSheet: DCFStyleSheet(
+                                  borderWidth: 1,
+                                  borderColor: DCFColors.gray200,
+                                  borderRadius: 8,
+                                  backgroundColor: DCFColors.black,
+                                ),
+                              )
+                            else
+                              DCFView(
+                                layout: const DCFLayout(width: '100%', minWidth: 0, maxWidth: '100%', height: 220, alignItems: DCFAlign.center, justifyContent: DCFJustifyContent.center),
+                                styleSheet: DCFStyleSheet(
+                                  borderWidth: 1,
+                                  borderColor: DCFColors.gray200,
+                                  borderRadius: 8,
+                                  backgroundColor: DCFColors.black,
+                                ),
+                                children: [
+                                  DCFText(
+                                    content: "GPU surface temporarily disabled",
+                                    textProps: DCFTextProps(fontSize: 13, fontWeight: DCFFontWeight.medium),
+                                    styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray500),
+                                  ),
+                                ],
                               ),
-                              fillWidth: false,
-                              fillScrollContent: false,
-                              layout: const DCFLayout(width: '100%', minWidth: 0, maxWidth: '100%', height: 220),
-                              styleSheet: DCFStyleSheet(
-                                borderWidth: 1,
-                                borderColor: DCFColors.gray200,
-                                borderRadius: 8,
-                                backgroundColor: DCFColors.black,
-                              ),
-                            ),
                           ],
                         ),
                       ],
@@ -672,6 +710,7 @@ class TypewriterEffectWorklet extends DCFStatelessComponent {
         alignSelf: DCFAlign.center,
         gap: 8,
       ),
+      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.transparent),
       children: [
         DCFText(
           content: "Live signal",
@@ -690,6 +729,7 @@ class TypewriterEffectWorklet extends DCFStatelessComponent {
             alignItems: DCFAlign.flexStart,
             justifyContent: DCFJustifyContent.center,
           ),
+          styleSheet: DCFStyleSheet(backgroundColor: DCFColors.transparent),
           children: [
             AnimatedText(
               worklet: typewriterWorklet,

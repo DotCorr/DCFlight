@@ -3,11 +3,21 @@ package com.dotcorr.dcflight.components.text
 import android.text.SpannableStringBuilder
 import android.text.Spannable
 import android.text.TextPaint
- import android.text.StaticLayout
+import android.text.StaticLayout
 import com.dotcorr.dcflight.layout.DCFShadowNode
 import com.facebook.yoga.*
 
 abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
+
+    companion object {
+        private const val VERBOSE_TEXT_SHADOW_LOGS = false
+    }
+
+    private fun logTextD(message: String) {
+        if (VERBOSE_TEXT_SHADOW_LOGS) {
+            android.util.Log.d("DCFTextShadowNode", message)
+        }
+    }
     
     private var mTextBegin: Int = 0
     private var mTextEnd: Int = 0
@@ -15,7 +25,7 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
     init {
         // Set up custom measure function for text
         yogaNode.setMeasureFunction(createTextMeasureFunction())
-        android.util.Log.d("DCFTextShadowNode", "✅ Measure function set for viewId=$viewId, isMeasureDefined=${yogaNode.isMeasureDefined}")
+        logTextD("✅ Measure function set for viewId=$viewId, isMeasureDefined=${yogaNode.isMeasureDefined}")
     }
     
     /**
@@ -40,7 +50,7 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         height: Float,
         heightMode: YogaMeasureMode
     ): Long {
-        android.util.Log.d("DCFTextShadowNode", "📏 measureText called: viewId=$viewId, width=$width, widthMode=$widthMode, height=$height, heightMode=$heightMode")
+        logTextD("📏 measureText called: viewId=$viewId, width=$width, widthMode=$widthMode, height=$height, heightMode=$heightMode")
         
         // Get text with all spans applied
         val spannedText = if (this is DCFVirtualTextShadowNode) {
@@ -49,7 +59,7 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
             android.text.SpannableStringBuilder(text)
         }
         
-        android.util.Log.d("DCFTextShadowNode", "📝 Text content: '${spannedText}' (length=${spannedText.length})")
+        logTextD("📝 Text content: '${spannedText}' (length=${spannedText.length})")
         
         if (spannedText.isEmpty()) {
             val minHeight = if (fontSize > 0) {
@@ -68,7 +78,7 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
                     displayMetrics
                 )
             }
-            android.util.Log.d("DCFTextShadowNode", "⚠️ Empty text, returning min size: 1x$minHeight")
+            logTextD("⚠️ Empty text, returning min size: 1x$minHeight")
             return YogaMeasureOutput.make(1f, minHeight)
         }
         
@@ -173,7 +183,7 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
             constraintWidth
         }
         
-        android.util.Log.d("DCFTextShadowNode", "📐 Creating layout: desiredWidth=$desiredWidth, constraintWidth=$constraintWidth, layoutWidth=$layoutWidth (widthMode=$widthMode), fontSize=$fontSizePixels")
+        logTextD("📐 Creating layout: desiredWidth=$desiredWidth, constraintWidth=$constraintWidth, layoutWidth=$layoutWidth (widthMode=$widthMode), fontSize=$fontSizePixels")
         
         // Get text alignment
         val alignment = when (textAlign.lowercase()) {
@@ -241,7 +251,7 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
             0f
         }
         
-        android.util.Log.d("DCFTextShadowNode", "✅ Layout created: containerWidth=${layout.width}, actualUsedWidth=$actualUsedWidth, height=${layout.height}, lineCount=${layout.lineCount}, layoutWidth=$layoutWidth, constraintWidth=$constraintWidth")
+        logTextD("✅ Layout created: containerWidth=${layout.width}, actualUsedWidth=$actualUsedWidth, height=${layout.height}, lineCount=${layout.lineCount}, layoutWidth=$layoutWidth, constraintWidth=$constraintWidth")
         
         // Round up to pixel boundaries (matches iOS RCTCeilPixelValue)
         val scale = android.content.res.Resources.getSystem().displayMetrics.density
@@ -273,15 +283,15 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
             roundedHeight.toFloat()
         }
         
-        android.util.Log.d("DCFTextShadowNode", "📊 Returning measure output: width=$finalWidth (measured=$roundedWidth), height=$finalHeight (widthMode=$widthMode, constraintWidth=$width)")
+        logTextD("📊 Returning measure output: width=$finalWidth (measured=$roundedWidth), height=$finalHeight (widthMode=$widthMode, constraintWidth=$width)")
         
         // DEBUG: Log parent state to diagnose container expansion issue
         val parentYogaNode = yogaNode.parent
         if (parentYogaNode != null) {
             val parentShadowNode = com.dotcorr.dcflight.layout.YogaShadowTree.shared.getShadowNode(parentYogaNode)
             if (parentShadowNode != null) {
-                android.util.Log.d("DCFTextShadowNode", "🔍 [MEASURE DEBUG] Parent viewId=${parentShadowNode.viewId}, parent Yoga width=${parentYogaNode.layoutWidth}, height=${parentYogaNode.layoutHeight}")
-                android.util.Log.d("DCFTextShadowNode", "🔍 [MEASURE DEBUG] Text measured: width=$finalWidth, height=$finalHeight, parent constraint: width=$width")
+                logTextD("🔍 [MEASURE DEBUG] Parent viewId=${parentShadowNode.viewId}, parent Yoga width=${parentYogaNode.layoutWidth}, height=${parentYogaNode.layoutHeight}")
+                logTextD("🔍 [MEASURE DEBUG] Text measured: width=$finalWidth, height=$finalHeight, parent constraint: width=$width")
             }
         }
         
@@ -295,21 +305,21 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
             if (field != value) {
                 val oldValue = field
                 field = value
-                android.util.Log.d("DCFTextShadowNode", "🔍 [TEXT CHANGE] viewId=$viewId, text changed from '$oldValue' to '$value'")
+                logTextD("🔍 [TEXT CHANGE] viewId=$viewId, text changed from '$oldValue' to '$value'")
                 dirtyText()
                 // CRITICAL: Mark Yoga node as dirty so measure function is called
                 // This ensures Yoga will re-measure the text when it changes
                 if (yogaNode.isMeasureDefined && yogaNode.childCount == 0) {
                     yogaNode.markLayoutSeen()
                     yogaNode.dirty()
-                    android.util.Log.d("DCFTextShadowNode", "✅ Marked Yoga node dirty for viewId=$viewId after text change")
+                    logTextD("✅ Marked Yoga node dirty for viewId=$viewId after text change")
                     
                     // DEBUG: Check parent state
                     val parentYogaNode = yogaNode.parent
                     if (parentYogaNode != null) {
                         val parentShadowNode = com.dotcorr.dcflight.layout.YogaShadowTree.shared.getShadowNode(parentYogaNode)
                         if (parentShadowNode != null) {
-                            android.util.Log.d("DCFTextShadowNode", "🔍 [TEXT CHANGE] Parent viewId=${parentShadowNode.viewId}, parent isDirty=${parentYogaNode.isDirty}")
+                            logTextD("🔍 [TEXT CHANGE] Parent viewId=${parentShadowNode.viewId}, parent isDirty=${parentYogaNode.isDirty}")
                         }
                     }
                 }

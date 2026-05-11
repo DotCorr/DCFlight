@@ -93,6 +93,22 @@ class AnimatedText extends DCFStatelessComponent {
 
   @override
   DCFComponentNode render() {
+    final containerStyle = DCFStyleSheet(
+      backgroundColor: DCFColors.transparent,
+      opacity: styleSheet?.opacity,
+    );
+
+    // Keep container styling on ReanimatedView, but restrict child text styling
+    // to semantic text colors to avoid accidental background/border leakage.
+    final textOnlyStyle = DCFStyleSheet(
+      backgroundColor: DCFColors.transparent,
+      primaryColor: styleSheet?.primaryColor,
+      secondaryColor: styleSheet?.secondaryColor,
+      tertiaryColor: styleSheet?.tertiaryColor,
+      accentColor: styleSheet?.accentColor,
+      opacity: styleSheet?.opacity,
+    );
+
     // Use ReanimatedView to execute worklet on UI thread
     // The worklet returns String, which will update child Text component
     return ReanimatedView(
@@ -107,7 +123,7 @@ class AnimatedText extends DCFStatelessComponent {
       onAnimationStart: onAnimationStart,
       onAnimationComplete: onAnimationComplete,
       layout: layout,
-      styleSheet: styleSheet,
+      styleSheet: containerStyle,
       children: [
         DCFText(
           content: '', // Will be updated by worklet on UI thread via tunnel
@@ -116,7 +132,7 @@ class AnimatedText extends DCFStatelessComponent {
           // Match parent AnimatedText width so native text layout doesn't collapse
           // to intrinsic single-character widths on Android.
           layout: const DCFLayout(width: '100%'),
-          styleSheet: styleSheet ?? const DCFStyleSheet(),
+          styleSheet: textOnlyStyle,
         ),
       ],
     );
