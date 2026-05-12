@@ -93,19 +93,19 @@ public class DCFlightJniBindings {
     }
 
     public String getSessionToken() {
-        return invokeString("getSessionToken");
+        return invokeStaticString("getSessionToken");
     }
 
     public String createSessionToken() {
-        return invokeString("createSessionToken");
+        return invokeStaticString("createSessionToken");
     }
 
     public void clearSessionToken() {
-        invokeVoid("clearSessionToken");
+        invokeStaticVoid("clearSessionToken");
     }
 
     public void cleanupViews() {
-        invokeVoid("cleanupViews");
+        invokeStaticVoid("cleanupViews");
     }
 
     public String consumePendingEvents() {
@@ -132,6 +132,16 @@ public class DCFlightJniBindings {
             final Method method = findMethod(targetClass, methodName, args.length);
             final Object result = method.invoke(null, args);
             return result == null ? null : result.toString();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to invoke static method: " + methodName, e);
+        }
+    }
+
+    private static void invokeStaticVoid(String methodName, Object... args) {
+        try {
+            final Class<?> targetClass = Class.forName(TARGET_CLASS_NAME);
+            final Method method = findMethod(targetClass, methodName, args.length);
+            method.invoke(null, args);
         } catch (Exception e) {
             throw new RuntimeException("Failed to invoke static method: " + methodName, e);
         }

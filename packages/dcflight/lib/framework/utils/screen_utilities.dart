@@ -18,6 +18,11 @@ const double _kDimensionEpsilon = 0.5;
 
 bool _dimensionChanged(double a, double b) => (a - b).abs() > _kDimensionEpsilon;
 
+double _asDouble(dynamic value, [double fallback = 0.0]) {
+  if (value is num) return value.toDouble();
+  return fallback;
+}
+
 /// Utility class for handling screen dimensions and orientation changes
 class ScreenUtilities {
   /// Singleton instance
@@ -78,15 +83,15 @@ class ScreenUtilities {
 
   /// Handle dimension change from native (called via FFI/JNI callback)
   void _handleDimensionChange(Map<String, dynamic> dimensions) {
-    final newWidth = dimensions['width'] as double? ?? 0.0;
-    final newHeight = dimensions['height'] as double? ?? 0.0;
+    final newWidth = _asDouble(dimensions['width']);
+    final newHeight = _asDouble(dimensions['height']);
     final hasValidSize = newWidth > _kDimensionEpsilon && newHeight > _kDimensionEpsilon;
     final oldFontScale = _fontScale;
-    final newFontScale = dimensions['fontScale'] as double? ?? 1.0;
-    final newSafeAreaTop = dimensions['safeAreaTop'] as double? ?? 0.0;
-    final newSafeAreaBottom = dimensions['safeAreaBottom'] as double? ?? 0.0;
-    final newSafeAreaLeft = dimensions['safeAreaLeft'] as double? ?? 0.0;
-    final newSafeAreaRight = dimensions['safeAreaRight'] as double? ?? 0.0;
+    final newFontScale = _asDouble(dimensions['fontScale'], 1.0);
+    final newSafeAreaTop = _asDouble(dimensions['safeAreaTop']);
+    final newSafeAreaBottom = _asDouble(dimensions['safeAreaBottom']);
+    final newSafeAreaLeft = _asDouble(dimensions['safeAreaLeft']);
+    final newSafeAreaRight = _asDouble(dimensions['safeAreaRight']);
     final safeAreaChanged = _dimensionChanged(newSafeAreaTop, _safeAreaTop) ||
                            _dimensionChanged(newSafeAreaBottom, _safeAreaBottom) ||
                            _dimensionChanged(newSafeAreaLeft, _safeAreaLeft) ||
@@ -101,9 +106,9 @@ class ScreenUtilities {
 
       _screenWidth = newWidth;
       _screenHeight = newHeight;
-      _scaleFactor = dimensions['scale'] as double? ?? 1.0;
+      _scaleFactor = _asDouble(dimensions['scale'], 1.0);
       _fontScale = newFontScale;
-      _statusBarHeight = dimensions['statusBarHeight'] as double? ?? 0.0;
+      _statusBarHeight = _asDouble(dimensions['statusBarHeight']);
       _safeAreaTop = newSafeAreaTop;
       _safeAreaBottom = newSafeAreaBottom;
       _safeAreaLeft = newSafeAreaLeft;
@@ -212,8 +217,8 @@ class ScreenUtilities {
       }
       
       if (result != null) {
-        final incomingWidth = result['width'] as double? ?? 0.0;
-        final incomingHeight = result['height'] as double? ?? 0.0;
+        final incomingWidth = _asDouble(result['width']);
+        final incomingHeight = _asDouble(result['height']);
         final hasValidSize =
             incomingWidth > _kDimensionEpsilon && incomingHeight > _kDimensionEpsilon;
 
@@ -247,13 +252,13 @@ class ScreenUtilities {
         
         _screenWidth = incomingWidth;
         _screenHeight = incomingHeight;
-        _scaleFactor = result['scale'] as double? ?? 1.0;
-        _fontScale = result['fontScale'] as double? ?? 1.0;
-        _statusBarHeight = result['statusBarHeight'] as double? ?? 0.0;
-        _safeAreaTop = result['safeAreaTop'] as double? ?? 0.0;
-        _safeAreaBottom = result['safeAreaBottom'] as double? ?? 0.0;
-        _safeAreaLeft = result['safeAreaLeft'] as double? ?? 0.0;
-        _safeAreaRight = result['safeAreaRight'] as double? ?? 0.0;
+        _scaleFactor = _asDouble(result['scale'], 1.0);
+        _fontScale = _asDouble(result['fontScale'], 1.0);
+        _statusBarHeight = _asDouble(result['statusBarHeight']);
+        _safeAreaTop = _asDouble(result['safeAreaTop']);
+        _safeAreaBottom = _asDouble(result['safeAreaBottom']);
+        _safeAreaLeft = _asDouble(result['safeAreaLeft']);
+        _safeAreaRight = _asDouble(result['safeAreaRight']);
 
         developer.log(
             '✅ Dimensions refreshed: ${oldWidth.toInt()}x${oldHeight.toInt()} → ${_screenWidth.toInt()}x${_screenHeight.toInt()}',

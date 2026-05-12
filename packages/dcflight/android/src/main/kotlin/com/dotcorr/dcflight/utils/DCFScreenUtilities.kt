@@ -30,6 +30,11 @@ import kotlin.math.roundToInt
  */
 object DCFScreenUtilities {
     private const val TAG = "DCFScreenUtilities"
+    private fun dlog(message: String) {
+        if (Log.isLoggable(TAG, Log.DEBUG)) {
+            Log.d(TAG, message)
+        }
+    }
 
     private var context: Context? = null
     private var activity: Activity? = null
@@ -52,7 +57,7 @@ object DCFScreenUtilities {
      * Initialize the screen utilities with optional binary messenger
      */
     fun initialize(binaryMessenger: BinaryMessenger?, appContext: Context? = null) {
-        Log.d(TAG, "Initializing DCFScreenUtilities")
+        dlog("Initializing DCFScreenUtilities")
 
         appContext?.let {
             this.context = it.applicationContext
@@ -66,7 +71,7 @@ object DCFScreenUtilities {
         // NO MethodChannel - screen dimensions use JNI callbacks
         // binaryMessenger no longer needed
 
-        Log.d(TAG, "DCFScreenUtilities initialized")
+        dlog("DCFScreenUtilities initialized")
     }
     
     /**
@@ -86,7 +91,7 @@ object DCFScreenUtilities {
                 }
             }
         }
-        Log.d(TAG, "Root view set for safe area calculations: ${view != null}, activity: ${activity != null}")
+        dlog("Root view set for safe area calculations: ${view != null}, activity: ${activity != null}")
         
         // CRITICAL: Now that we have the root view, notify Dart with real safe area insets.
         // The initial notifyDimensionChange() in initialize() may have sent safeAreaTop=0
@@ -132,14 +137,14 @@ object DCFScreenUtilities {
             scaledDensity = newScaledDensity
             
             if (fontScaleChanged) {
-                Log.d(TAG, "📝 Font scale changed: $previousFontScale → $newFontScale")
+                dlog("Font scale changed: $previousFontScale -> $newFontScale")
                 previousFontScale = newFontScale
                 // Font scale change will be handled by notifyDimensionChange which includes fontScale
             } else {
                 previousFontScale = newFontScale
             }
 
-            Log.d(TAG, "Display metrics updated: ${screenWidth}x${screenHeight}, density: $density, fontScale: $newFontScale")
+            dlog("Display metrics updated: ${screenWidth}x${screenHeight}, density: $density, fontScale: $newFontScale")
         }
     }
 
@@ -152,7 +157,7 @@ object DCFScreenUtilities {
      * No need to manually invalidate text nodes here.
      */
     fun refreshScreenDimensions() {
-        Log.d(TAG, "Refreshing screen dimensions for configuration change")
+        dlog("Refreshing screen dimensions for configuration change")
         updateDisplayMetrics()
         notifyDimensionChange()
     }
@@ -162,7 +167,7 @@ object DCFScreenUtilities {
      * Update screen dimensions
      */
     fun updateScreenDimensions(width: Float, height: Float) {
-        Log.d(TAG, "Updating screen dimensions: ${width}x${height}")
+        dlog("Updating screen dimensions: ${width}x${height}")
         screenWidth = width
         screenHeight = height
 

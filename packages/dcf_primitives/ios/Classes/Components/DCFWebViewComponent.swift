@@ -93,6 +93,10 @@ class DCFWebViewComponent: NSObject, DCFComponent {
     }
 
     private func updateFillScrollContentFlag(_ webView: WKWebView, props: [String: Any]) {
+        if let explicit = props["fillScrollContent"] as? Bool {
+            setFillScrollContent(webView, enabled: explicit)
+            return
+        }
         let flexGrowValue = numericValue(props["flexGrow"])
         let flexShrinkValue = numericValue(props["flexShrink"])
         let enabled = (flexGrowValue ?? 0) > 0 && (flexShrinkValue ?? 1) <= 0
@@ -110,6 +114,22 @@ class DCFWebViewComponent: NSObject, DCFComponent {
             return CGFloat(intValue)
         }
         return nil
+    }
+
+    private func applyWebViewCornerRadiusFromProps(_ webView: WKWebView, props: [String: Any]) {
+        guard let radius = numericValue(props["borderRadius"]) else {
+            webView.layer.cornerRadius = 0
+            webView.layer.masksToBounds = false
+            webView.scrollView.layer.cornerRadius = 0
+            webView.scrollView.layer.masksToBounds = false
+            return
+        }
+
+        let clamped = max(0, radius)
+        webView.layer.cornerRadius = clamped
+        webView.layer.masksToBounds = clamped > 0
+        webView.scrollView.layer.cornerRadius = clamped
+        webView.scrollView.layer.masksToBounds = clamped > 0
     }
     
     func createView(props: [String: Any]) -> UIView {
@@ -139,6 +159,7 @@ class DCFWebViewComponent: NSObject, DCFComponent {
                         (props["automaticallyAdjustContentInsets"] as? Bool ?? true) ? .automatic : .never
                 }
                 updateFillScrollContentFlag(warmView, props: props)
+                applyWebViewCornerRadiusFromProps(warmView, props: props)
                 DispatchQueue.main.async {
                     DCFWebViewComponent.sharedInstance.loadContent(webView: warmView, props: props)
                 }
@@ -204,6 +225,7 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         }
 
         updateFillScrollContentFlag(webView, props: props)
+        applyWebViewCornerRadiusFromProps(webView, props: props)
         
         DispatchQueue.main.async {
             DCFWebViewComponent.sharedInstance.loadContent(webView: webView, props: props)
@@ -240,6 +262,7 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         webView.scrollView.bounces = props["bounces"] as? Bool ?? true
         
         webView.applyStyles(props: props)
+        applyWebViewCornerRadiusFromProps(webView, props: props)
         return true
     }
     
@@ -269,6 +292,19 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         let promotedAncestor = findPromotedAncestor(from: view, currentWidth: layoutWidth)
         let shouldPromoteNarrowWidth = promotedAncestor != nil && layoutWidth < 320
 
+        func clampToParent(_ frame: CGRect, parent: UIView?) -> CGRect {
+            guard let parent = parent else { return frame }
+            let maxWidth = max(0, parent.bounds.width)
+            if maxWidth <= 0 { return frame }
+
+            var clampedX = frame.origin.x
+            clampedX = max(0, min(clampedX, maxWidth))
+            var clampedWidth = min(frame.width, maxWidth - clampedX)
+            clampedWidth = max(0, clampedWidth)
+
+            return CGRect(x: clampedX, y: frame.origin.y, width: clampedWidth, height: frame.height)
+        }
+
         let resolvedWidth: CGFloat
         if needsWidthFallback {
             resolvedWidth = promotedAncestor?.bounds.width ?? layoutWidth
@@ -282,27 +318,21 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         var targetWidth = resolvedWidth
         if fillScrollContent {
             targetX = 0
-            let viewportWidth = webView.window?.bounds.width ?? UIScreen.main.bounds.width
-            targetWidth = max(viewportWidth, resolvedWidth)
-        } else if resolvedWidth > layoutWidth + 1,
-           let parent = view.superview,
-           let ancestor = promotedAncestor {
-            let promotedRectInParent = parent.convert(ancestor.bounds, from: ancestor)
-            let clampedRect = promotedRectInParent.intersection(parent.bounds)
-            if !clampedRect.isNull && clampedRect.width > 1 {
-                targetX = clampedRect.origin.x
-                targetWidth = clampedRect.width
-            } else {
-                targetX = promotedRectInParent.origin.x
-                targetWidth = promotedRectInParent.width
-            }
+            let containerWidth = webView.superview?.bounds.width ?? (webView.window?.bounds.width ?? UIScreen.main.bounds.width)
+            targetWidth = max(containerWidth, resolvedWidth)
+        } else if resolvedWidth > layoutWidth + 1 {
+            // Keep x anchored to Yoga's left value. Promoting ancestor-origin can
+            // shift WKWebView to the right in nested scroll stacks on iOS.
+            targetX = CGFloat(layout.left)
+            targetWidth = resolvedWidth
         }
-        let targetFrame = CGRect(
+        var targetFrame = CGRect(
             x: targetX,
             y: CGFloat(layout.top),
             width: targetWidth,
             height: layoutHeight
         )
+        targetFrame = clampToParent(targetFrame, parent: webView.superview)
         print("📐 DCFWebViewComponent applyLayout frame=\(targetFrame) layout=(\(layoutWidth), \(layoutHeight))")
         view.frame = targetFrame
 
@@ -310,8 +340,11 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         // catches up if parent widths finalize after this apply call.
         DispatchQueue.main.async {
             if fillScrollContent {
-                let viewportWidth = webView.window?.bounds.width ?? UIScreen.main.bounds.width
-                let finalRect = CGRect(x: 0, y: webView.frame.origin.y, width: viewportWidth, height: webView.frame.height)
+                let containerWidth = webView.superview?.bounds.width ?? (webView.window?.bounds.width ?? UIScreen.main.bounds.width)
+                let finalRect = clampToParent(
+                    CGRect(x: 0, y: webView.frame.origin.y, width: containerWidth, height: webView.frame.height),
+                    parent: webView.superview
+                )
                 if abs(webView.frame.width - finalRect.width) > 1 || webView.frame.origin.x != 0 {
                     print("📐 DCFWebViewComponent async reconcile pin=\(finalRect)")
                     webView.frame = finalRect

@@ -9,6 +9,7 @@ package com.dotcorr.dcflight
 
 import android.content.res.Configuration
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
@@ -36,6 +37,8 @@ open class DCFFlutterActivity : FlutterActivity(), LifecycleOwner, SavedStateReg
         private const val TAG = "DCFlight"
         private var isFrameworkInitialized = false
         private var isFrameworkDiverged = false
+        private var lastReconcileUptimeMs: Long = 0L
+        private const val RECONCILE_DEBOUNCE_MS: Long = 400L
     }
 
     // Lifecycle support for Compose
@@ -136,6 +139,12 @@ open class DCFFlutterActivity : FlutterActivity(), LifecycleOwner, SavedStateReg
      */
     private fun forceLayoutReconciliation() {
         try {
+            val now = SystemClock.uptimeMillis()
+            if (now - lastReconcileUptimeMs < RECONCILE_DEBOUNCE_MS) {
+                return
+            }
+            lastReconcileUptimeMs = now
+
             val rootView = com.dotcorr.dcflight.layout.ViewRegistry.shared.getView(0)
             if (rootView == null) {
                 Log.w(TAG, "forceLayoutReconciliation skipped: root view missing")

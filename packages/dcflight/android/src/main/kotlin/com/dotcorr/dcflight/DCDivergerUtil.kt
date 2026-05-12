@@ -35,6 +35,11 @@ import com.dotcorr.dcflight.utils.DCFScreenUtilities
 object DCDivergerUtil {
     private const val TAG = "DCDivergerUtil"
     private const val ENGINE_ID = "io.dcflight.engine"
+    private fun dlog(message: String) {
+        if (Log.isLoggable(TAG, Log.DEBUG)) {
+            Log.d(TAG, message)
+        }
+    }
 
     private var rootView: ViewGroup? = null
     private var flutterEngine: FlutterEngine? = null
@@ -42,7 +47,7 @@ object DCDivergerUtil {
 
     @JvmStatic
     fun divergeToFlight(activity: Activity, pluginBinding: FlutterPlugin.FlutterPluginBinding?) {
-        Log.d(TAG, "Starting divergeToFlight")
+        dlog("Starting divergeToFlight")
 
         val engine = getOrCreateFlutterEngine(activity, pluginBinding)
 
@@ -60,7 +65,7 @@ object DCDivergerUtil {
             val registrantClass = Class.forName("io.flutter.plugins.GeneratedPluginRegistrant")
             val registerMethod = registrantClass.getMethod("registerWith", FlutterEngine::class.java)
             registerMethod.invoke(null, flutterEngine)
-            Log.d(TAG, "✅ DCDivergerUtil: Registered all plugins with custom FlutterEngine")
+            dlog("Registered all plugins with custom FlutterEngine")
         } catch (e: Exception) {
         }
 
@@ -70,7 +75,7 @@ object DCDivergerUtil {
 
         registerComponents()
         
-        Log.d(TAG, "DCFlight diverger initialized successfully")
+        dlog("DCFlight diverger initialized successfully")
     }
 
     private fun getOrCreateFlutterEngine(
@@ -93,7 +98,7 @@ object DCDivergerUtil {
                 val isAttached = rootView!!.isAttachedToWindow
                 val hasParent = rootView!!.parent != null
                 if (isAttached && hasParent) {
-                    Log.d(TAG, "Native container already exists and attached, preserving UI state")
+                    dlog("Native container already exists and attached, preserving UI state")
                     return
                 } else {
                     // Clean up the old root view
@@ -122,7 +127,7 @@ object DCDivergerUtil {
                         val viewTreeLifecycleOwnerClass = Class.forName("androidx.lifecycle.ViewTreeLifecycleOwner")
                         val setMethod = viewTreeLifecycleOwnerClass.getMethod("set", View::class.java, LifecycleOwner::class.java)
                         setMethod.invoke(null, this, activity)
-                        Log.d(TAG, "✅ ViewTreeLifecycleOwner attached to root view via reflection")
+                        dlog("ViewTreeLifecycleOwner attached to root view via reflection")
                     } catch (e: Exception) {
                     }
                 } else {
@@ -135,7 +140,7 @@ object DCDivergerUtil {
                         val viewTreeSavedStateRegistryOwnerClass = Class.forName("androidx.savedstate.ViewTreeSavedStateRegistryOwner")
                         val setMethod = viewTreeSavedStateRegistryOwnerClass.getMethod("set", View::class.java, androidx.savedstate.SavedStateRegistryOwner::class.java)
                         setMethod.invoke(null, this, activity)
-                        Log.d(TAG, "✅ ViewTreeSavedStateRegistryOwner attached to root view via reflection")
+                        dlog("ViewTreeSavedStateRegistryOwner attached to root view via reflection")
                     } catch (e: Exception) {
                     }
                 } else {
@@ -149,10 +154,10 @@ object DCDivergerUtil {
                 
                 contentView?.addView(rootView)
                 
-                Log.d(TAG, "Replaced Flutter content with native DCF content")
+                dlog("Replaced Flutter content with native DCF content")
             }
 
-            Log.d(TAG, "Native container setup complete")
+            dlog("Native container setup complete")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to setup native container", e)
         }
@@ -162,7 +167,7 @@ object DCDivergerUtil {
         try {
             DCFlightNative.shared.setContext(activity)
 
-            Log.d(TAG, "Ensuring DCFlight systems are initialized")
+            dlog("Ensuring DCFlight systems are initialized")
 
             DCFScreenUtilities.initialize(binaryMessenger, activity)
 
@@ -185,14 +190,14 @@ object DCDivergerUtil {
                         View.MeasureSpec.makeMeasureSpec(displayMetrics.widthPixels, View.MeasureSpec.EXACTLY),
                         View.MeasureSpec.makeMeasureSpec(displayMetrics.heightPixels, View.MeasureSpec.EXACTLY)
                     )
-                    Log.d(TAG, "📐 Root view measured on launch: ${root.measuredWidth}x${root.measuredHeight}")
+                    dlog("Root view measured on launch: ${root.measuredWidth}x${root.measuredHeight}")
                     
                     YogaShadowTree.shared.calculateLayoutForAllRoots()
-                    Log.d(TAG, "✅ Initial layout calculated on app launch (fixes blank render until rotation)")
+                    dlog("Initial layout calculated on app launch")
                 }
             }
 
-            Log.d(TAG, "DCFlight systems initialized")
+            dlog("DCFlight systems initialized")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize DCFlight systems", e)
         }
@@ -201,7 +206,7 @@ object DCDivergerUtil {
     private fun registerComponents() {
         try {
             FrameworkComponentsReg.registerComponents()
-            Log.d(TAG, "Framework components registered")
+            dlog("Framework components registered")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to register components", e)
         }
@@ -217,7 +222,7 @@ object DCDivergerUtil {
             mainScope.cancel()
             rootView = null
             flutterEngine = null
-            Log.d(TAG, "Cleanup complete")
+            dlog("Cleanup complete")
         } catch (e: Exception) {
             Log.e(TAG, "Error during cleanup", e)
         }
