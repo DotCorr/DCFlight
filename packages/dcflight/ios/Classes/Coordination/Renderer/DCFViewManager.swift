@@ -46,6 +46,8 @@ public class ViewRegistry {
     ///   - type: Component type (e.g., "View", "Text")
     public func registerView(_ view: UIView, id: Int, type: String) {
         registry[id] = (view, type)
+        view.tag = id
+        view.accessibilityIdentifier = String(id)
         
         DCFLayoutManager.shared.registerView(view, withId: id)
     }

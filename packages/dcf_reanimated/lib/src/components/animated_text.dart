@@ -58,6 +58,9 @@ class AnimatedText extends DCFStatelessComponent {
   /// Explicit color override
   final Color? textColor;
 
+  /// Initial text content before the native worklet starts updating the child.
+  final String initialText;
+
   /// Whether to start animation automatically
   final bool autoStart;
 
@@ -80,6 +83,7 @@ class AnimatedText extends DCFStatelessComponent {
     this.layout,
     this.styleSheet,
     this.textColor,
+    this.initialText = '',
     this.autoStart = true,
     this.startDelay = 0,
     this.onAnimationStart,
@@ -126,7 +130,7 @@ class AnimatedText extends DCFStatelessComponent {
       styleSheet: containerStyle,
       children: [
         DCFText(
-          content: '', // Will be updated by worklet on UI thread via tunnel
+          content: initialText,
           textProps: textProps,
           textColor: textColor,
           // Match parent AnimatedText width so native text layout doesn't collapse

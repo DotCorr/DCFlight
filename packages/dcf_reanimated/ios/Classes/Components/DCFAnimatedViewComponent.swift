@@ -871,22 +871,31 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
         
         let relativeTime = cycleTime - wordStartTime
         
-        let resultText: String
+        let visibleText: String
+        let keepCursorOn: Bool
         if relativeTime < wordTypeTime {
             // Typing phase
-            let charIndex = min(Int(relativeTime / typeSpeed), currentWord.count)
-            resultText = String(currentWord.prefix(charIndex))
+            let charIndex = min(Int(relativeTime / typeSpeed) + 1, currentWord.count)
+            visibleText = String(currentWord.prefix(charIndex))
+            keepCursorOn = true
         } else if relativeTime < wordTypeTime + wordPauseTime {
             // Pause phase - show full word
-            resultText = currentWord
+            visibleText = currentWord
+            keepCursorOn = true
         } else {
             // Deleting phase
             let deleteStartTime = wordTypeTime + wordPauseTime
             let deleteElapsed = relativeTime - deleteStartTime
             let charsToDelete = Int(deleteElapsed / deleteSpeed)
             let remainingChars = max(currentWord.count - charsToDelete, 0)
-            resultText = String(currentWord.prefix(remainingChars))
+            visibleText = String(currentWord.prefix(remainingChars))
+            keepCursorOn = false
         }
+
+        let elapsedMs = Int(elapsed * 1000.0)
+        let cursorVisible = ((elapsedMs / 450) % 2) == 0
+        let cursorChar = (cursorVisible || keepCursorOn) ? "▊" : " "
+        let resultText = "$ \(visibleText)\(cursorChar)"
         
         // Log every 10 frames to avoid spam
         if frameCount % 10 == 0 {
@@ -904,6 +913,8 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
     private var isUpdatingText = false
     private var lastUpdatedText: String = ""
     private var isWorkletDisabled = false
+    private weak var cachedTextTargetView: UIView?
+    private var cachedTextViewProxy: dcflight.WorkletViewProxy?
     
     /**
      * Update child text component directly from UI thread (zero bridge calls).
@@ -912,6 +923,14 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
     private func updateChildText(_ text: String) {
         // 🔥 CRITICAL: Disable worklet if it keeps failing to prevent CPU drain
         if isWorkletDisabled {
+            return
+        }
+
+        if let cachedView = cachedTextTargetView,
+           let cachedProxy = cachedTextViewProxy,
+           isViewStillAttached(cachedView, to: self) {
+            cachedProxy.setProperty("text", text)
+            lastUpdatedText = text
             return
         }
         
@@ -944,30 +963,7 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
                 if arc4random_uniform(100) == 0 {
                 print("✅ WORKLET: Found DCFTextView!")
                 }
-                // Get the viewId from ViewRegistry or associated object
-                var viewId: Int? = nil
-                
-                // Try to get from ViewRegistry first
-                for (id, viewInfo) in ViewRegistry.shared.registry {
-                    if viewInfo.view === subview {
-                        viewId = id
-                        // Only log occasionally to reduce spam
-                        if arc4random_uniform(100) == 0 {
-                        print("✅ WORKLET: Found viewId=\(id) from ViewRegistry")
-                        }
-                        break
-                    }
-                }
-                
-                // Fallback: try to get from associated object
-                if viewId == nil {
-                    if let viewIdString = objc_getAssociatedObject(subview, UnsafeRawPointer(bitPattern: "viewId".hashValue)!) as? String {
-                        viewId = Int(viewIdString)
-                        print("✅ WORKLET: Found viewId=\(viewIdString) from associated object")
-                    }
-                }
-                
-                if let viewId = viewId {
+                if let viewId = resolveViewId(for: subview) {
                     // Only log occasionally to reduce spam
                     if arc4random_uniform(100) == 0 {
                     print("🔍 WORKLET: Attempting to update text for viewId=\(viewId)")
@@ -988,6 +984,8 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
                         // 🔥 Use WorkletRuntime API - proper Reanimated-like abstraction
                         // No component-specific glue code needed!
                         if let viewProxy = dcflight.WorkletRuntime.getView(viewId) {
+                            cachedTextTargetView = subview
+                            cachedTextViewProxy = viewProxy
                             viewProxy.setProperty("text", text)
                             lastUpdatedText = text
                             return
@@ -1015,33 +1013,54 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
         for subview in parent.subviews {
             let className = String(describing: type(of: subview))
             if className.contains("DCFTextView") {
-                var viewId: Int? = nil
-                
-                // Try to get from ViewRegistry first
-                for (id, viewInfo) in ViewRegistry.shared.registry {
-                    if viewInfo.view === subview {
-                        viewId = id
-                        break
-                    }
-                }
-                
-                // Fallback: try to get from associated object
-                if viewId == nil {
-                    if let viewIdString = objc_getAssociatedObject(subview, UnsafeRawPointer(bitPattern: "viewId".hashValue)!) as? String {
-                        viewId = Int(viewIdString)
-                    }
-                }
-                
-                if let viewId = viewId {
+                if let viewId = resolveViewId(for: subview) {
                     // Use WorkletRuntime API
                     if let viewProxy = dcflight.WorkletRuntime.getView(viewId) {
+                        cachedTextTargetView = subview
+                        cachedTextViewProxy = viewProxy
                         viewProxy.setProperty("text", text)
+                        lastUpdatedText = text
                                         return
                     }
                 }
             }
             updateChildTextRecursive(subview, text: text)
         }
+    }
+
+    private func resolveViewId(for view: UIView) -> Int? {
+        if view.tag != 0 {
+            return view.tag
+        }
+
+        if let identifier = view.accessibilityIdentifier,
+           let viewId = Int(identifier) {
+            return viewId
+        }
+
+        if let viewIdString = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "viewId".hashValue)!) as? String,
+           let viewId = Int(viewIdString) {
+            return viewId
+        }
+
+        for (id, viewInfo) in ViewRegistry.shared.registry {
+            if viewInfo.view === view {
+                return id
+            }
+        }
+
+        return nil
+    }
+
+    private func isViewStillAttached(_ view: UIView, to ancestor: UIView) -> Bool {
+        var current: UIView? = view
+        while let node = current {
+            if node === ancestor {
+                return true
+            }
+            current = node.superview
+        }
+        return false
     }
     
     deinit {

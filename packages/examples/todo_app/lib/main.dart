@@ -1,12 +1,8 @@
 import 'dart:math' as math;
-import 'dart:io' show Platform;
 
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcf_reanimated/dcf_reanimated.dart';
 import 'package:dcflight/dcflight.dart';
-
-bool get kEnableLiveGpuSurfaces => Platform.isIOS || Platform.isAndroid;
-
 
 void main() async {
   await DCFlight.go(app: AppRoot());
@@ -64,35 +60,22 @@ class AppRoot extends DCFStatefulComponent {
                 ),
                 styleSheet: DCFStyleSheet(primaryColor: DCFColors.white),
               ),
-              if (kEnableLiveGpuSurfaces)
-                DCFWebGpuSurface(
-                  webGpuProps: const DCFWebGpuSurfaceProps(
-                    scene: DCFWebGpuScene.cubeLogo,
-                    sceneLabel: 'the lab preview',
-                    centerGlyph: 'DC',
-                    rotationSpeed: 1.1,
-                  ),
-                  fillWidth: false,
-                  fillScrollContent: false,
-                  layout: const DCFLayout(width: '100%', minWidth: 0, maxWidth: '100%', height: 260),
-                  styleSheet: DCFStyleSheet(
-                    borderWidth: 1,
-                    borderColor: DCFColors.gray700,
-                    borderRadius: 12,
-                    backgroundColor: DCFColors.black,
-                  ),
-                )
-              else
-                DCFView(
-                  layout: const DCFLayout(width: '100%', minWidth: 0, maxWidth: '100%', height: 260, alignItems: DCFAlign.center, justifyContent: DCFJustifyContent.center),
-                  styleSheet: DCFStyleSheet(
-                    borderWidth: 1,
-                    borderColor: DCFColors.gray700,
-                    borderRadius: 12,
-                    backgroundColor: DCFColors.black,
-                  ),
-                  children: const [],
+              DCFWebGpuSurface(
+                webGpuProps: const DCFWebGpuSurfaceProps(
+                  scene: DCFWebGpuScene.cubeLogo,
+                  sceneLabel: 'the lab preview',
+                  centerGlyph: 'DC',
+                  rotationSpeed: 1.1,
                 ),
+                fillWidth: true,
+                layout: const DCFLayout(width: '100%', height: 260),
+                styleSheet: DCFStyleSheet(
+                  borderWidth: 1,
+                  borderColor: DCFColors.gray700,
+                  borderRadius: 12,
+                  backgroundColor: DCFColors.black,
+                ),
+              ),
             ],
           ),
         ],
@@ -108,7 +91,7 @@ class AppRoot extends DCFStatefulComponent {
           showExamples.setState(true);
         },
       )
-    ], styleSheet: DCFStyleSheet(backgroundColor: DCFColors.black));
+    ]);
   }
 }
 
@@ -123,7 +106,7 @@ class DotCorrLanding extends DCFStatelessComponent {
     return DCFScrollView(
       layout: DCFLayout(width: '100%', height: '100%'),
       showsScrollIndicator: false,
-      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.black),
+      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.white),
       scrollContent: [
         NavigationBar(onToggleExamples: onToggleExamples),
         HeroSection(onEnterLab: onToggleExamples),
@@ -158,9 +141,9 @@ class NavigationBar extends DCFStatelessComponent {
         alignItems: DCFAlign.center,
       ),
       styleSheet: DCFStyleSheet(
-        backgroundColor: DCFColors.black,
+        backgroundColor: DCFColors.white,
         borderBottomWidth: 1,
-        borderBottomColor: DCFColors.gray900,
+        borderBottomColor: DCFColors.gray100,
       ),
       children: [
         // Logo Area - CRITICAL: Add flexShrink to prevent overflow
@@ -183,7 +166,7 @@ class NavigationBar extends DCFStatelessComponent {
                 fontWeight: DCFFontWeight.medium,
                 numberOfLines: 1, // Single line with truncation
               ),
-              styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray400),
+              styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray600),
               layout: DCFLayout(
                 flexShrink: 1, // Allow text to shrink
                 minWidth: 0, // CRITICAL: Allow shrinking below content size
@@ -197,7 +180,7 @@ class NavigationBar extends DCFStatelessComponent {
                 fontWeight: DCFFontWeight.medium,
                 numberOfLines: 1, // Single line with truncation
               ),
-              styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray400),
+              styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray600),
               layout: DCFLayout(
                 flexShrink: 1, // Allow text to shrink
                 minWidth: 0, // CRITICAL: Allow shrinking below content size
@@ -226,7 +209,7 @@ class HeroSection extends DCFStatelessComponent {
         flexDirection: DCFFlexDirection.column,
         gap: 48,
       ),
-      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.black),
+      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.white),
       children: [
         // Main content row (left text + right visual)
         DCFView(
@@ -264,7 +247,7 @@ class HeroSection extends DCFStatelessComponent {
                             letterSpacing: -1.5,
                           ),
                           styleSheet: DCFStyleSheet(
-                            primaryColor: DCFColors.white,
+                            primaryColor: DCFColors.black,
                           ),
                         ),
                         DCFText(
@@ -276,7 +259,7 @@ class HeroSection extends DCFStatelessComponent {
                             letterSpacing: -1.5,
                           ),
                           styleSheet: DCFStyleSheet(
-                            primaryColor: DCFColors.white,
+                            primaryColor: DCFColors.black,
                           ),
                         ),
                         DCFView(
@@ -314,7 +297,7 @@ class HeroSection extends DCFStatelessComponent {
                                 letterSpacing: -1.5,
                               ),
                               styleSheet: DCFStyleSheet(
-                                  primaryColor: DCFColors.white,
+                                primaryColor: DCFColors.black,
                               ),
                             ),
                           ],
@@ -334,7 +317,7 @@ class HeroSection extends DCFStatelessComponent {
                         overflow: DCFOverflow.hidden, // Clip content that exceeds bounds
                       ),
                       children: [
-                        TypewriterEffect(),
+                        TypewriterEffectWorklet(),
                       ],
                     ),
 
@@ -392,14 +375,11 @@ class HeroSection extends DCFStatelessComponent {
                     DCFView(
                       layout: DCFLayout(
                         width: '100%',
-                        minWidth: 0,
-                        maxWidth: '100%',
                         marginTop: 20,
-                        overflow: DCFOverflow.hidden,
                       ),
                       children: [
                         DCFView(
-                          layout: DCFLayout(width: '100%', minWidth: 0, maxWidth: '100%', gap: 8),
+                          layout: DCFLayout(width: '100%', gap: 8),
                           children: [
                             DCFText(
                               content: "Lab GPU Surface",
@@ -412,37 +392,25 @@ class HeroSection extends DCFStatelessComponent {
                                 primaryColor: DCFColors.gray500,
                               ),
                             ),
-                            if (kEnableLiveGpuSurfaces)
-                              DCFWebGpuSurface(
-                                webGpuProps: const DCFWebGpuSurfaceProps(
-                                  scene: DCFWebGpuScene.gridPulse,
-                                  sceneLabel: 'hero gpu preview',
-                                  centerGlyph: 'DC',
-                                  showStatus: false,
-                                  rotationSpeed: 1.2,
-                                  accentColor: '#6ee7ff',
-                                ),
-                                fillWidth: false,
-                                fillScrollContent: false,
-                                layout: const DCFLayout(width: '100%', minWidth: 0, maxWidth: '100%', height: 220),
-                                styleSheet: DCFStyleSheet(
-                                  borderWidth: 1,
-                                  borderColor: DCFColors.gray200,
-                                  borderRadius: 8,
-                                  backgroundColor: DCFColors.black,
-                                ),
-                              )
-                            else
-                              DCFView(
-                                layout: const DCFLayout(width: '100%', minWidth: 0, maxWidth: '100%', height: 220, alignItems: DCFAlign.center, justifyContent: DCFJustifyContent.center),
-                                styleSheet: DCFStyleSheet(
-                                  borderWidth: 1,
-                                  borderColor: DCFColors.gray200,
-                                  borderRadius: 8,
-                                  backgroundColor: DCFColors.black,
-                                ),
-                                children: const [],
+                            DCFWebGpuSurface(
+                              webGpuProps: const DCFWebGpuSurfaceProps(
+                                scene: DCFWebGpuScene.gridPulse,
+                                sceneLabel: 'hero gpu preview',
+                                centerGlyph: 'DC',
+                                showStatus: false,
+                                rotationSpeed: 1.2,
+                                accentColor: '#6ee7ff',
                               ),
+                              fillWidth: true,
+                              fillScrollContent: true,
+                              layout: const DCFLayout(width: '100%', height: 220),
+                              styleSheet: DCFStyleSheet(
+                                borderWidth: 1,
+                                borderColor: DCFColors.gray200,
+                                borderRadius: 8,
+                                backgroundColor: DCFColors.black,
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -545,18 +513,19 @@ class TypewriterEffect extends DCFStatefulComponent {
       "Build for The Future.",
     ];
 
-    final frameTickMs = useState<int>(DateTime.now().millisecondsSinceEpoch);
+    final forceRebuild = useState<int>(0);
 
-    // Periodic pump to force rebuild. Use wall-clock ticks so every update is
-    // unique across platforms and never stalls on stale closure state.
+    // Periodic pump to force rebuild, avoiding state-update stalls on iOS.
     useEffect(() {
+      int tick = 0;
       final timer = Timer.periodic(const Duration(milliseconds: 70), (_) {
-        frameTickMs.setState(DateTime.now().millisecondsSinceEpoch);
+        tick += 1;
+        forceRebuild.setState(tick);
       });
       return () => timer.cancel();
     }, dependencies: []);
 
-    final elapsedMs = frameTickMs.state - _startMs;
+    final elapsedMs = DateTime.now().millisecondsSinceEpoch - _startMs;
     final frame = _computeFrame(elapsedMs, words);
     final cursorVisible = ((elapsedMs ~/ 450) % 2) == 0;
     final cursorChar = (cursorVisible || frame.keepCursorOn) ? '▊' : ' ';
@@ -657,25 +626,36 @@ String typewriterWorklet(
 
   double relativeTime = cycleTime - wordStartTime;
 
+  String visibleText;
+  bool keepCursorOn;
+
   if (relativeTime < wordTypeTime) {
     // Typing phase
     int charIndex = (relativeTime / (typeSpeed / 1000.0)).floor() + 1;
     int visibleChars = math.max(1, math.min(charIndex, currentWord.length));
-    return currentWord.substring(0, visibleChars);
+    visibleText = currentWord.substring(0, visibleChars);
+    keepCursorOn = true;
   } else if (relativeTime < wordTypeTime + wordPauseTime) {
     // Pause phase - show full word
-    return currentWord;
+    visibleText = currentWord;
+    keepCursorOn = true;
   } else {
     // Deleting phase
     double deleteStartTime = wordTypeTime + wordPauseTime;
     double deleteElapsed = relativeTime - deleteStartTime;
     int charsToDelete = (deleteElapsed / (deleteSpeed / 1000.0)).floor();
     int remainingChars = math.max(1, currentWord.length - charsToDelete);
-    return currentWord.substring(
+    visibleText = currentWord.substring(
       0,
       math.min(remainingChars, currentWord.length),
     );
+    keepCursorOn = false;
   }
+
+  final elapsedMs = (elapsed * 1000).floor();
+  final cursorVisible = ((elapsedMs ~/ 450) % 2) == 0;
+  final cursorChar = (cursorVisible || keepCursorOn) ? '▊' : ' ';
+  return '\$ $visibleText$cursorChar';
 }
 
 /// Worklet-based typewriter effect using AnimatedText
@@ -690,53 +670,38 @@ class TypewriterEffectWorklet extends DCFStatelessComponent {
       "Build for The Future.",
     ];
     final longestWord = words.reduce((a, b) => a.length > b.length ? a : b);
-    final estimatedWidth = longestWord.length * 11.5;
+    final estimatedWidth = longestWord.length * 13.0;
 
     return DCFView(
       layout: DCFLayout(
-        flexDirection: DCFFlexDirection.column,
-        alignItems: DCFAlign.flexStart,
-        alignSelf: DCFAlign.center,
-        gap: 8,
+        flexDirection: DCFFlexDirection.row,
+        alignItems: DCFAlign.center,
+        width: estimatedWidth + 40,
+        minWidth: estimatedWidth + 40,
+        maxWidth: estimatedWidth + 40,
       ),
-      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.transparent),
       children: [
-        DCFText(
-          content: "Live signal",
-          textProps: DCFTextProps(
-            fontSize: 12,
-            fontWeight: DCFFontWeight.medium,
-            letterSpacing: 0.6,
-          ),
-          styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray400),
-        ),
-        DCFView(
+        AnimatedText(
+          worklet: typewriterWorklet,
           layout: DCFLayout(
-            width: estimatedWidth,
-            minWidth: estimatedWidth,
-            maxWidth: estimatedWidth,
-            alignItems: DCFAlign.flexStart,
-            justifyContent: DCFJustifyContent.center,
+            width: estimatedWidth + 40,
+            minWidth: estimatedWidth + 40,
+            maxWidth: estimatedWidth + 40,
           ),
-          styleSheet: DCFStyleSheet(backgroundColor: DCFColors.transparent),
-          children: [
-            AnimatedText(
-              worklet: typewriterWorklet,
-              layout: const DCFLayout(width: '100%'),
-              workletConfig: {
-                'words': words,
-                'typeSpeed': 100.0,
-                'deleteSpeed': 50.0,
-                'pauseDuration': 2000.0,
-              },
-              textProps: DCFTextProps(
-                fontSize: 20,
-                fontFamily: "monospace",
-                numberOfLines: 1,
-              ),
-              styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray600),
-            ),
-          ],
+          initialText: '\$ ',
+          workletConfig: {
+            'words': words,
+            'typeSpeed': 85.0,
+            'deleteSpeed': 50.0,
+            'pauseDuration': 1200.0,
+          },
+          textProps: DCFTextProps(
+            fontSize: 20,
+            fontFamily: "monospace",
+            numberOfLines: 1,
+            textAlign: DCFTextAlign.left,
+          ),
+          styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray600),
         ),
       ],
     );

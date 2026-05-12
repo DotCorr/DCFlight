@@ -71,6 +71,7 @@ public class DCFTextShadowView: DCFShadowView {
     public var computedTextStorage: NSTextStorage?
     public var computedTextFrame: CGRect = .zero
     public var computedContentInset: UIEdgeInsets = .zero
+    private var needsTextLayoutApply: Bool = true
     
     // MARK: - Initialization
     
@@ -438,6 +439,7 @@ public class DCFTextShadowView: DCFShadowView {
         _cachedTextStorage = nil
         _cachedAttributedString = nil
         _cachedTextStorageWidth = -1
+        needsTextLayoutApply = true
         
         // CRITICAL: Only mark node dirty if it's in a valid state
         // Yoga will crash if we mark a node dirty that has both measure function and children
@@ -481,6 +483,11 @@ public class DCFTextShadowView: DCFShadowView {
         computedTextStorage = textStorage
         computedTextFrame = textFrame
         computedContentInset = padding
+
+        if needsTextLayoutApply {
+            viewsWithNewFrame.add(self)
+            needsTextLayoutApply = false
+        }
     }
     
     /**
