@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:io' show Platform;
 
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcf_reanimated/dcf_reanimated.dart';
@@ -317,7 +318,9 @@ class HeroSection extends DCFStatelessComponent {
                         overflow: DCFOverflow.hidden, // Clip content that exceeds bounds
                       ),
                       children: [
-                        TypewriterEffectWorklet(),
+                        Platform.isAndroid
+                            ? TypewriterEffect()
+                            : TypewriterEffectWorklet(),
                       ],
                     ),
 
@@ -654,8 +657,9 @@ String typewriterWorklet(
 
   final elapsedMs = (elapsed * 1000).floor();
   final cursorVisible = ((elapsedMs ~/ 450) % 2) == 0;
-  final cursorChar = (cursorVisible || keepCursorOn) ? '▊' : ' ';
-  return '\$ $visibleText$cursorChar';
+  // Use concat + ASCII cursor to avoid Android worklet string template parity issues.
+  final cursorChar = (cursorVisible || keepCursorOn) ? '|' : ' ';
+  return r'$ ' + visibleText + cursorChar;
 }
 
 /// Worklet-based typewriter effect using AnimatedText

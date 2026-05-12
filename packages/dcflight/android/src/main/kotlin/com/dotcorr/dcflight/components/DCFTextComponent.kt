@@ -328,6 +328,9 @@ class DCFTextComponent : DCFComponent() {
         logD("📏 Creating layout with maxWidth=$maxWidth (viewWidth=${textView.width}, yogaWidth=${shadowNode?.yogaNode?.layoutWidth}), alignment=$alignment")
         
         // Create layout
+        // During early AnimatedText updates inside PureReanimatedView, width may still be
+        // settling. Avoid pre-layout tail ellipsizing so the leading "$" seed is not replaced.
+        val disableEllipsize = numberOfLines > 0 && isInPureReanimatedView
         val layout = createTextLayout(
             text,
             paint,
@@ -335,10 +338,11 @@ class DCFTextComponent : DCFComponent() {
             alignment,
             numberOfLines,
             lineHeight,
-            fontSizePixels
+            fontSizePixels,
+            !disableEllipsize
         )
         
-        logD("✅ Layout created: width=${layout.width}, height=${layout.height}, lineCount=${layout.lineCount}")
+        logD("✅ Layout created: width=${layout.width}, height=${layout.height}, lineCount=${layout.lineCount}, disableEllipsize=$disableEllipsize")
         
         textView.textLayout = layout
         textView.textFrameLeft = 0f
@@ -553,7 +557,8 @@ class DCFTextComponent : DCFComponent() {
         alignment: Layout.Alignment,
         maxLines: Int,
         lineHeight: Float = 0f,
-        fontSizePixels: Float = 17f
+        fontSizePixels: Float = 17f,
+        allowEllipsize: Boolean = true
     ): StaticLayout {
         val builder = android.text.StaticLayout.Builder.obtain(text, 0, text.length, paint, maxWidth)
             .setAlignment(alignment)
@@ -584,7 +589,9 @@ class DCFTextComponent : DCFComponent() {
         
         if (maxLines > 0) {
             builder.setMaxLines(maxLines)
-            builder.setEllipsize(TextUtils.TruncateAt.END)
+            if (allowEllipsize) {
+                builder.setEllipsize(TextUtils.TruncateAt.END)
+            }
         }
         
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
