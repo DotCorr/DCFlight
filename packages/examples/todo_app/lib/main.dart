@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:io' show Platform;
 
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcf_reanimated/dcf_reanimated.dart';
@@ -306,8 +305,8 @@ class HeroSection extends DCFStatelessComponent {
                       ],
                     ),
 
-                    // Stable typewriter path for Android while Motion/Reanimated
-                    // is being replaced by native animation APIs + WebGPU effects.
+                    // Use the same stable typewriter path on both platforms
+                    // until worklet cursor rendering matches native text parity.
                     DCFView(
                       layout: DCFLayout(
                         width: '100%', // CRITICAL: Constrain width to prevent overflow
@@ -318,9 +317,7 @@ class HeroSection extends DCFStatelessComponent {
                         overflow: DCFOverflow.hidden, // Clip content that exceeds bounds
                       ),
                       children: [
-                        Platform.isAndroid
-                            ? TypewriterEffect()
-                            : TypewriterEffectWorklet(),
+                        TypewriterEffect(),
                       ],
                     ),
 
@@ -531,10 +528,10 @@ class TypewriterEffect extends DCFStatefulComponent {
     final elapsedMs = DateTime.now().millisecondsSinceEpoch - _startMs;
     final frame = _computeFrame(elapsedMs, words);
     final cursorVisible = ((elapsedMs ~/ 450) % 2) == 0;
-    final cursorChar = (cursorVisible || frame.keepCursorOn) ? '▊' : ' ';
+    final cursorChar = (cursorVisible || frame.keepCursorOn) ? '|' : ' ';
 
-    // Combine text and cursor in a single text component for proper positioning
-    // Use a fixed-width container to prevent layout jumps when switching words
+    // Keep the text block width stable while rendering the cursor inline with
+    // the text so it stays attached to the active word.
     final longestWord = words.reduce((a, b) => a.length > b.length ? a : b);
     final estimatedWidth = longestWord.length * 13.0;
 
@@ -542,32 +539,24 @@ class TypewriterEffect extends DCFStatefulComponent {
       layout: DCFLayout(
         flexDirection: DCFFlexDirection.row,
         alignItems: DCFAlign.center,
-        width: estimatedWidth + 40, // Prevent layout shifts and wrapping churn
-        minWidth: estimatedWidth + 40,
-        maxWidth: estimatedWidth + 40,
+        width: estimatedWidth + 12,
+        minWidth: estimatedWidth + 12,
+        maxWidth: estimatedWidth + 12,
       ),
       children: [
         DCFText(
-          content: "\$ ",
+          content: "\$ ${frame.text}$cursorChar",
           textProps: DCFTextProps(
             fontSize: 20,
-            fontFamily: "monospace",
-            textAlign: DCFTextAlign.left,
-          ),
-          styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray400),
-        ),
-        DCFText(
-          content: "${frame.text}$cursorChar",
-          textProps: DCFTextProps(
-            fontSize: 20,
-            fontFamily: "monospace",
+            fontFamily: 'monospace',
             numberOfLines: 1,
             textAlign: DCFTextAlign.left,
           ),
           layout: DCFLayout(
-            width: estimatedWidth,
-            minWidth: estimatedWidth,
-            maxWidth: estimatedWidth,
+            width: estimatedWidth + 12,
+            minWidth: estimatedWidth + 12,
+            maxWidth: estimatedWidth + 12,
+            flexShrink: 1,
           ),
           styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray600),
         ),
@@ -657,7 +646,6 @@ String typewriterWorklet(
 
   final elapsedMs = (elapsed * 1000).floor();
   final cursorVisible = ((elapsedMs ~/ 450) % 2) == 0;
-  // Use concat + ASCII cursor to avoid Android worklet string template parity issues.
   final cursorChar = (cursorVisible || keepCursorOn) ? '|' : ' ';
   return r'$ ' + visibleText + cursorChar;
 }
@@ -680,17 +668,18 @@ class TypewriterEffectWorklet extends DCFStatelessComponent {
       layout: DCFLayout(
         flexDirection: DCFFlexDirection.row,
         alignItems: DCFAlign.center,
-        width: estimatedWidth + 40,
-        minWidth: estimatedWidth + 40,
-        maxWidth: estimatedWidth + 40,
+        width: estimatedWidth + 12,
+        minWidth: estimatedWidth + 12,
+        maxWidth: estimatedWidth + 12,
       ),
       children: [
         AnimatedText(
           worklet: typewriterWorklet,
           layout: DCFLayout(
-            width: estimatedWidth + 40,
-            minWidth: estimatedWidth + 40,
-            maxWidth: estimatedWidth + 40,
+            width: estimatedWidth + 12,
+            minWidth: estimatedWidth + 12,
+            maxWidth: estimatedWidth + 12,
+            flexShrink: 1,
           ),
           initialText: '\$ ',
           workletConfig: {

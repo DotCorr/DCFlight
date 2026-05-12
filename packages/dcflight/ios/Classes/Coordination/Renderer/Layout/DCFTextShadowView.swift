@@ -230,6 +230,34 @@ public class DCFTextShadowView: DCFShadowView {
             else { return .black }
         }
     }
+
+    private func resolveFont(
+        familyName: String,
+        size: CGFloat,
+        weight: UIFont.Weight,
+        fallback: UIFont
+    ) -> UIFont {
+        let normalizedFamily = familyName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lowercasedFamily = normalizedFamily.lowercased()
+
+        if lowercasedFamily == "monospace" ||
+            lowercasedFamily == "monospaced" ||
+            lowercasedFamily == "system-monospace" {
+            return UIFont.monospacedSystemFont(ofSize: size, weight: weight)
+        }
+
+        if let exactFont = UIFont(name: normalizedFamily, size: size) {
+            return exactFont
+        }
+
+        let familyFontNames = UIFont.fontNames(forFamilyName: normalizedFamily)
+        if let fontName = familyFontNames.first,
+           let familyFont = UIFont(name: fontName, size: size) {
+            return familyFont
+        }
+
+        return fallback
+    }
     
     /**
      * Build attributed string from text properties
@@ -253,6 +281,7 @@ public class DCFTextShadowView: DCFShadowView {
         // Android SP scales with system font size, so iOS should too for consistency
         let fontScale = DCFScreenUtilities.shared.fontScale
         var font = UIFont.systemFont(ofSize: 17)
+        var resolvedWeight: UIFont.Weight = .regular
         let finalFontSize: CGFloat
         if !fontSize.isNaN {
             // Apply font scale to match Android's SP scaling behavior
@@ -266,12 +295,16 @@ public class DCFTextShadowView: DCFShadowView {
             // Convert numeric weight (100-900) to proper UIFont.Weight constants
             // This ensures we use the system's actual bold font instead of synthetic weights
             let uiWeight = fontWeightFromNumeric(fontWeight)
+            resolvedWeight = uiWeight
             font = UIFont.systemFont(ofSize: finalFontSize, weight: uiWeight)
         }
         if let fontFamily = fontFamily {
-            if let customFont = UIFont(name: fontFamily, size: finalFontSize) {
-                font = customFont
-            }
+            font = resolveFont(
+                familyName: fontFamily,
+                size: finalFontSize,
+                weight: resolvedWeight,
+                fallback: font
+            )
         }
         mutableString.addAttribute(.font, value: font, range: range)
         
