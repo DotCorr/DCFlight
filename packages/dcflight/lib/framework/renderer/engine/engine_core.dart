@@ -177,9 +177,19 @@ class Engine {
     if (oldNode is DCFStatefulComponent && newNode is DCFStatefulComponent) {
       if (oldNode.runtimeType == newNode.runtimeType && oldNode.key == newNode.key) {
         if (_kReconciliationLogs) print('♻️  REUSE: ${oldNode.runtimeType} (component stays mounted)');
-        // Reuse the component instance - transfer state
+        // Re-register scheduler before state transfer so hook closures point to
+        // the live engine update path on the reused component instance.
+        _statefulComponents.remove(oldNode.instanceId);
+        _registerComponent(newNode);
+
+        // Preserve any queued update against the old instance id.
+        if (_pendingUpdates.remove(oldNode.instanceId)) {
+          _pendingUpdates.add(newNode.instanceId);
+        }
+
+        // Reuse the component state/hook storage.
         newNode.transferStateFrom(oldNode);
-        // Don't need to do anything else - the component keeps its views
+        // Don't need to do anything else - the component keeps its views.
         return;
       }
     }

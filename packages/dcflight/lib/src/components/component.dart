@@ -120,11 +120,22 @@ abstract class DCFStatefulComponent extends DCFComponentNode {
 
   /// Transfer state from old component instance (for reconciliation)
   void transferStateFrom(DCFStatefulComponent oldComponent) {
-    // Transfer hooks to preserve state
+    // Transfer hooks by ownership (not by sharing). If old and new instances
+    // share hook objects, old-instance unmount/dispose can cancel active
+    // effects (like timers) still needed by the new instance.
     _hooks.clear();
     _hooks.addAll(oldComponent._hooks);
+    oldComponent._hooks.clear();
+
     _isMounted = oldComponent._isMounted;
     _renderedNode = oldComponent._renderedNode;
+    nativeViewId = oldComponent.nativeViewId;
+    contentViewId = oldComponent.contentViewId;
+    contentParentViewId = oldComponent.contentParentViewId;
+    contentIndex = oldComponent.contentIndex;
+
+    // Detach old instance references after ownership transfer.
+    oldComponent._renderedNode = null;
     
     // Update hook closures to point to new component
     for (final hook in _hooks) {
