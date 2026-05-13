@@ -394,19 +394,23 @@ class DCFWebGPUView extends DCFStatelessComponent {
 
     final eventMap = <String, dynamic>{};
 
-    // Wire up bridge event handler
+    // Route raw onMessage payloads into typed GPU events.
+    // Some platforms primarily emit onMessage, so this must be the canonical path.
+    eventMap['onMessage'] = (Map<dynamic, dynamic> raw) {
+      if (onEvent != null) {
+        final bridgeEvent = DCFWebViewBridgeEvent.fromOnMessage(raw);
+        final gpuEvent = DCFWebGPUEvent.fromBridgeEvent(bridgeEvent);
+        onEvent!(gpuEvent);
+      }
+    };
+
+    // Keep compatibility for platforms/components that already emit onBridgeEvent.
     if (onEvent != null) {
       eventMap['onBridgeEvent'] = (DCFWebViewBridgeEvent bridgeEvent) {
         final gpuEvent = DCFWebGPUEvent.fromBridgeEvent(bridgeEvent);
         onEvent!(gpuEvent);
       };
     }
-
-    // Also capture raw onMessage for logging
-    eventMap['onMessage'] = (Map<dynamic, dynamic> raw) {
-      // Internal logging - users don't see this
-      // print('GPU Canvas bridge event: $raw');
-    };
 
     final element = DCFElement(
       type: 'WebView',

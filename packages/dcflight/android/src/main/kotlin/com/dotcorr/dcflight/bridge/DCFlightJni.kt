@@ -44,6 +44,8 @@ class DCFlightJni(private val context: Context) {
         private var eventCallback: EventCallback? = null
         private var screenDimensionsCallback: ScreenDimensionsCallback? = null
         private val pendingEvents = ConcurrentLinkedQueue<String>()
+        private const val MAX_PENDING_EVENTS = 4000
+        private var lastNoCallbackLogAtMs: Long = 0
         
         @JvmStatic
         fun setEventCallback(callback: EventCallback?) {
@@ -56,7 +58,6 @@ class DCFlightJni(private val context: Context) {
         }
         
         fun sendEvent(viewId: Int, eventType: String, eventData: Map<String, Any>) {
-            Log.d(TAG, "🚀 sendEvent: viewId=$viewId, eventType=$eventType, callbackSet=${eventCallback != null}")
             val eventDataJson = JSONObject(eventData).toString()
             val queuedEvent = JSONObject(
                 mapOf(
@@ -65,18 +66,34 @@ class DCFlightJni(private val context: Context) {
                     "eventDataJson" to eventDataJson,
                 ),
             ).toString()
-            pendingEvents.add(queuedEvent)
 
             eventCallback?.let { callback ->
                 try {
-                    Log.d(TAG, "📤 Invoking callback with eventData: ${eventDataJson.take(100)}")
                     callback.onEvent(viewId, eventType, eventDataJson)
-                    Log.d(TAG, "✅ Callback invoked successfully")
                 } catch (e: Exception) {
-                    Log.e(TAG, "❌ Failed to send event via JNI callback: ${e.message}", e)
+                    // Callback path failed. Preserve delivery through the queue.
+                    enqueuePendingEvent(queuedEvent)
+                    Log.e(TAG, "Failed to send event via JNI callback; queued fallback", e)
                 }
             } ?: run {
-                Log.e(TAG, "❌ sendEvent called but eventCallback is NULL!")
+                // Queue delivery is expected during startup and hot-restart windows.
+                enqueuePendingEvent(queuedEvent)
+                maybeLogNoCallback(eventType)
+            }
+        }
+
+        private fun enqueuePendingEvent(queuedEvent: String) {
+            pendingEvents.add(queuedEvent)
+            while (pendingEvents.size > MAX_PENDING_EVENTS) {
+                pendingEvents.poll() ?: break
+            }
+        }
+
+        private fun maybeLogNoCallback(eventType: String) {
+            val now = System.currentTimeMillis()
+            if (now - lastNoCallbackLogAtMs >= 5000L) {
+                lastNoCallbackLogAtMs = now
+                Log.w(TAG, "Event callback not set yet; queueing events (latest=$eventType)")
             }
         }
 

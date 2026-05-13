@@ -12,6 +12,26 @@ const String kLabGpuShaderScript = r'''
     // Reference to native state (automatically updated by DCFWebGPUView bridge)
     const nativeState = window.nativeState;
     const canvas = document.getElementById('dcf-canvas');
+    const emitToDcf = function(message, payload) {
+      try {
+        if (typeof postToDcf === 'function') {
+          postToDcf(message, payload);
+        }
+      } catch (_) {}
+    };
+
+    const setCanvasStatus = function(text) {
+      try {
+        if (typeof setStatus === 'function') {
+          setStatus(text);
+          return;
+        }
+      } catch (_) {}
+      const el = document.getElementById('dcf-canvas-status');
+      if (el) {
+        el.textContent = String(text);
+      }
+    };
 
     function clamp01(value) {
       return Math.max(0, Math.min(1, value));
@@ -120,7 +140,7 @@ fn noise(p: vec2f) -> f32 {
         device.queue.submit([encoder.finish()]);
         requestAnimationFrame(frame);
       }
-      postToDcf({ type: 'renderer', mode: 'webgpu' });
+      emitToDcf({ type: 'renderer', mode: 'webgpu' });
       requestAnimationFrame(frame);
       return true;
     }
@@ -194,11 +214,13 @@ void main() {
             requestAnimationFrame(frame);
           }
 
-          setStatus('WebGL2 shader');
-          postToDcf({ type: 'renderer', mode: 'webgl2' });
+          setCanvasStatus('WebGL2 shader');
+          emitToDcf({ type: 'renderer', mode: 'webgl2' });
           requestAnimationFrame(frame);
           return true;
         }
+
+        let isPointerDown = false;
 
         function syncPointer(event, type) {
           const rect = canvas.getBoundingClientRect();
@@ -206,17 +228,27 @@ void main() {
           const y = event.clientY - rect.top;
           nativeState.pointerX = clamp01(x / Math.max(1, rect.width));
           nativeState.pointerY = clamp01(y / Math.max(1, rect.height));
-          postToDcf({ type, x, y, pointerX: nativeState.pointerX, pointerY: nativeState.pointerY });
+          emitToDcf({ type, x, y, pointerX: nativeState.pointerX, pointerY: nativeState.pointerY });
         }
 
         canvas.addEventListener('pointerdown', function (event) {
+          isPointerDown = true;
           syncPointer(event, 'pointerDown');
         });
 
         canvas.addEventListener('pointermove', function (event) {
-          if ((event.buttons || 0) > 0) {
+          // Track drag on any pointer motion while down (works on Android WebView)
+          if (isPointerDown) {
             syncPointer(event, 'pointerDrag');
           }
+        });
+
+        canvas.addEventListener('pointerup', function (event) {
+          isPointerDown = false;
+        });
+
+        canvas.addEventListener('pointercancel', function (event) {
+          isPointerDown = false;
         });
 
         try {
@@ -224,13 +256,13 @@ void main() {
           if (!ranGpu) {
             const ranGl = runWebGl2();
             if (!ranGl) {
-              setStatus('No GPU API');
-              postToDcf({ type: 'renderer', mode: 'none' });
+              setCanvasStatus('No GPU API');
+              emitToDcf({ type: 'renderer', mode: 'none' });
             }
           }
         } catch (err) {
-          setStatus('Shader error');
-          postToDcf({ type: 'renderer', mode: 'error', message: String(err) });
+          setCanvasStatus('Shader error');
+          emitToDcf({ type: 'renderer', mode: 'error', message: String(err) });
           console.error(err);
         }
       })();
@@ -252,16 +284,17 @@ class AppRoot extends DCFStatefulComponent {
     final bridgePointer = useState<String>('x: -, y: -');
 
     if (showExamples.state) {
-      return DCFView(
+      return DCFScrollView(
         layout: const DCFLayout(width: '100%', height: '100%'),
         styleSheet: DCFStyleSheet(backgroundColor: DCFColors.black),
-        children: [
+        showsScrollIndicator: false,
+        scrollContent: [
           DCFView(
             layout: const DCFLayout(
               width: '100%',
-              height: '100%',
+              minHeight: '100%',
               paddingHorizontal: 24,
-              paddingVertical: 40,
+              paddingVertical: 24,
               gap: 20,
             ),
             children: [
@@ -293,7 +326,7 @@ class AppRoot extends DCFStatefulComponent {
                   fontWeight: DCFFontWeight.medium,
                   letterSpacing: -1,
                 ),
-                styleSheet: DCFStyleSheet(primaryColor: DCFColors.white),
+                styleSheet: DCFStyleSheet(primaryColor: DCFColors.black),
               ),
               DCFView(
                 layout: const DCFLayout(width: '100%', gap: 8),
@@ -308,12 +341,12 @@ class AppRoot extends DCFStatefulComponent {
                       DCFText(
                         content: 'Renderer: ${bridgeRenderer.state}',
                         textProps: DCFTextProps(fontSize: 12),
-                        styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray300),
+                        styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray700),
                       ),
                       DCFText(
                         content: bridgePointer.state,
                         textProps: DCFTextProps(fontSize: 12),
-                        styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray300),
+                        styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray700),
                       ),
                     ],
                   ),
