@@ -221,6 +221,7 @@ void main() {
         }
 
         let isPointerDown = false;
+        canvas.style.touchAction = 'none';
 
         function syncPointer(event, type) {
           const rect = canvas.getBoundingClientRect();
@@ -233,6 +234,9 @@ void main() {
 
         canvas.addEventListener('pointerdown', function (event) {
           isPointerDown = true;
+          if (canvas.setPointerCapture && event.pointerId !== undefined) {
+            try { canvas.setPointerCapture(event.pointerId); } catch (_) {}
+          }
           syncPointer(event, 'pointerDown');
         });
 
@@ -245,21 +249,61 @@ void main() {
 
         canvas.addEventListener('pointerup', function (event) {
           isPointerDown = false;
+          if (canvas.releasePointerCapture && event.pointerId !== undefined) {
+            try { canvas.releasePointerCapture(event.pointerId); } catch (_) {}
+          }
         });
 
         canvas.addEventListener('pointercancel', function (event) {
           isPointerDown = false;
+          if (canvas.releasePointerCapture && event.pointerId !== undefined) {
+            try { canvas.releasePointerCapture(event.pointerId); } catch (_) {}
+          }
         });
+
+        function syncTouch(touch, type) {
+          const rect = canvas.getBoundingClientRect();
+          const x = touch.clientX - rect.left;
+          const y = touch.clientY - rect.top;
+          nativeState.pointerX = clamp01(x / Math.max(1, rect.width));
+          nativeState.pointerY = clamp01(y / Math.max(1, rect.height));
+          emitToDcf({ type, x, y, pointerX: nativeState.pointerX, pointerY: nativeState.pointerY });
+        }
+
+        // Touch fallback for Android WebView variants that miss pointermove continuity.
+        canvas.addEventListener('touchstart', function (event) {
+          if (!event.touches || event.touches.length === 0) return;
+          isPointerDown = true;
+          syncTouch(event.touches[0], 'pointerDown');
+          event.preventDefault();
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', function (event) {
+          if (!isPointerDown || !event.touches || event.touches.length === 0) return;
+          syncTouch(event.touches[0], 'pointerDrag');
+          event.preventDefault();
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', function () {
+          isPointerDown = false;
+        }, { passive: true });
+
+        canvas.addEventListener('touchcancel', function () {
+          isPointerDown = false;
+        }, { passive: true });
 
         try {
           const ranGpu = await runWebGpu();
           if (!ranGpu) {
-              setCanvasStatus('WebGPU required');
-              emitToDcf({ type: 'renderer', mode: 'error', message: 'WebGPU not available' });
-              console.error('WebGPU not available on this device');
+            // WebGPU unavailable (iOS WKWebView, older Android) — fall back to WebGL2
+            const ranGl = runWebGl2();
+            if (!ranGl) {
+              setCanvasStatus('No GPU available');
+              emitToDcf({ type: 'renderer', mode: 'error', message: 'No GPU API available' });
+            }
           }
         } catch (err) {
-            setCanvasStatus('WebGPU error');
+          setCanvasStatus('GPU error: ' + String(err).slice(0, 60));
           emitToDcf({ type: 'renderer', mode: 'error', message: String(err) });
           console.error(err);
         }
