@@ -254,14 +254,12 @@ void main() {
         try {
           const ranGpu = await runWebGpu();
           if (!ranGpu) {
-            const ranGl = runWebGl2();
-            if (!ranGl) {
-              setCanvasStatus('No GPU API');
-              emitToDcf({ type: 'renderer', mode: 'none' });
-            }
+              setCanvasStatus('WebGPU required');
+              emitToDcf({ type: 'renderer', mode: 'error', message: 'WebGPU not available' });
+              console.error('WebGPU not available on this device');
           }
         } catch (err) {
-          setCanvasStatus('Shader error');
+            setCanvasStatus('WebGPU error');
           emitToDcf({ type: 'renderer', mode: 'error', message: String(err) });
           console.error(err);
         }
