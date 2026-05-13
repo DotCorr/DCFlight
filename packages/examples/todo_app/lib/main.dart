@@ -4,6 +4,238 @@ import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcf_reanimated/dcf_reanimated.dart';
 import 'package:dcflight/dcflight.dart';
 
+/// User-written shader script - this is the ONLY thing developers write
+/// The canvas HTML, lifecycle, and bridge handlers are all managed by DCFWebGPUView
+const String kLabGpuShaderScript = r'''
+  // Detect GPU capability and run appropriate renderer
+  (async function () {
+    // Reference to native state (automatically updated by DCFWebGPUView bridge)
+    const nativeState = window.nativeState;
+    const canvas = document.getElementById('dcf-canvas');
+
+    function clamp01(value) {
+      return Math.max(0, Math.min(1, value));
+    }
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      const w = Math.max(1, Math.floor(rect.width * dpr));
+      const h = Math.max(1, Math.floor(rect.height * dpr));
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+      return { w, h };
+    }
+
+    async function runWebGpu() {
+      if (!navigator.gpu) return false;
+      const canvas = document.getElementById('dcf-canvas');
+      const adapter = await navigator.gpu.requestAdapter();
+      if (!adapter) return false;
+      const device = await adapter.requestDevice();
+      const context = canvas.getContext('webgpu');
+      if (!context) return false;
+
+      const format = navigator.gpu.getPreferredCanvasFormat();
+      const uniformBuffer = device.createBuffer({
+        size: 32,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      });
+
+      const shader = device.createShaderModule({
+        code: `
+struct Uniforms {
+  time: f32, width: f32, height: f32, boost: f32, pointerX: f32, pointerY: f32, pad0: f32, pad1: f32,
+}
+@group(0) @binding(0) var<uniform> u: Uniforms;
+struct VsOut { @builtin(position) position: vec4f, }
+@vertex fn vs(@builtin(vertex_index) index: u32) -> VsOut {
+  var points = array<vec2f, 3>(vec2f(-1.0, -1.0), vec2f(-1.0,  3.0), vec2f( 3.0, -1.0));
+  return VsOut(vec4f(points[index], 0.0, 1.0));
+}
+fn hash(p: vec2f) -> f32 { return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453123); }
+fn noise(p: vec2f) -> f32 {
+  let i = floor(p); let f = fract(p);
+  let a = hash(i); let b = hash(i + vec2f(1.0, 0.0)); let c = hash(i + vec2f(0.0, 1.0)); let d = hash(i + vec2f(1.0, 1.0));
+  let u2 = f * f * (3.0 - 2.0 * f);
+  return mix(mix(a, b, u2.x), mix(c, d, u2.x), u2.y);
+}
+@fragment fn fs(@builtin(position) pos: vec4f) -> @location(0) vec4f {
+  let res = vec2f(u.width, u.height);
+  var uv = (pos.xy / res) * 2.0 - vec2f(1.0, 1.0);
+  uv.x *= u.width / max(1.0, u.height);
+  let t = u.time * 0.55; let r = length(uv); let a = atan2(uv.y, uv.x);
+  let ring = smoothstep(0.16, 0.0, abs(r - 0.42 + 0.04 * sin(a * 8.0 - t * 3.0)));
+  let tunnel = 1.0 / (1.0 + 7.0 * r * r); let swirl = noise(vec2f(a * 2.1 + t * 0.7, r * 7.0 - t * 1.4));
+  let pulse = 0.5 + 0.5 * sin(t * 3.4 + r * 18.0 - a * 4.0);
+  let pointer = vec2f(u.pointerX * 2.0 - 1.0, (1.0 - u.pointerY) * 2.0 - 1.0);
+  let cursorGlow = exp(-distance(uv, pointer) * 8.0);
+  let boost = 1.0 + u.boost * 0.55;
+  let cyan = vec3f(0.32, 0.86, 1.0); let magenta = vec3f(1.0, 0.26, 0.72); let deep = vec3f(0.01, 0.02, 0.06);
+  var color = deep;
+  color += cyan * tunnel * (0.55 + 0.45 * swirl) * boost;
+  color += magenta * ring * (0.5 + pulse * 0.7) * boost;
+  color += vec3f(1.0, 0.95, 0.85) * pow(max(0.0, 1.0 - r * 1.8), 8.0) * 0.55;
+  color += vec3f(0.85, 0.95, 1.0) * cursorGlow * (0.22 + u.boost * 0.12);
+  return vec4f(color, 1.0);
+}`,
+      });
+
+      const pipeline = device.createRenderPipeline({
+        layout: 'auto',
+        vertex: { module: shader, entryPoint: 'vs' },
+        fragment: { module: shader, entryPoint: 'fs', targets: [{ format }] },
+        primitive: { topology: 'triangle-list' },
+      });
+
+      const bindGroup = device.createBindGroup({
+        layout: pipeline.getBindGroupLayout(0),
+        entries: [{ binding: 0, resource: { buffer: uniformBuffer } }],
+      });
+
+      let startTime = performance.now();
+      function frame(ms) {
+        const elapsed = ms - startTime;
+        const size = resizeCanvas();
+        context.configure({ device, format, alphaMode: 'opaque' });
+        const uniforms = new Float32Array([
+          elapsed * 0.001, size.w, size.h, nativeState.boost,
+          nativeState.pointerX, nativeState.pointerY, 0.0, 0.0,
+        ]);
+        device.queue.writeBuffer(uniformBuffer, 0, uniforms);
+        const encoder = device.createCommandEncoder();
+        const pass = encoder.beginRenderPass({
+          colorAttachments: [{
+            view: context.getCurrentTexture().createView(),
+            loadOp: 'clear', storeOp: 'store',
+            clearValue: [0.01, 0.01, 0.03, 1.0],
+          }],
+        });
+        pass.setPipeline(pipeline);
+        pass.setBindGroup(0, bindGroup);
+        pass.draw(3, 1, 0, 0);
+        pass.end();
+        device.queue.submit([encoder.finish()]);
+        requestAnimationFrame(frame);
+      }
+      postToDcf({ type: 'renderer', mode: 'webgpu' });
+      requestAnimationFrame(frame);
+      return true;
+    }
+
+    function runWebGl2() {
+      const canvas = document.getElementById('dcf-canvas');
+      const gl = canvas.getContext('webgl2', { antialias: true });
+      if (!gl) return false;
+
+      const vs = gl.createShader(gl.VERTEX_SHADER);
+      gl.shaderSource(vs, `#version 300 es
+void main() {
+  vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+  gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}`);
+      gl.compileShader(vs);
+
+      const fs = gl.createShader(gl.FRAGMENT_SHADER);
+      gl.shaderSource(fs, `#version 300 es
+precision highp float;
+uniform float uTime; uniform vec2 uRes; uniform float uBoost; uniform vec2 uPointer;
+out vec4 fragColor;
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  float a = hash(i), b = hash(i + vec2(1.0, 0.0)), c = hash(i + vec2(0.0, 1.0)), d = hash(i + vec2(1.0, 1.0));
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+void main() {
+  vec2 uv = (gl_FragCoord.xy / uRes) * 2.0 - 1.0;
+  uv.x *= uRes.x / max(1.0, uRes.y);
+  float t = uTime * 0.55; float r = length(uv); float a = atan(uv.y, uv.x);
+  float ring = smoothstep(0.16, 0.0, abs(r - 0.42 + 0.04 * sin(a * 8.0 - t * 3.0)));
+  float tunnel = 1.0 / (1.0 + 7.0 * r * r);
+  float swirl = noise(vec2(a * 2.1 + t * 0.7, r * 7.0 - t * 1.4));
+  float pulse = 0.5 + 0.5 * sin(t * 3.4 + r * 18.0 - a * 4.0);
+  vec2 pointer = vec2(uPointer.x * 2.0 - 1.0, (1.0 - uPointer.y) * 2.0 - 1.0);
+  float cursorGlow = exp(-distance(uv, pointer) * 8.0);
+  float boost = 1.0 + uBoost * 0.55;
+  vec3 color = vec3(0.01, 0.02, 0.06);
+  color += vec3(0.32, 0.86, 1.0) * tunnel * (0.55 + 0.45 * swirl) * boost;
+  color += vec3(1.0, 0.26, 0.72) * ring * (0.5 + pulse * 0.7) * boost;
+  color += vec3(1.0, 0.95, 0.85) * pow(max(0.0, 1.0 - r * 1.8), 8.0) * 0.55;
+  color += vec3(0.85, 0.95, 1.0) * cursorGlow * (0.22 + uBoost * 0.12);
+  fragColor = vec4(color, 1.0);
+}`);
+      gl.compileShader(fs);
+
+      const program = gl.createProgram();
+      gl.attachShader(program, vs);
+      gl.attachShader(program, fs);
+      gl.linkProgram(program);
+      gl.useProgram(program);
+
+      const timeLoc = gl.getUniformLocation(program, 'uTime');
+      const resLoc = gl.getUniformLocation(program, 'uRes');
+      const boostLoc = gl.getUniformLocation(program, 'uBoost');
+      const pointerLoc = gl.getUniformLocation(program, 'uPointer');
+
+      let startTime = performance.now();
+      function frame(ms) {
+        const elapsed = ms - startTime;
+        const size = resizeCanvas();
+        gl.viewport(0, 0, size.w, size.h);
+        gl.uniform1f(timeLoc, elapsed * 0.001);
+            gl.uniform2f(resLoc, size.w, size.h);
+            gl.uniform1f(boostLoc, nativeState.boost);
+            gl.uniform2f(pointerLoc, nativeState.pointerX, nativeState.pointerY);
+            gl.drawArrays(gl.TRIANGLES, 0, 3);
+            requestAnimationFrame(frame);
+          }
+
+          setStatus('WebGL2 shader');
+          postToDcf({ type: 'renderer', mode: 'webgl2' });
+          requestAnimationFrame(frame);
+          return true;
+        }
+
+        function syncPointer(event, type) {
+          const rect = canvas.getBoundingClientRect();
+          const x = event.clientX - rect.left;
+          const y = event.clientY - rect.top;
+          nativeState.pointerX = clamp01(x / Math.max(1, rect.width));
+          nativeState.pointerY = clamp01(y / Math.max(1, rect.height));
+          postToDcf({ type, x, y, pointerX: nativeState.pointerX, pointerY: nativeState.pointerY });
+        }
+
+        canvas.addEventListener('pointerdown', function (event) {
+          syncPointer(event, 'pointerDown');
+        });
+
+        canvas.addEventListener('pointermove', function (event) {
+          if ((event.buttons || 0) > 0) {
+            syncPointer(event, 'pointerDrag');
+          }
+        });
+
+        try {
+          const ranGpu = await runWebGpu();
+          if (!ranGpu) {
+            const ranGl = runWebGl2();
+            if (!ranGl) {
+              setStatus('No GPU API');
+              postToDcf({ type: 'renderer', mode: 'none' });
+            }
+          }
+        } catch (err) {
+          setStatus('Shader error');
+          postToDcf({ type: 'renderer', mode: 'error', message: String(err) });
+          console.error(err);
+        }
+      })();
+''';
+
 void main() async {
   await DCFlight.go(app: AppRoot());
 }
@@ -14,7 +246,10 @@ class AppRoot extends DCFStatefulComponent {
 
   @override
   DCFComponentNode render() {
-    final showExamples = useState<bool>(false);
+    final showExamples = useState<bool>(true);
+    final webViewController = useState<DCFWebViewController>(DCFWebViewController());
+    final bridgeRenderer = useState<String>('boot');
+    final bridgePointer = useState<String>('x: -, y: -');
 
     if (showExamples.state) {
       return DCFView(
@@ -60,21 +295,86 @@ class AppRoot extends DCFStatefulComponent {
                 ),
                 styleSheet: DCFStyleSheet(primaryColor: DCFColors.white),
               ),
-              DCFWebGpuSurface(
-                webGpuProps: const DCFWebGpuSurfaceProps(
-                  scene: DCFWebGpuScene.cubeLogo,
-                  sceneLabel: 'the lab preview',
-                  centerGlyph: 'DC',
-                  rotationSpeed: 1.1,
-                ),
-                fillWidth: true,
-                layout: const DCFLayout(width: '100%', height: 260),
-                styleSheet: DCFStyleSheet(
-                  borderWidth: 1,
-                  borderColor: DCFColors.gray700,
-                  borderRadius: 12,
-                  backgroundColor: DCFColors.black,
-                ),
+              DCFView(
+                layout: const DCFLayout(width: '100%', gap: 8),
+                children: [
+                  DCFView(
+                    layout: DCFLayout(
+                      width: '100%',
+                      flexDirection: DCFFlexDirection.row,
+                      justifyContent: DCFJustifyContent.spaceBetween,
+                    ),
+                    children: [
+                      DCFText(
+                        content: 'Renderer: ${bridgeRenderer.state}',
+                        textProps: DCFTextProps(fontSize: 12),
+                        styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray300),
+                      ),
+                      DCFText(
+                        content: bridgePointer.state,
+                        textProps: DCFTextProps(fontSize: 12),
+                        styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray300),
+                      ),
+                    ],
+                  ),
+                  DCFButton(
+                    layout: const DCFLayout(
+                      alignSelf: DCFAlign.flexStart,
+                      paddingHorizontal: 10,
+                      paddingVertical: 6,
+                    ),
+                    styleSheet: DCFStyleSheet(
+                      backgroundColor: DCFColors.gray900,
+                      borderWidth: 1,
+                      borderColor: DCFColors.gray700,
+                      borderRadius: 4,
+                    ),
+                    onPress: (_) async {
+                      await webViewController.state.setBoost(1.8);
+                    },
+                    children: [
+                      DCFText(
+                        content: 'Send Boost From Dart',
+                        textProps: DCFTextProps(fontSize: 12),
+                        styleSheet: DCFStyleSheet(primaryColor: DCFColors.white),
+                      ),
+                    ],
+                  ),
+                  DCFWebGPUView(
+                    controller: webViewController.state,
+                    gpuViewProps: DCFWebGPUViewProps(
+                      script: kLabGpuShaderScript,
+                      preload: true,
+                    ),
+                    onEvent: (event) {
+                      // Debug log all events
+                      print('🎨 GPU Event: type=${event.type}, payload=${event.payload}');
+                      
+                      if (event.type == 'renderer') {
+                        bridgeRenderer.setState(event.payload['mode']?.toString() ?? 'unknown');
+                      } else if (event.type == 'pointerDown' || event.type == 'pointerDrag') {
+                        final x = event.payload['x'];
+                        final y = event.payload['y'];
+                        String format(dynamic value) {
+                          if (value is num) {
+                            return value.toStringAsFixed(1);
+                          }
+                          return value?.toString() ?? '-';
+                        }
+                        bridgePointer.setState('x: ${format(x)}, y: ${format(y)}');
+                      } else if (event.type == 'ready') {
+                        print('✅ Canvas Ready!');
+                      }
+                    },
+                    layout: const DCFLayout(width: '100%', height: 260),
+                    styleSheet: DCFStyleSheet(
+                      borderWidth: 1,
+                      borderColor: DCFColors.gray700,
+                      borderRadius: 12,
+                      backgroundColor: DCFColors.black,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -369,52 +669,6 @@ class HeroSection extends DCFStatelessComponent {
                       ],
                     ),
 
-                    // WebGPU migration scaffold:
-                    // Motion remains native-animation abstraction; draw-heavy visual
-                    // scenes live in the exposed WebGPU surface abstraction.
-                    DCFView(
-                      layout: DCFLayout(
-                        width: '100%',
-                        marginTop: 20,
-                      ),
-                      children: [
-                        DCFView(
-                          layout: DCFLayout(width: '100%', gap: 8),
-                          children: [
-                            DCFText(
-                              content: "Lab GPU Surface",
-                              textProps: DCFTextProps(
-                                fontSize: 12,
-                                fontWeight: DCFFontWeight.medium,
-                                letterSpacing: 0.4,
-                              ),
-                              styleSheet: DCFStyleSheet(
-                                primaryColor: DCFColors.gray500,
-                              ),
-                            ),
-                            DCFWebGpuSurface(
-                              webGpuProps: const DCFWebGpuSurfaceProps(
-                                scene: DCFWebGpuScene.gridPulse,
-                                sceneLabel: 'hero gpu preview',
-                                centerGlyph: 'DC',
-                                showStatus: false,
-                                rotationSpeed: 1.2,
-                                accentColor: '#6ee7ff',
-                              ),
-                              fillWidth: true,
-                              fillScrollContent: true,
-                              layout: const DCFLayout(width: '100%', height: 220),
-                              styleSheet: DCFStyleSheet(
-                                borderWidth: 1,
-                                borderColor: DCFColors.gray200,
-                                borderRadius: 8,
-                                backgroundColor: DCFColors.black,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               ],
