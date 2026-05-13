@@ -377,6 +377,11 @@ class DCFWebViewComponent: NSObject, DCFComponent {
     }
     
     func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {
+        // Register this WebView with the ViewRegistry so it can be accessed by viewId
+        if let viewIdInt = Int(nodeId), let webView = view as? WKWebView {
+            ViewRegistry.shared.registerView(webView, id: viewIdInt, type: "WebView")
+            print("✅ DCFWebViewComponent registered: viewId=\(viewIdInt)")
+        }
     }
     
     private func loadContent(webView: WKWebView, props: [String: Any]) {
@@ -594,8 +599,101 @@ extension DCFWebViewComponent: WKScriptMessageHandler {
             }
         }
     }
-    static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
+
+    private static func resolveWebView(params: [String: Any]) -> WKWebView? {
+        guard let viewId = params["viewId"] as? Int else {
+            return nil
+        }
+
+        let view = ViewRegistry.shared.getView(id: viewId)
+        return view as? WKWebView
+    }
+
+    private static func jsonLiteral(_ value: Any) -> String? {
+        if let stringValue = value as? String {
+            guard let data = try? JSONSerialization.data(withJSONObject: ["value": stringValue], options: []),
+                  let wrapper = String(data: data, encoding: .utf8) else {
+                return nil
+            }
+            let prefix = "{\"value\":"
+            let suffix = "}"
+            guard wrapper.hasPrefix(prefix), wrapper.hasSuffix(suffix) else {
+                return nil
+            }
+            return String(wrapper.dropFirst(prefix.count).dropLast(suffix.count))
+        }
+
+        if JSONSerialization.isValidJSONObject(value),
+           let data = try? JSONSerialization.data(withJSONObject: value, options: []),
+           let json = String(data: data, encoding: .utf8) {
+            return json
+        }
+
+        if value is NSNull {
+            return "null"
+        }
+
         return nil
+    }
+
+    static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
+        guard let webView = resolveWebView(params: params) else {
+            return nil
+        }
+
+        switch method {
+        case "evaluateJavaScript":
+            guard let script = params["script"] as? String else {
+                return nil
+            }
+            DispatchQueue.main.async {
+                webView.evaluateJavaScript(script, completionHandler: nil)
+            }
+            return true
+
+        case "postMessage":
+            guard let message = params["message"], let literal = jsonLiteral(message) else {
+                return nil
+            }
+            let script = """
+            (function() {
+              const payload = \(literal);
+              if (window.dcfBridge && typeof window.dcfBridge.onNativeMessage === 'function') {
+                window.dcfBridge.onNativeMessage(payload);
+              }
+              window.dispatchEvent(new CustomEvent('dcf:message', { detail: payload }));
+            })();
+            """
+            DispatchQueue.main.async {
+                webView.evaluateJavaScript(script, completionHandler: nil)
+            }
+            return true
+
+        case "reload":
+            DispatchQueue.main.async {
+                webView.reload()
+            }
+            return true
+
+        case "goBack":
+            DispatchQueue.main.async {
+                if webView.canGoBack {
+                    webView.goBack()
+                }
+            }
+            return true
+
+        case "goForward":
+            DispatchQueue.main.async {
+                if webView.canGoForward {
+                    webView.goForward()
+                }
+            }
+            return true
+
+        default:
+            return nil
+        }
     }
 }
 

@@ -18,12 +18,16 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
+import android.webkit.JavascriptInterface
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.DCFNodeLayout
 import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
+import com.dotcorr.dcflight.layout.DCFLayoutManager
+import com.dotcorr.dcflight.layout.ViewRegistry
 import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
+import org.json.JSONObject
 
 class DCFWebViewComponent : DCFComponent() {
 
@@ -75,6 +79,7 @@ class DCFWebViewComponent : DCFComponent() {
         )
 
         webView.setTag(DCFTags.COMPONENT_TYPE_KEY, "WebView")
+        webView.addJavascriptInterface(DCFWebViewJsBridge(webView), "__dcfNativeBridge")
 
         updateView(webView, props)
 
@@ -217,6 +222,7 @@ class DCFWebViewComponent : DCFComponent() {
                 view?.post {
                     view.requestLayout()
                     view.invalidate()
+                    installDcfMessageShim(view)
                 }
                 if (view != null) {
                     propagateEvent(view, "onLoadEnd", mapOf(
@@ -297,10 +303,111 @@ class DCFWebViewComponent : DCFComponent() {
 
 
     override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {
+        // Register this WebView with the ViewRegistry so it can be accessed by viewId
+        val viewId = nodeId.toIntOrNull() ?: return
+        if (view is WebView) {
+            ViewRegistry.shared.registerView(view, viewId, "WebView")
+            android.util.Log.d("DCFWebViewComponent", "✅ DCFWebViewComponent registered: viewId=$viewId")
+        }
     }
 
     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {
-        return null
+        val viewId = (arguments["viewId"] as? Number)?.toInt() ?: return null
+        val webView = (ViewRegistry.shared.getView(viewId) ?: DCFLayoutManager.shared.getView(viewId)) as? WebView
+            ?: return null
+
+        return when (method) {
+            "evaluateJavaScript" -> {
+                val script = arguments["script"] as? String ?: return null
+                webView.post {
+                    webView.evaluateJavascript(script, null)
+                }
+                true
+            }
+
+            "postMessage" -> {
+                val message = arguments["message"]
+                val literal = toJavaScriptLiteral(message)
+                val script = """
+                    (function() {
+                      const payload = $literal;
+                      if (window.dcfBridge && typeof window.dcfBridge.onNativeMessage === 'function') {
+                        window.dcfBridge.onNativeMessage(payload);
+                      }
+                      window.dispatchEvent(new CustomEvent('dcf:message', { detail: payload }));
+                    })();
+                """.trimIndent()
+                webView.post {
+                    webView.evaluateJavascript(script, null)
+                }
+                true
+            }
+
+            "reload" -> {
+                webView.post { webView.reload() }
+                true
+            }
+
+            "goBack" -> {
+                webView.post {
+                    if (webView.canGoBack()) {
+                        webView.goBack()
+                    }
+                }
+                true
+            }
+
+            "goForward" -> {
+                webView.post {
+                    if (webView.canGoForward()) {
+                        webView.goForward()
+                    }
+                }
+                true
+            }
+
+            else -> null
+        }
+    }
+
+    private fun installDcfMessageShim(webView: WebView) {
+        val shim = """
+            (function() {
+              if (!window.webkit) { window.webkit = {}; }
+              if (!window.webkit.messageHandlers) { window.webkit.messageHandlers = {}; }
+              window.webkit.messageHandlers.dcfMessage = {
+                postMessage: function(message) {
+                  try {
+                    var payload = (typeof message === 'string') ? message : JSON.stringify(message);
+                    __dcfNativeBridge.postMessage(payload);
+                  } catch (e) {
+                    __dcfNativeBridge.postMessage(String(message));
+                  }
+                }
+              };
+            })();
+        """.trimIndent()
+        webView.evaluateJavascript(shim, null)
+    }
+
+    private fun toJavaScriptLiteral(value: Any?): String {
+        if (value == null) return "null"
+        return when (value) {
+            is String -> JSONObject.quote(value)
+            is Number, is Boolean -> value.toString()
+            else -> JSONObject.wrap(value)?.toString() ?: "null"
+        }
+    }
+}
+
+private class DCFWebViewJsBridge(private val webView: WebView) {
+    @JavascriptInterface
+    fun postMessage(payload: String?) {
+        webView.post {
+            propagateEvent(webView, "onMessage", mapOf(
+                "data" to (payload ?: "null")
+            ))
+        }
     }
 }
 
