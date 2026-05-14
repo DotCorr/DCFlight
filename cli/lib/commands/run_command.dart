@@ -7,6 +7,7 @@
 
 import 'dart:io';
 import 'package:args/command_runner.dart';
+import 'package:dcflight_cli/services/engine_resolver.dart';
 
 class RunCommand extends Command {
   @override
@@ -51,12 +52,22 @@ class RunCommand extends Command {
     // Use Flutter's built-in hot reload - no custom watcher needed
     print('🎯 Launching Flutter app with hot reload support...');
     
+    EngineResolver.requireInstalled();
+
     final args = ['run', ...dcfArgs];
     if (verbose) {
       args.add('--verbose');
     }
 
-    final process = await Process.start('flutter', args, mode: ProcessStartMode.inheritStdio);
+    final process = await Process.start(
+      EngineResolver.flutterBinary,
+      args,
+      mode: ProcessStartMode.inheritStdio,
+      environment: {
+        ...Platform.environment,
+        'FLUTTER_STORAGE_BASE_URL': EngineResolver.storageBaseUrl,
+      },
+    );
     
     print('✅ DCFlight app launched!');
     print('💡 Press "r" in the terminal for hot reload, "R" for hot restart');

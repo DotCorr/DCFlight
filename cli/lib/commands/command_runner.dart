@@ -11,6 +11,7 @@ import 'package:dcflight_cli/commands/create_command.dart';
 import 'package:dcflight_cli/commands/inject_command.dart';
 import 'package:dcflight_cli/commands/eject_command.dart';
 import 'package:dcflight_cli/commands/ide_command.dart';
+import 'package:dcflight_cli/commands/setup_command.dart';
 
 class DCFlightCommandRunner extends CommandRunner<void> {
   DCFlightCommandRunner()
@@ -18,6 +19,7 @@ class DCFlightCommandRunner extends CommandRunner<void> {
           'dcf',
           'DCFlight CLI - Development tools for DCFlight framework',
         ) {
+    addCommand(SetupCommand());
     addCommand(RunCommand());
     addCommand(CreateCommand());
     addCommand(InjectCommand());

@@ -8,6 +8,7 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:path/path.dart' as path;
+import 'package:dcflight_cli/services/engine_resolver.dart';
 
 class PackageManager {
   /// Inject a package into the project
@@ -104,7 +105,7 @@ class PackageManager {
         inSection = true;
         continue;
       }
-      if (inSection && line.trim().startsWith('${packageName}:')) {
+      if (inSection && line.trim().startsWith('$packageName:')) {
         throw Exception('Package $packageName is already added as a ${isDev ? 'dev ' : ''}dependency');
       }
       if (inSection && line.trim().isNotEmpty && !line.startsWith(' ')) {
@@ -128,7 +129,7 @@ class PackageManager {
         inSection = true;
         continue;
       }
-      if (inSection && line.trim().startsWith('${packageName}:')) {
+      if (inSection && line.trim().startsWith('$packageName:')) {
         found = true;
         break;
       }
@@ -156,10 +157,17 @@ class PackageManager {
     }
 
     if (verbose) {
-      print('🔧 Running: flutter ${args.join(' ')}');
+      print('🔧 Running: dcf-flutter ${args.join(' ')}');
     }
 
-    final result = await Process.run('flutter', args);
+    final result = await Process.run(
+      EngineResolver.flutterBinary,
+      args,
+      environment: {
+        ...Platform.environment,
+        'FLUTTER_STORAGE_BASE_URL': EngineResolver.storageBaseUrl,
+      },
+    );
     
     if (result.exitCode != 0) {
       throw Exception('Failed to add package: ${result.stderr}');
@@ -179,10 +187,17 @@ class PackageManager {
     }
 
     if (verbose) {
-      print('🔧 Running: flutter ${args.join(' ')}');
+      print('🔧 Running: dcf-flutter ${args.join(' ')}');
     }
 
-    final result = await Process.run('flutter', args);
+    final result = await Process.run(
+      EngineResolver.flutterBinary,
+      args,
+      environment: {
+        ...Platform.environment,
+        'FLUTTER_STORAGE_BASE_URL': EngineResolver.storageBaseUrl,
+      },
+    );
     
     if (result.exitCode != 0) {
       throw Exception('Failed to remove package: ${result.stderr}');
@@ -196,10 +211,17 @@ class PackageManager {
   /// Run pub get
   static Future<void> _runPubGet(bool verbose) async {
     if (verbose) {
-      print('📦 Running: flutter pub get');
+      print('📦 Running: flutter_zero pub get');
     }
 
-    final result = await Process.run('flutter', ['pub', 'get']);
+    final result = await Process.run(
+      EngineResolver.flutterBinary,
+      ['pub', 'get'],
+      environment: {
+        ...Platform.environment,
+        'FLUTTER_STORAGE_BASE_URL': EngineResolver.storageBaseUrl,
+      },
+    );
     
     if (result.exitCode != 0) {
       throw Exception('Failed to run pub get: ${result.stderr}');

@@ -8,6 +8,7 @@
 
 import 'dart:io';
 import 'dart:convert';
+import 'package:dcflight_cli/services/engine_resolver.dart';
 
 class DCFlightRunner {
   final List<String> additionalArgs;
@@ -34,11 +35,17 @@ class DCFlightRunner {
         print('🎯 Starting DCFlight app: ${args.join(' ')}');
       }
       
-      // Start DCFlight runtime (powered by Flutter engine)
+      EngineResolver.requireInstalled();
+
+      // Start DCFlight runtime (powered by flutter_zero engine)
       final process = await Process.start(
-        'flutter',
+        EngineResolver.flutterBinary,
         args,
         mode: ProcessStartMode.inheritStdio,
+        environment: {
+          ...Platform.environment,
+          'FLUTTER_STORAGE_BASE_URL': EngineResolver.storageBaseUrl,
+        },
       );
       
       if (verbose) {
@@ -59,7 +66,14 @@ class DCFlightRunner {
       }
       
       // Get list of available devices
-      final result = await Process.run('flutter', ['devices', '--machine']);
+      final result = await Process.run(
+        EngineResolver.flutterBinary,
+        ['devices', '--machine'],
+        environment: {
+          ...Platform.environment,
+          'FLUTTER_STORAGE_BASE_URL': EngineResolver.storageBaseUrl,
+        },
+      );
       
       if (result.exitCode != 0) {
         throw Exception('Failed to get devices: ${result.stderr}');
