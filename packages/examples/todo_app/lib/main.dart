@@ -13,24 +13,67 @@ class TestRoot extends DCFStatefulComponent {
     final tab = useState<int>(1);
 
     return DCFView(
-      layout: const DCFLayout(width: '100%', height: '100%', flexDirection: DCFFlexDirection.column),
+      layout: const DCFLayout(
+        width: '100%',
+        height: '100%',
+        flexDirection: DCFFlexDirection.column,
+      ),
       styleSheet: DCFStyleSheet(backgroundColor: DCFColors.black),
       children: [
         DCFView(
-          layout: const DCFLayout(width: '100%', height: 48, flexDirection: DCFFlexDirection.row),
+          layout: const DCFLayout(
+            width: '100%',
+            height: 48,
+            flexDirection: DCFFlexDirection.row,
+            paddingTop: '5%',
+          ),
           styleSheet: DCFStyleSheet(backgroundColor: DCFColors.gray900),
           children: [
             DCFButton(
-              layout: const DCFLayout(flexGrow: 1, height: 48, justifyContent: DCFJustifyContent.center, alignItems: DCFAlign.center),
-              styleSheet: DCFStyleSheet(backgroundColor: tab.state == 0 ? DCFColors.gray600 : DCFColors.gray900),
+              layout: const DCFLayout(
+                flexGrow: 1,
+                height: 48,
+                justifyContent: DCFJustifyContent.center,
+                alignItems: DCFAlign.center,
+              ),
+              styleSheet: DCFStyleSheet(
+                backgroundColor:
+                    tab.state == 0 ? DCFColors.gray600 : DCFColors.gray900,
+              ),
               onPress: (_) => tab.setState(0),
-              children: [DCFText(content: '1. SCROLL TEST', textProps: DCFTextProps(fontSize: 11, fontWeight: DCFFontWeight.bold), styleSheet: DCFStyleSheet(primaryColor: DCFColors.white))],
+              children: [
+                DCFText(
+                  content: '1. SCROLL TEST',
+                  textProps: DCFTextProps(
+                    fontSize: 11,
+                    fontWeight: DCFFontWeight.bold,
+                  ),
+                  styleSheet: DCFStyleSheet(primaryColor: DCFColors.white),
+                ),
+              ],
             ),
             DCFButton(
-              layout: const DCFLayout(flexGrow: 1, height: 48, justifyContent: DCFJustifyContent.center, alignItems: DCFAlign.center),
-              styleSheet: DCFStyleSheet(backgroundColor: tab.state == 1 ? DCFColors.gray600 : DCFColors.gray900),
+              layout: const DCFLayout(
+                flexGrow: 1,
+                height: 48,
+                justifyContent: DCFJustifyContent.center,
+                alignItems: DCFAlign.center,
+              ),
+              styleSheet: DCFStyleSheet(
+                backgroundColor:
+                    tab.state == 1 ? DCFColors.gray600 : DCFColors.gray900,
+              ),
               onPress: (_) => tab.setState(1),
-              children: [DCFText(content: '2. WEBGPU DRAG', textProps: DCFTextProps(fontSize: 11, fontWeight: DCFFontWeight.bold), styleSheet: DCFStyleSheet(primaryColor: DCFColors.white))],
+              children: [
+                DCFText(
+                  content: '2. WEBGPU DRAG',
+                  textProps: DCFTextProps(
+                    fontSize: 11,
+                    fontWeight: DCFFontWeight.bold,
+                  ),
+                  styleSheet: DCFStyleSheet(primaryColor: DCFColors.white),
+                ),
+              ],
             ),
           ],
         ),
@@ -49,7 +92,11 @@ class _ScrollTest extends DCFStatelessComponent {
   @override
   DCFComponentNode render() => _buildInner();
   DCFComponentNode _buildInner() => DCFWebView(
-    webViewProps: const DCFWebViewProps(source: _html, loadMode: DCFWebViewLoadMode.htmlString, scrollEnabled: true),
+    webViewProps: const DCFWebViewProps(
+      source: _html,
+      loadMode: DCFWebViewLoadMode.htmlString,
+      scrollEnabled: true,
+    ),
     layout: const DCFLayout(width: '100%', height: '100%'),
   );
 
@@ -81,7 +128,6 @@ class _ScrollTest extends DCFStatelessComponent {
 <div class="box" style="background:#1a3a2a;color:#0fa">Item 19</div>
 <div class="box" style="background:#3a2a1a;color:#fa0">Item 20 - bottom</div>
 </body></html>''';
-
 }
 
 class _WebGPUDragTest extends DCFStatelessComponent {
@@ -142,3 +188,4 @@ struct VO{@builtin(position)pos:vec4f,@location(0)c:vec3f}
     );
   }
 }
+
