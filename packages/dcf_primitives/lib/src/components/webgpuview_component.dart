@@ -220,6 +220,7 @@ class DCFWebGPUView extends DCFStatelessComponent {
         width: 100%;
         height: 100%;
         overflow: hidden;
+        touch-action: none;
         background: $bgColor;
       }
       canvas {
@@ -228,6 +229,7 @@ class DCFWebGPUView extends DCFStatelessComponent {
         width: 100%;
         height: 100%;
         display: block;
+        touch-action: none;
       }
       #dcf-canvas-status {
         position: absolute;
