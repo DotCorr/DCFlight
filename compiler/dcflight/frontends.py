@@ -102,7 +102,7 @@ class DartParser:
         result = unique_object(pairs)
         constructors = {
             'App': ({'version', 'id', 'name', 'state', 'actions', 'root'}, {'version', 'id', 'name', 'root'}),
-            'Node': ({'id', 'type', 'props', 'children', 'action'}, {'id', 'type', 'props'}),
+            'Node': ({'id', 'type', 'props', 'children', 'action', 'style'}, {'id', 'type', 'props'}),
             'Action': ({'id', 'op', 'target', 'value'}, {'id', 'op'}),
             'Ref': ({'name'}, {'name'}),
         }

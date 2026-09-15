@@ -22,6 +22,21 @@ def expression(expr, target):
 
 
 
+def color_rgba(hex_color):
+    """#RRGGBBAA -> (r, g, b, a) floats for SwiftUI."""
+    return tuple(int(hex_color[i:i + 2], 16) / 255.0 for i in (1, 3, 5, 7))
+
+
+def color_int(hex_color):
+    """#RRGGBBAA -> RRGGBBAA integer for the generated Swift hex initializer."""
+    return int(hex_color[1:], 16)
+
+
+def color_java(hex_color):
+    """#RRGGBBAA -> #AARRGGBB accepted by android.graphics.Color.parseColor."""
+    return '#' + hex_color[7:] + hex_color[1:7]
+
+
 def expand(template, values):
     # Only substitute named placeholders; braces belonging to source survive.
     import re

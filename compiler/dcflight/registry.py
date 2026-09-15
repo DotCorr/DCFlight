@@ -3,6 +3,21 @@ import json
 from pathlib import Path
 
 
+# Reviewed development-time style vocabulary shared by every capability.
+# Values are compile-time literals; nothing is interpreted at runtime.
+STYLE_PROPERTIES = {
+    "color": {"type": "string", "color": True},
+    "fontSize": {"type": "int", "minimum": 1, "maximum": 96},
+    "fontWeight": {"type": "string", "enum": ("regular", "medium", "semibold", "bold")},
+    "backgroundColor": {"type": "string", "color": True},
+    "padding": {"type": "int", "minimum": 0, "maximum": 64},
+    "cornerRadius": {"type": "int", "minimum": 0, "maximum": 64},
+    "spacing": {"type": "int", "minimum": 0, "maximum": 64},
+    "alignment": {"type": "string", "enum": ("start", "center", "end")},
+    "fillWidth": {"type": "bool"},
+}
+
+
 class Registry:
     def __init__(self, path=None):
         root = Path(path) if path else Path(__file__).parent / "data" / "capabilities.json"
@@ -36,6 +51,18 @@ class Registry:
                 literal.update(minimum=-2147483648, maximum=2147483647)
             return {"oneOf": [literal, {"type": "object", "properties": {"ref": {"type": "string"}}, "required": ["ref"], "additionalProperties": False}]}
         nodes = []
+        style_props = {}
+        for name, spec in STYLE_PROPERTIES.items():
+            if spec.get("enum"):
+                shape = {"enum": list(spec["enum"])}
+            elif spec.get("color"):
+                shape = {"type": "string", "pattern": "^#[0-9a-fA-F]{8}$"}
+            elif spec["type"] == "int":
+                shape = {"type": "integer", "minimum": spec["minimum"], "maximum": spec["maximum"]}
+            else:
+                shape = {"type": "boolean"}
+            style_props[name] = shape
+        style_shape = {"type": "object", "properties": style_props, "additionalProperties": False}
         for key, entry in sorted(self.entries.items()):
             props = {}
             for name, spec in entry["properties"].items():
@@ -46,7 +73,7 @@ class Registry:
                     shape = {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$"}
                 props[name] = shape
             shape = {"id": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$"}, "type": {"const": key},
-                     "props": {"type": "object", "properties": props, "required": [name for name, spec in entry["properties"].items() if "default" not in spec], "additionalProperties": False}}
+                     "props": {"type": "object", "properties": props, "required": [name for name, spec in entry["properties"].items() if "default" not in spec], "additionalProperties": False}, "style": style_shape}
             required = ["id", "type", "props"]
             if entry.get("children"):
                 shape["children"] = {"type": "array", "items": {"$ref": "#/$defs/node"}}

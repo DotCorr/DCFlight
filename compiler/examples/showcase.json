@@ -1,0 +1,732 @@
+{
+  "version": 1,
+  "id": "com.dotcorr.showcase",
+  "name": "DCFlight Showcase",
+  "state": {
+    "balance": "$24,815.00",
+    "name": "Tahiru",
+    "enabled": true,
+    "count": 2481
+  },
+  "actions": [
+    {
+      "id": "addcredit",
+      "op": "increment",
+      "target": "count"
+    },
+    {
+      "id": "resetcredit",
+      "op": "set",
+      "target": "count",
+      "value": 0
+    },
+    {
+      "id": "freeze",
+      "op": "toggle",
+      "target": "enabled"
+    }
+  ],
+  "root": {
+    "id": "home",
+    "type": "column",
+    "props": {},
+    "style": {
+      "backgroundColor": "#0B0F1AFF",
+      "padding": 22,
+      "spacing": 16,
+      "fillWidth": true
+    },
+    "children": [
+      {
+        "id": "header",
+        "type": "row",
+        "props": {},
+        "style": {
+          "spacing": 12,
+          "alignment": "center",
+          "fillWidth": true
+        },
+        "children": [
+          {
+            "id": "avatar",
+            "type": "text",
+            "props": {
+              "text": "TA"
+            },
+            "style": {
+              "backgroundColor": "#3B82F6FF",
+              "color": "#FFFFFFFF",
+              "fontSize": 15,
+              "fontWeight": "semibold",
+              "padding": 12,
+              "cornerRadius": 22
+            }
+          },
+          {
+            "id": "headcol",
+            "type": "column",
+            "props": {},
+            "style": {
+              "spacing": 2,
+              "fillWidth": true
+            },
+            "children": [
+              {
+                "id": "greet",
+                "type": "text",
+                "props": {
+                  "text": "Good morning"
+                },
+                "style": {
+                  "color": "#9BA8B9FF",
+                  "fontSize": 12,
+                  "fontWeight": "medium"
+                }
+              },
+              {
+                "id": "uname",
+                "type": "text",
+                "props": {
+                  "text": "Tahiru Agbanwa"
+                },
+                "style": {
+                  "color": "#F4F6FBFF",
+                  "fontSize": 16,
+                  "fontWeight": "semibold"
+                }
+              }
+            ]
+          },
+          {
+            "id": "bell",
+            "type": "text",
+            "props": {
+              "text": "\ud83d\udd14"
+            },
+            "style": {
+              "fontSize": 18,
+              "fillWidth": true,
+              "alignment": "end"
+            }
+          }
+        ]
+      },
+      {
+        "id": "balancecard",
+        "type": "column",
+        "props": {},
+        "style": {
+          "backgroundColor": "#151B2BFF",
+          "cornerRadius": 20,
+          "padding": 24,
+          "spacing": 6,
+          "fillWidth": true
+        },
+        "children": [
+          {
+            "id": "blabel",
+            "type": "text",
+            "props": {
+              "text": "TOTAL BALANCE"
+            },
+            "style": {
+              "color": "#9BA8B9FF",
+              "fontSize": 11,
+              "fontWeight": "semibold"
+            }
+          },
+          {
+            "id": "bamount",
+            "type": "text",
+            "props": {
+              "text": {
+                "ref": "balance"
+              }
+            },
+            "style": {
+              "color": "#F4F6FBFF",
+              "fontSize": 34,
+              "fontWeight": "bold"
+            }
+          },
+          {
+            "id": "bchange",
+            "type": "text",
+            "props": {
+              "text": "+2.4% this week"
+            },
+            "style": {
+              "color": "#34D399FF",
+              "fontSize": 13,
+              "fontWeight": "semibold"
+            }
+          },
+          {
+            "id": "sparkbars",
+            "type": "row",
+            "props": {},
+            "style": {
+              "spacing": 5,
+              "alignment": "end",
+              "fillWidth": true
+            },
+            "children": [
+              {
+                "id": "bar1",
+                "type": "text",
+                "props": {
+                  "text": "\u2588"
+                },
+                "style": {
+                  "color": "#1D3A6BFF",
+                  "fontSize": 18
+                }
+              },
+              {
+                "id": "bar2",
+                "type": "text",
+                "props": {
+                  "text": "\u2588"
+                },
+                "style": {
+                  "color": "#1D3A6BFF",
+                  "fontSize": 28
+                }
+              },
+              {
+                "id": "bar3",
+                "type": "text",
+                "props": {
+                  "text": "\u2588"
+                },
+                "style": {
+                  "color": "#1D3A6BFF",
+                  "fontSize": 22
+                }
+              },
+              {
+                "id": "bar4",
+                "type": "text",
+                "props": {
+                  "text": "\u2588"
+                },
+                "style": {
+                  "color": "#3B82F6FF",
+                  "fontSize": 36
+                }
+              },
+              {
+                "id": "bar5",
+                "type": "text",
+                "props": {
+                  "text": "\u2588"
+                },
+                "style": {
+                  "color": "#3B82F6FF",
+                  "fontSize": 30
+                }
+              },
+              {
+                "id": "bar6",
+                "type": "text",
+                "props": {
+                  "text": "\u2588"
+                },
+                "style": {
+                  "color": "#34D399FF",
+                  "fontSize": 44
+                }
+              },
+              {
+                "id": "bar7",
+                "type": "text",
+                "props": {
+                  "text": "\u2588"
+                },
+                "style": {
+                  "color": "#34D399FF",
+                  "fontSize": 38
+                }
+              }
+            ]
+          },
+          {
+            "id": "creditrow",
+            "type": "row",
+            "props": {},
+            "style": {
+              "spacing": 6,
+              "alignment": "center",
+              "fillWidth": true
+            },
+            "children": [
+              {
+                "id": "creditcount",
+                "type": "counter",
+                "props": {
+                  "value": {
+                    "ref": "count"
+                  }
+                },
+                "style": {
+                  "color": "#9BA8B9FF",
+                  "fontSize": 12,
+                  "fontWeight": "medium"
+                }
+              },
+              {
+                "id": "creditlabel",
+                "type": "text",
+                "props": {
+                  "text": "reward credits"
+                },
+                "style": {
+                  "color": "#9BA8B9FF",
+                  "fontSize": 12
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "quickrow",
+        "type": "row",
+        "props": {},
+        "style": {
+          "spacing": 10,
+          "fillWidth": true
+        },
+        "children": [
+          {
+            "id": "btnplus",
+            "type": "button",
+            "props": {
+              "text": "+ Add credit"
+            },
+            "action": "addcredit",
+            "style": {
+              "backgroundColor": "#3B82F6FF",
+              "color": "#FFFFFFFF",
+              "fontSize": 14,
+              "fontWeight": "semibold",
+              "padding": 16,
+              "cornerRadius": 14,
+              "fillWidth": true
+            }
+          },
+          {
+            "id": "btnfreeze",
+            "type": "button",
+            "props": {
+              "text": "Freeze card"
+            },
+            "action": "freeze",
+            "style": {
+              "backgroundColor": "#1D2538FF",
+              "color": "#F4F6FBFF",
+              "fontSize": 14,
+              "fontWeight": "semibold",
+              "padding": 16,
+              "cornerRadius": 14,
+              "fillWidth": true
+            }
+          },
+          {
+            "id": "btnreset",
+            "type": "button",
+            "props": {
+              "text": "Reset"
+            },
+            "action": "resetcredit",
+            "style": {
+              "backgroundColor": "#1D2538FF",
+              "color": "#9BA8B9FF",
+              "fontSize": 14,
+              "fontWeight": "medium",
+              "padding": 16,
+              "cornerRadius": 14,
+              "fillWidth": true
+            }
+          }
+        ]
+      },
+      {
+        "id": "txcard",
+        "type": "column",
+        "props": {},
+        "style": {
+          "backgroundColor": "#151B2BFF",
+          "cornerRadius": 20,
+          "padding": 20,
+          "spacing": 14,
+          "fillWidth": true
+        },
+        "children": [
+          {
+            "id": "txhead",
+            "type": "row",
+            "props": {},
+            "style": {
+              "spacing": 8,
+              "alignment": "center",
+              "fillWidth": true
+            },
+            "children": [
+              {
+                "id": "txtitle",
+                "type": "text",
+                "props": {
+                  "text": "Recent activity"
+                },
+                "style": {
+                  "color": "#F4F6FBFF",
+                  "fontSize": 15,
+                  "fontWeight": "semibold",
+                  "fillWidth": true
+                }
+              },
+              {
+                "id": "txall",
+                "type": "text",
+                "props": {
+                  "text": "See all"
+                },
+                "style": {
+                  "color": "#3B82F6FF",
+                  "fontSize": 13,
+                  "fontWeight": "medium"
+                }
+              }
+            ]
+          },
+          {
+            "id": "txsep",
+            "type": "divider",
+            "props": {},
+            "style": {
+              "backgroundColor": "#262F44FF"
+            }
+          },
+          {
+            "id": "tx1",
+            "type": "row",
+            "props": {},
+            "style": {
+              "spacing": 12,
+              "alignment": "center",
+              "fillWidth": true
+            },
+            "children": [
+              {
+                "id": "ic1",
+                "type": "text",
+                "props": {
+                  "text": "\u2191"
+                },
+                "style": {
+                  "backgroundColor": "#1D2538FF",
+                  "color": "#F87171FF",
+                  "fontSize": 16,
+                  "fontWeight": "bold",
+                  "padding": 10,
+                  "cornerRadius": 12
+                }
+              },
+              {
+                "id": "c1",
+                "type": "column",
+                "props": {},
+                "style": {
+                  "spacing": 2,
+                  "fillWidth": true
+                },
+                "children": [
+                  {
+                    "id": "t1",
+                    "type": "text",
+                    "props": {
+                      "text": "Spotify Premium"
+                    },
+                    "style": {
+                      "color": "#F4F6FBFF",
+                      "fontSize": 14,
+                      "fontWeight": "medium"
+                    }
+                  },
+                  {
+                    "id": "s1",
+                    "type": "text",
+                    "props": {
+                      "text": "Today \u00b7 09:41"
+                    },
+                    "style": {
+                      "color": "#9BA8B9FF",
+                      "fontSize": 11
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "a1",
+                "type": "text",
+                "props": {
+                  "text": "-$9.99"
+                },
+                "style": {
+                  "color": "#F87171FF",
+                  "fontSize": 14,
+                  "fontWeight": "semibold",
+                  "fillWidth": true,
+                  "alignment": "end"
+                }
+              }
+            ]
+          },
+          {
+            "id": "tx2",
+            "type": "row",
+            "props": {},
+            "style": {
+              "spacing": 12,
+              "alignment": "center",
+              "fillWidth": true
+            },
+            "children": [
+              {
+                "id": "ic2",
+                "type": "text",
+                "props": {
+                  "text": "\u2193"
+                },
+                "style": {
+                  "backgroundColor": "#1D2538FF",
+                  "color": "#34D399FF",
+                  "fontSize": 16,
+                  "fontWeight": "bold",
+                  "padding": 10,
+                  "cornerRadius": 12
+                }
+              },
+              {
+                "id": "c2",
+                "type": "column",
+                "props": {},
+                "style": {
+                  "spacing": 2,
+                  "fillWidth": true
+                },
+                "children": [
+                  {
+                    "id": "t2",
+                    "type": "text",
+                    "props": {
+                      "text": "Salary deposit"
+                    },
+                    "style": {
+                      "color": "#F4F6FBFF",
+                      "fontSize": 14,
+                      "fontWeight": "medium"
+                    }
+                  },
+                  {
+                    "id": "s2",
+                    "type": "text",
+                    "props": {
+                      "text": "Mon \u00b7 08:00"
+                    },
+                    "style": {
+                      "color": "#9BA8B9FF",
+                      "fontSize": 11
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "a2",
+                "type": "text",
+                "props": {
+                  "text": "+$4,200.00"
+                },
+                "style": {
+                  "color": "#34D399FF",
+                  "fontSize": 14,
+                  "fontWeight": "semibold",
+                  "fillWidth": true,
+                  "alignment": "end"
+                }
+              }
+            ]
+          },
+          {
+            "id": "tx3",
+            "type": "row",
+            "props": {},
+            "style": {
+              "spacing": 12,
+              "alignment": "center",
+              "fillWidth": true
+            },
+            "children": [
+              {
+                "id": "ic3",
+                "type": "text",
+                "props": {
+                  "text": "\u2191"
+                },
+                "style": {
+                  "backgroundColor": "#1D2538FF",
+                  "color": "#F87171FF",
+                  "fontSize": 16,
+                  "fontWeight": "bold",
+                  "padding": 10,
+                  "cornerRadius": 12
+                }
+              },
+              {
+                "id": "c3",
+                "type": "column",
+                "props": {},
+                "style": {
+                  "spacing": 2,
+                  "fillWidth": true
+                },
+                "children": [
+                  {
+                    "id": "t3",
+                    "type": "text",
+                    "props": {
+                      "text": "Blue Bottle Coffee"
+                    },
+                    "style": {
+                      "color": "#F4F6FBFF",
+                      "fontSize": 14,
+                      "fontWeight": "medium"
+                    }
+                  },
+                  {
+                    "id": "s3",
+                    "type": "text",
+                    "props": {
+                      "text": "Sun \u00b7 10:12"
+                    },
+                    "style": {
+                      "color": "#9BA8B9FF",
+                      "fontSize": 11
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "a3",
+                "type": "text",
+                "props": {
+                  "text": "-$4.50"
+                },
+                "style": {
+                  "color": "#F87171FF",
+                  "fontSize": 14,
+                  "fontWeight": "semibold",
+                  "fillWidth": true,
+                  "alignment": "end"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "toolscard",
+        "type": "column",
+        "props": {},
+        "style": {
+          "backgroundColor": "#151B2BFF",
+          "cornerRadius": 20,
+          "padding": 20,
+          "spacing": 14,
+          "fillWidth": true
+        },
+        "children": [
+          {
+            "id": "toolshead",
+            "type": "row",
+            "props": {},
+            "style": {
+              "spacing": 8,
+              "alignment": "center",
+              "fillWidth": true
+            },
+            "children": [
+              {
+                "id": "toolstitle",
+                "type": "text",
+                "props": {
+                  "text": "Preferences"
+                },
+                "style": {
+                  "color": "#F4F6FBFF",
+                  "fontSize": 15,
+                  "fontWeight": "semibold",
+                  "fillWidth": true
+                }
+              },
+              {
+                "id": "spinner",
+                "type": "progress",
+                "props": {},
+                "style": {
+                  "color": "#3B82F6FF"
+                }
+              }
+            ]
+          },
+          {
+            "id": "field",
+            "type": "textField",
+            "props": {
+              "value": {
+                "ref": "name"
+              },
+              "placeholder": "Display name"
+            },
+            "style": {
+              "backgroundColor": "#0B0F1AFF",
+              "color": "#F4F6FBFF",
+              "fontSize": 14,
+              "padding": 14,
+              "cornerRadius": 12,
+              "fillWidth": true
+            }
+          },
+          {
+            "id": "swrow",
+            "type": "toggle",
+            "props": {
+              "text": "Face ID for payments",
+              "value": {
+                "ref": "enabled"
+              }
+            },
+            "style": {
+              "fontSize": 14,
+              "fontWeight": "medium",
+              "color": "#F4F6FBFF",
+              "fillWidth": true
+            }
+          },
+          {
+            "id": "syncrow",
+            "type": "text",
+            "props": {
+              "text": "All changes compile to native on every build"
+            },
+            "style": {
+              "color": "#9BA8B9FF",
+              "fontSize": 11
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

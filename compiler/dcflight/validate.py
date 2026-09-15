@@ -1,5 +1,6 @@
 import re
 from .ir import Application, Action, ActionOperation, Literal, Node, Reference, ScalarType, State
+from .registry import STYLE_PROPERTIES
 
 
 class Diagnostic(ValueError):
@@ -84,9 +85,32 @@ def lower(data, registry):
         actions.append(Action(aid, ActionOperation(op), target, value))
     seen = set()
 
+    def style(raw_style, path):
+        keys(raw_style, tuple(STYLE_PROPERTIES), (), path + ": style")
+        values = []
+        for name, spec in sorted(STYLE_PROPERTIES.items()):
+            if name not in raw_style:
+                continue
+            value = raw_style[name]
+            if spec.get("color"):
+                check(isinstance(value, str) and re.fullmatch(r"#[0-9a-fA-F]{8}", value) is not None,
+                      path + "." + name + ": expected #RRGGBBAA color")
+                values.append((name, Literal(value.lower(), ScalarType.STRING)))
+            elif spec.get("enum"):
+                check(isinstance(value, str) and value in spec["enum"], path + "." + name + ": expected one of " + ", ".join(spec["enum"]))
+                values.append((name, Literal(value, ScalarType.STRING)))
+            elif spec["type"] == "int":
+                check(type(value) is int and spec["minimum"] <= value <= spec["maximum"],
+                      path + "." + name + ": expected int in [" + str(spec["minimum"]) + ", " + str(spec["maximum"]) + "]")
+                values.append((name, Literal(value, ScalarType.INT)))
+            else:
+                check(type(value) is bool, path + "." + name + ": expected bool")
+                values.append((name, Literal(value, ScalarType.BOOL)))
+        return tuple(values)
+
     def node(raw, depth=0):
         check(depth <= 100, "UI nesting exceeds 100")
-        keys(raw, ("id", "type", "props", "children", "action"), ("id", "type", "props"), "node")
+        keys(raw, ("id", "type", "props", "children", "action", "style"), ("id", "type", "props"), "node")
         nid = identifier(raw["id"], "node.id")
         check(nid.casefold() not in seen, "duplicate node (case-insensitive): " + nid)
         seen.add(nid.casefold())
@@ -104,6 +128,7 @@ def lower(data, registry):
                 check(isinstance(val, Literal), nid + ": " + name + " requires a literal")
                 identifier(val.value, nid + "." + name)
             props.append((name, val))
+        node_style = style(raw["style"], nid) if "style" in raw else ()
         children = raw.get("children", [])
         check(isinstance(children, list), nid + ": children must be an array")
         check(entry.get("children") or "children" not in raw, nid + ": does not accept children")
@@ -113,6 +138,6 @@ def lower(data, registry):
             check(action in seen_actions, nid + ": unknown action")
         else:
             check("action" not in raw, nid + ": does not accept action")
-        return Node(nid, raw["type"], tuple(props), tuple(node(c, depth + 1) for c in children), action)
+        return Node(nid, raw["type"], tuple(props), tuple(node(c, depth + 1) for c in children), action, node_style)
 
     return Application(data["id"], data["name"], states, tuple(sorted(actions, key=lambda a: a.id)), node(data["root"]))

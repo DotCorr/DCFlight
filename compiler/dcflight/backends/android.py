@@ -1,7 +1,37 @@
 from html import escape
 from . import Artifact, HEADER
-from .common import expression, symbol, expand
+from .common import color_java, expression, symbol, expand
 from ..ir import ScalarType, Reference
+
+
+TEXT_CAPABILITIES = ('text', 'counter', 'button', 'toggle', 'textField')
+WEIGHTS_ANDROID = {'medium': 'MEDIUM', 'semibold': 'SEMI_BOLD', 'bold': 'BOLD'}
+GRAVITIES_ANDROID = {'start': 'android.view.Gravity.START', 'center': 'android.view.Gravity.CENTER', 'end': 'android.view.Gravity.END'}
+
+
+def android_text_style(name, capability, style, lines):
+    if 'color' in style and capability in ('text', 'counter', 'textField', 'button', 'toggle'):
+        lines.append(name + '.setTextColor(android.graphics.Color.parseColor("' + color_java(style['color']) + '"));')
+    if 'fontSize' in style and capability in TEXT_CAPABILITIES:
+        lines.append(name + '.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, %d);' % style['fontSize'])
+    weight = style.get('fontWeight')
+    if weight and capability in ('text', 'counter', 'textField', 'button', 'toggle'):
+        lines.append(name + '.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.' + WEIGHTS_ANDROID[weight] + '));')
+    if capability == 'button':
+        lines.append(name + '.setAllCaps(false);')
+    if capability == 'progress' and 'color' in style:
+        lines.append(name + '.getIndeterminateDrawable().setTint(android.graphics.Color.parseColor("' + color_java(style['color']) + '"));')
+
+
+def android_box_style(name, style, lines):
+    if style.get('padding'):
+        pads = ('%d * dp' % style['padding'],) * 4
+        lines.append(name + '.setPadding(%s, %s, %s, %s);' % pads)
+    if 'backgroundColor' in style:
+        lines.append('android.graphics.drawable.GradientDrawable styled_' + name + ' = new android.graphics.drawable.GradientDrawable();')
+        lines.append('styled_' + name + '.setColor(android.graphics.Color.parseColor("' + color_java(style['backgroundColor']) + '"));')
+        lines.append('styled_' + name + '.setCornerRadius(%d * dp);' % style.get('cornerRadius', 0))
+        lines.append(name + '.setBackground(styled_' + name + ');')
 
 
 class Android:
@@ -34,17 +64,19 @@ public final class MainActivity extends android.app.Activity {
         AppModel model = new AppModel();
         AppScreen screen = new AppScreen(this, model);
         android.widget.FrameLayout host = new android.widget.FrameLayout(this);
+        host.setBackgroundColor(android.graphics.Color.parseColor("__ROOT_BG__"));
         host.setOnApplyWindowInsetsListener((view, insets) -> {
             view.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(),
                 insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
             return insets;
         });
-        host.addView(screen.root);
+        host.addView(screen.root, new android.widget.FrameLayout.LayoutParams(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT));
         setContentView(host);
         host.requestApplyInsets();
     }
 }
-''', 'user')
+'''.replace('__ROOT_BG__', color_java({key: value.value for key, value in app.root.style}.get('backgroundColor', '#FFFFFFFF'))), 'user')
         types = {ScalarType.STRING: 'String', ScalarType.INT: 'int', ScalarType.BOOL: 'boolean'}
         state = '\n'.join('    public ' + types[s.initial.type] + ' s_' + s.name + ' = ' + expression(s.initial, 'android') + ';' for s in app.states)
         methods = []
@@ -61,6 +93,7 @@ public final class MainActivity extends android.app.Activity {
             methods.append('    public void a_' + action.id + '() { ' + body + ' }')
         put(java + 'AppModel.java', HEADER + 'package ' + app.id + ';\npublic final class AppModel {\n' + state + '\n' + '\n'.join(methods) + '\n}\n')
         fields, builds, updates, listeners = [], [], [], []
+        container_margins, container_gravity = {}, {}
         for node in app.nodes():
             name = symbol(node.id)
             mapping = registry.get(node.capability)['targets']['android']
@@ -74,6 +107,17 @@ public final class MainActivity extends android.app.Activity {
             values = {key: expression(value, 'android') for key, value in node.properties}
             values['view'] = name
             updates.append(expand(mapping['update'], values))
+            style = {key: value.value for key, value in node.style}
+            style_lines = []
+            if node.capability in ('column', 'row'):
+                spacing = style.get('spacing', 0)
+                alignment = style.get('alignment', 'start')
+                for index, child in enumerate(node.children):
+                    container_margins[symbol(child.id)] = spacing if index else 0
+                    container_gravity[symbol(child.id)] = alignment
+            android_text_style(name, node.capability, style, style_lines)
+            android_box_style(name, style, style_lines)
+            builds.extend(style_lines)
             if node.action:
                 listeners.append(name + '.setOnClickListener(v -> { model.a_' + node.action + '(); refresh(); });')
             if node.capability == 'toggle':
@@ -91,17 +135,35 @@ public final class MainActivity extends android.app.Activity {
         # All views exist before parenting. Reordering changes this structural file only.
         for node in app.nodes():
             for child in node.children:
+                child_name = symbol(child.id)
                 height = '1' if child.capability == 'divider' else 'android.view.ViewGroup.LayoutParams.WRAP_CONTENT'
                 width = 'android.view.ViewGroup.LayoutParams.MATCH_PARENT' if child.capability == 'divider' else 'android.view.ViewGroup.LayoutParams.WRAP_CONTENT'
-                builds.append(symbol(node.id) + '.addView(' + symbol(child.id) + ', new android.widget.LinearLayout.LayoutParams(' + width + ', ' + height + '));')
+                if {key: value.value for key, value in child.style}.get('fillWidth') and child.capability != 'divider':
+                    width = 'android.view.ViewGroup.LayoutParams.MATCH_PARENT'
+                params = 'new android.widget.LinearLayout.LayoutParams(' + width + ', ' + height + ')'
+                modifiers = []
+                margin = container_margins.get(child_name, 0)
+                if margin:
+                    modifiers.append('params_' + child_name + '.setMargins(0, %d * dp, 0, 0);' % margin)
+                gravity = container_gravity.get(child_name)
+                if gravity and gravity != 'start':
+                    modifiers.append('params_' + child_name + '.gravity = ' + GRAVITIES_ANDROID[gravity] + ';')
+                if modifiers:
+                    builds.append('android.widget.LinearLayout.LayoutParams params_' + child_name + ' = ' + params + ';')
+                    builds.extend(modifiers)
+                    builds.append(symbol(node.id) + '.addView(' + child_name + ', params_' + child_name + ');')
+                else:
+                    builds.append(symbol(node.id) + '.addView(' + child_name + ', ' + params + ');')
         body = HEADER + 'package ' + app.id + ''';
 public final class AppScreen {
     public final android.view.View root;
     private final AppModel model;
+    private final int dp;
     private boolean updating;
 ''' + '\n'.join(fields) + '''
     public AppScreen(android.app.Activity activity, AppModel model) {
         this.model = model;
+        this.dp = Math.round(activity.getResources().getDisplayMetrics().density);
 ''' + '\n'.join(builds) + '\nroot = ' + symbol(app.root.id) + ';\n' + '\n'.join(listeners) + '''
         refresh();
     }

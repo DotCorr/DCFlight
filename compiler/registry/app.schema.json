@@ -180,6 +180,58 @@
               ],
               "additionalProperties": false
             },
+            "style": {
+              "type": "object",
+              "properties": {
+                "color": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{8}$"
+                },
+                "fontSize": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 96
+                },
+                "fontWeight": {
+                  "enum": [
+                    "regular",
+                    "medium",
+                    "semibold",
+                    "bold"
+                  ]
+                },
+                "backgroundColor": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{8}$"
+                },
+                "padding": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "cornerRadius": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "spacing": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "alignment": {
+                  "enum": [
+                    "start",
+                    "center",
+                    "end"
+                  ]
+                },
+                "fillWidth": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            },
             "action": {
               "type": "string"
             }
@@ -206,6 +258,58 @@
               "type": "object",
               "properties": {},
               "required": [],
+              "additionalProperties": false
+            },
+            "style": {
+              "type": "object",
+              "properties": {
+                "color": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{8}$"
+                },
+                "fontSize": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 96
+                },
+                "fontWeight": {
+                  "enum": [
+                    "regular",
+                    "medium",
+                    "semibold",
+                    "bold"
+                  ]
+                },
+                "backgroundColor": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{8}$"
+                },
+                "padding": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "cornerRadius": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "spacing": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "alignment": {
+                  "enum": [
+                    "start",
+                    "center",
+                    "end"
+                  ]
+                },
+                "fillWidth": {
+                  "type": "boolean"
+                }
+              },
               "additionalProperties": false
             },
             "children": {
@@ -261,6 +365,58 @@
                 "value"
               ],
               "additionalProperties": false
+            },
+            "style": {
+              "type": "object",
+              "properties": {
+                "color": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{8}$"
+                },
+                "fontSize": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 96
+                },
+                "fontWeight": {
+                  "enum": [
+                    "regular",
+                    "medium",
+                    "semibold",
+                    "bold"
+                  ]
+                },
+                "backgroundColor": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{8}$"
+                },
+                "padding": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "cornerRadius": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "spacing": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "alignment": {
+                  "enum": [
+                    "start",
+                    "center",
+                    "end"
+                  ]
+                },
+                "fillWidth": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "required": [
@@ -284,6 +440,58 @@
               "type": "object",
               "properties": {},
               "required": [],
+              "additionalProperties": false
+            },
+            "style": {
+              "type": "object",
+              "properties": {
+                "color": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{8}$"
+                },
+                "fontSize": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 96
+                },
+                "fontWeight": {
+                  "enum": [
+                    "regular",
+                    "medium",
+                    "semibold",
+                    "bold"
+                  ]
+                },
+                "backgroundColor": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{8}$"
+                },
+                "padding": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "cornerRadius": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "spacing": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "alignment": {
+                  "enum": [
+                    "start",
+                    "center",
+                    "end"
+                  ]
+                },
+                "fillWidth": {
+                  "type": "boolean"
+                }
+              },
               "additionalProperties": false
             }
           },
@@ -316,6 +524,58 @@
                 "symbol"
               ],
               "additionalProperties": false
+            },
+            "style": {
+              "type": "object",
+              "properties": {
+                "color": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{8}$"
+                },
+                "fontSize": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 96
+                },
+                "fontWeight": {
+                  "enum": [
+                    "regular",
+                    "medium",
+                    "semibold",
+                    "bold"
+                  ]
+                },
+                "backgroundColor": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{8}$"
+                },
+                "padding": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "cornerRadius": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "spacing": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "alignment": {
+                  "enum": [
+                    "start",
+                    "center",
+                    "end"
+                  ]
+                },
+                "fillWidth": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "required": [
@@ -340,6 +600,58 @@
               "properties": {},
               "required": [],
               "additionalProperties": false
+            },
+            "style": {
+              "type": "object",
+              "properties": {
+                "color": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{8}$"
+                },
+                "fontSize": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 96
+                },
+                "fontWeight": {
+                  "enum": [
+                    "regular",
+                    "medium",
+                    "semibold",
+                    "bold"
+                  ]
+                },
+                "backgroundColor": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{8}$"
+                },
+                "padding": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "cornerRadius": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "spacing": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "alignment": {
+                  "enum": [
+                    "start",
+                    "center",
+                    "end"
+                  ]
+                },
+                "fillWidth": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "required": [
@@ -363,6 +675,58 @@
               "type": "object",
               "properties": {},
               "required": [],
+              "additionalProperties": false
+            },
+            "style": {
+              "type": "object",
+              "properties": {
+                "color": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{8}$"
+                },
+                "fontSize": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 96
+                },
+                "fontWeight": {
+                  "enum": [
+                    "regular",
+                    "medium",
+                    "semibold",
+                    "bold"
+                  ]
+                },
+                "backgroundColor": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{8}$"
+                },
+                "padding": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "cornerRadius": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "spacing": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "alignment": {
+                  "enum": [
+                    "start",
+                    "center",
+                    "end"
+                  ]
+                },
+                "fillWidth": {
+                  "type": "boolean"
+                }
+              },
               "additionalProperties": false
             },
             "children": {
@@ -415,6 +779,58 @@
               "required": [
                 "text"
               ],
+              "additionalProperties": false
+            },
+            "style": {
+              "type": "object",
+              "properties": {
+                "color": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{8}$"
+                },
+                "fontSize": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 96
+                },
+                "fontWeight": {
+                  "enum": [
+                    "regular",
+                    "medium",
+                    "semibold",
+                    "bold"
+                  ]
+                },
+                "backgroundColor": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{8}$"
+                },
+                "padding": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "cornerRadius": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "spacing": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "alignment": {
+                  "enum": [
+                    "start",
+                    "center",
+                    "end"
+                  ]
+                },
+                "fillWidth": {
+                  "type": "boolean"
+                }
+              },
               "additionalProperties": false
             }
           },
@@ -474,6 +890,58 @@
                 "value"
               ],
               "additionalProperties": false
+            },
+            "style": {
+              "type": "object",
+              "properties": {
+                "color": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{8}$"
+                },
+                "fontSize": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 96
+                },
+                "fontWeight": {
+                  "enum": [
+                    "regular",
+                    "medium",
+                    "semibold",
+                    "bold"
+                  ]
+                },
+                "backgroundColor": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{8}$"
+                },
+                "padding": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "cornerRadius": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "spacing": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "alignment": {
+                  "enum": [
+                    "start",
+                    "center",
+                    "end"
+                  ]
+                },
+                "fillWidth": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "required": [
@@ -532,6 +1000,58 @@
                 "text",
                 "value"
               ],
+              "additionalProperties": false
+            },
+            "style": {
+              "type": "object",
+              "properties": {
+                "color": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{8}$"
+                },
+                "fontSize": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 96
+                },
+                "fontWeight": {
+                  "enum": [
+                    "regular",
+                    "medium",
+                    "semibold",
+                    "bold"
+                  ]
+                },
+                "backgroundColor": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{8}$"
+                },
+                "padding": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "cornerRadius": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "spacing": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64
+                },
+                "alignment": {
+                  "enum": [
+                    "start",
+                    "center",
+                    "end"
+                  ]
+                },
+                "fillWidth": {
+                  "type": "boolean"
+                }
+              },
               "additionalProperties": false
             }
           },

@@ -1,7 +1,45 @@
 import json
 from . import Artifact, HEADER
-from .common import expression, symbol, expand
+from .common import color_int, expression, symbol, expand
 from ..ir import ScalarType
+
+
+def dc_color(hex_color):
+    return 'Color(dcHex: 0x%X)' % color_int(hex_color)
+
+
+def ios_modifiers(node):
+    """Reviewed style modifiers, applied in a fixed, documented order."""
+    style = {key: value.value for key, value in node.style}
+    mods = []
+    size, weight = style.get('fontSize'), style.get('fontWeight')
+    if size is not None and weight is not None:
+        mods.append('.font(.system(size: %d, weight: .%s))' % (size, weight))
+    elif size is not None:
+        mods.append('.font(.system(size: %d))' % size)
+    elif weight is not None:
+        mods.append('.fontWeight(.%s)' % weight)
+    if 'color' in style:
+        if node.capability == 'toggle':
+            mods.append('.tint(%s)' % dc_color(style['color']))
+            mods.append('.foregroundColor(%s)' % dc_color(style['color']))
+        elif node.capability == 'progress':
+            mods.append('.tint(%s)' % dc_color(style['color']))
+        else:
+            mods.append('.foregroundColor(%s)' % dc_color(style['color']))
+    if 'padding' in style:
+        mods.append('.padding(%d)' % style['padding'])
+    if 'backgroundColor' in style:
+        mods.append('.background(%s)' % dc_color(style['backgroundColor']))
+    if 'cornerRadius' in style:
+        mods.append('.cornerRadius(%d)' % style['cornerRadius'])
+    if style.get('fillWidth'):
+        if node.capability in ('text', 'counter'):
+            frame_alignment = {'start': '.leading', 'center': '.center', 'end': '.trailing'}[style.get('alignment', 'start')]
+            mods.append('.frame(maxWidth: .infinity, alignment: %s)' % frame_alignment)
+        else:
+            mods.append('.frame(maxWidth: .infinity)')
+    return ''.join(mods)
 
 
 PROJECT = '''// !$*UTF8*$!
@@ -42,14 +80,32 @@ class IOS:
 struct AppMain: App {
     @StateObject private var model = AppModel()
     var body: some Scene {
-        WindowGroup { RootView(model: model).padding() }
+        WindowGroup { RootView(model: model) }
     }
 }
 ''', 'user')
+        root_style = {key: value.value for key, value in app.root.style}
+        root_bg = (dc_color(root_style['backgroundColor']) + '.ignoresSafeArea()') if 'backgroundColor' in root_style else 'Color.clear.ignoresSafeArea()'
         put('App/Generated/RootView.swift', HEADER + '''import SwiftUI
 struct RootView: View {
     @ObservedObject var model: AppModel
-    var body: some View { ''' + symbol(app.root.id) + '''(model: model) }
+    var body: some View {
+        ZStack {
+            ''' + root_bg + '''
+            ''' + symbol(app.root.id) + '''(model: model)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+}
+''')
+        put('App/Generated/DCColor.swift', HEADER + '''import SwiftUI
+extension Color {
+    init(dcHex: UInt32) {
+        self.init(red: Double((dcHex >> 24) & 0xFF) / 255.0,
+                  green: Double((dcHex >> 16) & 0xFF) / 255.0,
+                  blue: Double((dcHex >> 8) & 0xFF) / 255.0,
+                  opacity: Double(dcHex & 0xFF) / 255.0)
+    }
 }
 ''')
         types = {ScalarType.STRING: 'String', ScalarType.INT: 'Int32', ScalarType.BOOL: 'Bool'}
@@ -77,6 +133,18 @@ struct RootView: View {
                     values['binding_' + key] = '$model.s_' + props[key].name
             if node.capability == 'native':
                 values['symbol'] = 'v_' + props['symbol'].value
-            body = expand(mapping['expression'], values)
+            style = {key: value.value for key, value in node.style}
+            if node.capability in ('column', 'row'):
+                stack = 'VStack' if node.capability == 'column' else 'HStack'
+                # Cross-axis alignment: VStack aligns horizontally, HStack vertically.
+                axis = {'column': {'start': '.leading', 'center': '.center', 'end': '.trailing'},
+                        'row': {'start': '.top', 'center': '.center', 'end': '.bottom'}}[node.capability]
+                args = ['alignment: ' + axis[style.get('alignment', 'start')]]
+                if 'spacing' in style:
+                    args.append('spacing: %d' % style['spacing'])
+                body = stack + '(' + ', '.join(args) + ') {\n' + values['children'] + '\n}'
+            else:
+                body = expand(mapping['expression'], values)
+            body = body + ios_modifiers(node)
             put('App/Generated/Nodes/' + symbol(node.id) + '.swift', HEADER + 'import SwiftUI\nstruct ' + symbol(node.id) + ': View {\n    @ObservedObject var model: AppModel\n    var body: some View {\n' + body + '\n    }\n}\n')
         return files

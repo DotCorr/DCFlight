@@ -56,6 +56,7 @@ class Node:
     properties: Tuple[Tuple[str, Expression], ...]
     children: Tuple["Node", ...]
     action: Optional[str] = None
+    style: Tuple[Tuple[str, Literal], ...] = ()
 
     def props(self):
         return dict(self.properties)

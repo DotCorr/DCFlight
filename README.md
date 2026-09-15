@@ -10,7 +10,7 @@
   <img src="docs/screenshot.png" width="320" alt="DCFlight Showcase running as a real SwiftUI app in iPhone Simulator — one JSON source, zero runtime">
 </p>
 
-<p align="center"><em>The screenshot above is a real, unmodified iPhone Simulator screenshot of the showcase app defined in <a href="#one-true-source">One true source</a> below. There is no DCFlight code inside it.</em></p>
+<p align="center"><em>A real, unmodified iPhone Simulator screenshot — a dark production-grade fintech UI compiled to pure SwiftUI from the one true source below. There is no DCFlight code inside the app.</em></p>
 
 ## What DCFlight actually is
 
@@ -68,49 +68,79 @@ The compiled apps contain no DCFlight runtime, no Dart VM, no JavaScript engine,
 
 ## One true source
 
-Write your app once — as JSON, or as the restricted DC Dart form:
+Write your app once — as JSON, or as the restricted DC Dart form. An excerpt of the real showcase app ([full source](compiler/examples/showcase.json)):
 
 ```json
 {
-  "version": 1,
-  "id": "com.dotcorr.showcase",
-  "name": "DCFlight Showcase",
-  "state": {"count": 0, "enabled": true, "name": "Ada"},
+  "state": {"balance": "$24,815.00", "enabled": true, "count": 2481},
   "actions": [
-    {"id": "add", "op": "increment", "target": "count"},
-    {"id": "reset", "op": "set", "target": "count", "value": 0}
+    {"id": "addcredit", "op": "increment", "target": "count"},
+    {"id": "resetcredit", "op": "set", "target": "count", "value": 0},
+    {"id": "freeze", "op": "toggle", "target": "enabled"}
   ],
-  "root": {"id": "home", "type": "column", "props": {}, "children": [
-    {"id": "brand", "type": "text", "props": {"text": "DCFlight Showcase"}},
-    {"id": "count", "type": "counter", "props": {"value": {"ref": "count"}}},
-    {"id": "buttons", "type": "row", "props": {}, "children": [
-      {"id": "add", "type": "button", "props": {"text": "Add one"}, "action": "add"},
-      {"id": "reset", "type": "button", "props": {"text": "Reset"}, "action": "reset"}
-    ]},
-    {"id": "enabled", "type": "toggle", "props": {"text": "Enabled", "value": {"ref": "enabled"}}},
-    {"id": "name", "type": "textField", "props": {"value": {"ref": "name"}, "placeholder": "Your name"}},
-    {"id": "greeting", "type": "text", "props": {"text": {"ref": "name"}}}
-  ]}
+  "root": {
+    "id": "home", "type": "column",
+    "style": {"backgroundColor": "#0B0F1AFF", "padding": 22, "spacing": 16, "fillWidth": true},
+    "children": [
+      {"id": "bamount", "type": "text", "props": {"text": {"ref": "balance"}},
+       "style": {"color": "#F4F6FBFF", "fontSize": 34, "fontWeight": "bold"}},
+      {"id": "bchange", "type": "text", "props": {"text": "+2.4% this week"},
+       "style": {"color": "#34D399FF", "fontSize": 13, "fontWeight": "semibold"}},
+      {"id": "btnplus", "type": "button", "props": {"text": "+ Add credit"}, "action": "addcredit",
+       "style": {"backgroundColor": "#3B82F6FF", "color": "#FFFFFFFF", "padding": 16, "cornerRadius": 14, "fillWidth": true}}
+    ]
+  }
 }
 ```
 
-Compile it and each platform gets its own real code. The same `count` state and `add` action become a SwiftUI view observing an `AppModel` on iOS:
+Compile it and each platform gets its own real code. The same `count` state and `addcredit` action become a styled SwiftUI card observing an `AppModel` on iOS:
 
 ```swift
-struct n_count: View {
+struct n_balancecard: View {
     @ObservedObject var model: AppModel
     var body: some View {
-        Text(String(model.s_count))
+        VStack(alignment: .leading, spacing: 6) {
+            n_blabel(model: model)
+            n_bamount(model: model)
+            n_bchange(model: model)
+            n_sparkbars(model: model)
+            n_creditrow(model: model)
+        }
+        .padding(24)
+        .background(Color(dcHex: 0x151B2BFF))
+        .cornerRadius(20)
+        .frame(maxWidth: .infinity)
     }
 }
 ```
 
-and a button listener driving a plain Kotlin-era Java model on Android:
+with the balance text styled exactly as declared:
+
+```swift
+Text(model.s_balance)
+    .font(.system(size: 34, weight: .bold))
+    .foregroundColor(Color(dcHex: 0xF4F6FBFF))
+```
+
+and an ordinary Android `LinearLayout` with its own GradientDrawable, driving a plain Java model:
+
+```java
+n_balancecard = new android.widget.LinearLayout(activity);
+n_balancecard.setPadding(24 * dp, 24 * dp, 24 * dp, 24 * dp);
+android.graphics.drawable.GradientDrawable styled_n_balancecard =
+    new android.graphics.drawable.GradientDrawable();
+styled_n_balancecard.setColor(android.graphics.Color.parseColor("#ff151b2b"));
+styled_n_balancecard.setCornerRadius(20 * dp);
+n_balancecard.setBackground(styled_n_balancecard);
+```
 
 ```java
 public final class AppModel {
-    public int s_count = 0;
-    public void a_add() { s_count++; }
+    public String s_balance = "$24,815.00";
+    public int s_count = 2481;
+    public void a_addcredit() { s_count++; }
+    public void a_freeze() { s_enabled = !s_enabled; }
+    public void a_resetcredit() { s_count = 0; }
 }
 ```
 
@@ -170,7 +200,7 @@ Your generated projects are yours: user-owned native files are never overwritten
 
 ## Current scope
 
-Reviewed capabilities today: text, counter, button, column, row, toggle, text field, divider, progress indicator, plus user-native view/action escape hatches. State: strings, Int32 and booleans. Actions: assignment, increment and boolean toggle. See `compiler/examples/catalog.json`.
+Reviewed capabilities today: text, counter, button, column, row, toggle, text field, divider, progress indicator, plus user-native view/action escape hatches — each with a reviewed style vocabulary (hex colors, font size and weight, padding, corner radius, spacing, alignment, fill width), so compiled apps look production-grade straight from the source. State: strings, Int32 and booleans. Actions: assignment, increment and boolean toggle. See `compiler/examples/catalog.json` and `compiler/examples/showcase.json`.
 
 Not yet claimed: Web, Windows and Linux backends (extension points exist), production navigation, persistence, animations, and arbitrary Dart logic translation. The compiler is honest about what it supports — unsupported means unsupported, at compile time.
 

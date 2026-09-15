@@ -8,6 +8,15 @@
           "type": "string"
         }
       },
+      "style": [
+        "color",
+        "fontSize",
+        "fontWeight",
+        "padding",
+        "backgroundColor",
+        "cornerRadius",
+        "fillWidth"
+      ],
       "children": false,
       "action": false,
       "targets": {
@@ -30,6 +39,15 @@
           "type": "int"
         }
       },
+      "style": [
+        "color",
+        "fontSize",
+        "fontWeight",
+        "padding",
+        "backgroundColor",
+        "cornerRadius",
+        "fillWidth"
+      ],
       "children": false,
       "action": false,
       "targets": {
@@ -52,6 +70,15 @@
           "type": "string"
         }
       },
+      "style": [
+        "color",
+        "fontSize",
+        "fontWeight",
+        "padding",
+        "backgroundColor",
+        "cornerRadius",
+        "fillWidth"
+      ],
       "children": false,
       "action": true,
       "targets": {
@@ -70,6 +97,14 @@
     {
       "id": "column",
       "properties": {},
+      "style": [
+        "spacing",
+        "alignment",
+        "padding",
+        "backgroundColor",
+        "cornerRadius",
+        "fillWidth"
+      ],
       "children": true,
       "action": false,
       "targets": {
@@ -88,6 +123,14 @@
     {
       "id": "row",
       "properties": {},
+      "style": [
+        "spacing",
+        "alignment",
+        "padding",
+        "backgroundColor",
+        "cornerRadius",
+        "fillWidth"
+      ],
       "children": true,
       "action": false,
       "targets": {
@@ -114,6 +157,15 @@
           "binding": true
         }
       },
+      "style": [
+        "color",
+        "fontSize",
+        "fontWeight",
+        "padding",
+        "backgroundColor",
+        "cornerRadius",
+        "fillWidth"
+      ],
       "children": false,
       "action": false,
       "targets": {
@@ -141,6 +193,15 @@
           "default": ""
         }
       },
+      "style": [
+        "color",
+        "fontSize",
+        "fontWeight",
+        "padding",
+        "backgroundColor",
+        "cornerRadius",
+        "fillWidth"
+      ],
       "children": false,
       "action": false,
       "targets": {
@@ -159,6 +220,10 @@
     {
       "id": "divider",
       "properties": {},
+      "style": [
+        "backgroundColor",
+        "fillWidth"
+      ],
       "children": false,
       "action": false,
       "targets": {
@@ -177,6 +242,10 @@
     {
       "id": "progress",
       "properties": {},
+      "style": [
+        "color",
+        "fillWidth"
+      ],
       "children": false,
       "action": false,
       "targets": {
@@ -200,6 +269,7 @@
           "literal": true
         }
       },
+      "style": [],
       "children": false,
       "action": false,
       "targets": {
