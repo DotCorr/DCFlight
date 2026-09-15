@@ -180,7 +180,7 @@ Issues and PRs welcome — read `compiler/AGENTS.md` for the invariants (develop
 
 ## License
 
-DCFlight is licensed under the [PolyForm Noncommercial License 1.0.0](compiler/LICENSE). Commercial use requires a license from DotCorr — contact licensing@dotcorr.com.
+DCFlight is licensed under the [PolyForm Noncommercial License 1.0.0](compiler/LICENSE). Commercial use requires a license from DotCorr — contact tahiru@dotcorr.com.
 
 ## Support
 
