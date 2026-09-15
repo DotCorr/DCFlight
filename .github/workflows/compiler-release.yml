@@ -13,7 +13,7 @@ permissions:
   contents: write
 jobs:
   wheel:
-    runs-on: ubuntu-latest
+    runs-on: macos-15
     defaults:
       run:
         working-directory: compiler
@@ -25,6 +25,12 @@ jobs:
         with:
           python-version: '3.11'
       - uses: dart-lang/setup-dart@v1
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install test dependencies
+        run: python3 -m pip install jsonschema
       - name: Run compiler test suite
         run: python3 -m unittest discover -s tests -v
       - name: Registry check
