@@ -1,9 +1,193 @@
-# dcflight
+# DCFlight
 
-This is the new dcflight project. It is separate from the old DCFlight runtime framework.
+<p align="center">
+  <a href="https://github.com/DotCorr/DCFlight/actions/workflows/compiler.yml"><img src="https://github.com/DotCorr/DCFlight/actions/workflows/compiler.yml/badge.svg" alt="Compiler CI"></a>
+  <img src="https://img.shields.io/badge/license-PolyForm%20Noncommercial-orange" alt="License: PolyForm Noncommercial">
+  <a href="https://www.buymeacoffee.com/squirelboy360"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-squirelboy360-yellow" alt="Buy Me A Coffee"></a>
+</p>
 
-The compiler implementation is in [compiler/](compiler/README.md).
+<p align="center">
+  <img src="docs/screenshot.png" width="320" alt="DCFlight Showcase running as a real SwiftUI app in iPhone Simulator — one JSON source, zero runtime">
+</p>
 
-The architecture is development-time only: authoring, compilation, native API registry, source synchronization and AI tooling. Generated applications are ordinary native projects with no dcflight runtime, renderer, Dart VM or introduced JavaScript engine. DC Dart is the chosen shared logic language, compiled ahead of time.
+<p align="center"><em>The screenshot above is a real, unmodified iPhone Simulator screenshot of the showcase app defined in <a href="#one-true-source">One true source</a> below. There is no DCFlight code inside it.</em></p>
 
-This folder contains a copy of the current new implementation. Active work in the original main task has not been redirected or removed by this side conversation.
+## What DCFlight actually is
+
+DCFlight is **not a cross-platform framework**. There is no runtime, no renderer, no bridge, no engine, and nothing that ships inside your app.
+
+DCFlight is a **cross-platform compiler** — a development-time tool that compiles one true source into **two real, independently native apps**: ordinary Swift/SwiftUI for iOS and ordinary Java/Android Views for Android. We call it *beside native, not on top of native*.
+
+Almost every "cross-platform" tool is an **abstraction on top of native**: your code runs in an engine or runtime that owns the screen, talks to native views through a bridge, and ships inside every app you distribute.
+
+```
+   ┌────────────────────────────────────────────┐
+   │  Cross-platform frameworks (the usual way) │
+   │                                            │
+   │         ┌──────────────────────┐           │
+   │         │   Your framework     │           │
+   │         │  runtime · bridge ·  │           │
+   │         │  renderer · engine   │           │
+   │         └──────────┬───────────┘           │
+   │                    ▼                       │
+   │   ┌─────────────┐    ┌──────────────┐      │
+   │   │    iOS      │    │   Android    │      │
+   │   │  (on top)   │    │   (on top)   │      │
+   │   └─────────────┘    └──────────────┘      │
+   │   Your app = framework + native underneath │
+   └────────────────────────────────────────────┘
+```
+
+DCFlight has no layer on top. It is a tool that runs **only on your machine, at development time**, and its output is native source code that stands **beside** the platform toolchain — not above it:
+
+```
+   ┌────────────────────────────────────────────┐
+   │              DCFlight (the new way)        │
+   │                                            │
+   │  One true source ──▶ dcflight compile      │
+   │  (JSON or DC      │  (development-time     │
+   │   Dart)           │   tool on your Mac)    │
+   │                   ▼                        │
+   │        ┌──────────────────────┐            │
+   │        │  Pure native output  │            │
+   │        └──────────┬───────────┘            │
+   │          ┌────────┴─────────┐              │
+   │          ▼                  ▼              │
+   │   ┌─────────────┐    ┌──────────────┐      │
+   │   │ Swift +     │    │ Java +       │      │
+   │   │ SwiftUI     │    │ Android      │      │
+   │   │ (Xcode      │    │ Views        │      │
+   │   │ toolchain)  │    │ (Gradle      │      │
+   │   │             │    │ toolchain)   │      │
+   │   └─────────────┘    └──────────────┘      │
+   │   Your app = 100% native. Nothing inside.  │
+   └────────────────────────────────────────────┘
+```
+
+The compiled apps contain no DCFlight runtime, no Dart VM, no JavaScript engine, no bridge, no renderer, and no registry. They build with Xcode and Gradle exactly like hand-written native projects — because that is what they are. DCFlight steps out of the picture the moment compilation ends.
+
+## One true source
+
+Write your app once — as JSON, or as the restricted DC Dart form:
+
+```json
+{
+  "version": 1,
+  "id": "com.dotcorr.showcase",
+  "name": "DCFlight Showcase",
+  "state": {"count": 0, "enabled": true, "name": "Ada"},
+  "actions": [
+    {"id": "add", "op": "increment", "target": "count"},
+    {"id": "reset", "op": "set", "target": "count", "value": 0}
+  ],
+  "root": {"id": "home", "type": "column", "props": {}, "children": [
+    {"id": "brand", "type": "text", "props": {"text": "DCFlight Showcase"}},
+    {"id": "count", "type": "counter", "props": {"value": {"ref": "count"}}},
+    {"id": "buttons", "type": "row", "props": {}, "children": [
+      {"id": "add", "type": "button", "props": {"text": "Add one"}, "action": "add"},
+      {"id": "reset", "type": "button", "props": {"text": "Reset"}, "action": "reset"}
+    ]},
+    {"id": "enabled", "type": "toggle", "props": {"text": "Enabled", "value": {"ref": "enabled"}}},
+    {"id": "name", "type": "textField", "props": {"value": {"ref": "name"}, "placeholder": "Your name"}},
+    {"id": "greeting", "type": "text", "props": {"text": {"ref": "name"}}}
+  ]}
+}
+```
+
+Compile it and each platform gets its own real code. The same `count` state and `add` action become a SwiftUI view observing an `AppModel` on iOS:
+
+```swift
+struct n_count: View {
+    @ObservedObject var model: AppModel
+    var body: some View {
+        Text(String(model.s_count))
+    }
+}
+```
+
+and a button listener driving a plain Kotlin-era Java model on Android:
+
+```java
+public final class AppModel {
+    public int s_count = 0;
+    public void a_add() { s_count++; }
+}
+```
+
+No interpretation at runtime. The iOS output is SwiftUI; the Android output is Android Views; each is owned by its platform toolchain from that point on.
+
+## Quick start
+
+macOS with Xcode 16+ is required for the iOS run flow. Python 3.9+ is the only compiler dependency.
+
+```sh
+git clone https://github.com/DotCorr/DCFlight.git
+cd DCFlight/compiler
+
+# Create an app: generates both native projects from one source
+./bin/dcflight create /absolute/path/to/my-app --name "My App" --id com.example.myapp
+
+# Build, install and launch the iOS app in Simulator
+./bin/dcflight run /absolute/path/to/my-app
+```
+
+Edit `app.json`, run `./bin/dcflight run` again — native rebuild and relaunch each time. That is the whole loop. (This is rebuild/relaunch, not hot reload — by design: the app on your device is pure native and has no DCFlight code in it to hot-reload.)
+
+For Android, open the generated `native/android` project in Android Studio and press Run — it is an ordinary Gradle project (JDK 17, Gradle 8.11.1, Android SDK 35).
+
+## Compiler commands
+
+From `compiler/` (or install with `python3 -m pip install .` and use `dcflight` anywhere):
+
+| Command | What it does |
+| --- | --- |
+| `create <dir>` | Scaffold an app and generate both native projects |
+| `run <dir>` | Regenerate, build, install and launch in iOS Simulator |
+| `compile <src> --out <dir>` | Generate native projects without launching (`--target ios`, `--target android`, `--dry-run`) |
+| `validate <src>` | Check an app file against the reviewed native capability registry |
+| `inspect <src>` | Print the canonical typed IR for an app file |
+| `registry [query]` | Search the reviewed capability registry |
+| `schema` | Emit the JSON schema for editor tooling |
+| `audit <dir>` | Verify a generated project ships no DCFlight runtime |
+| `mcp` | Development-only MCP server (`registry_search`, `app_schema`, `validate_app`) for AI tooling |
+
+The registry is reviewed compiler code: every UI capability maps to a real SwiftUI symbol and a real Android View class, with checked property types. Unsupported semantics fail at compile time — never at runtime on your users' devices.
+
+## Working with AI tools
+
+Connect any MCP-capable coding agent to `python3 -m dcflight mcp` and it can search the capability registry, fetch the app schema, and validate app sources — so generated apps stay inside the reviewed, type-checked surface instead of hallucinating unsupported APIs. Validate before you compile; compilation never accepts what validation rejects.
+
+## What ships in your app
+
+Nothing from DCFlight. `audit` proves it on every generated project:
+
+- No dcflight library, interpreter, renderer, registry, or dispatch layer
+- No Dart VM, no JavaScript engine, no bridge
+- The `.dcflight` metadata directory is stripped from detached builds
+- UI is concrete `SwiftUI.View` structs and `android.view.ViewGroup` code; actions are concrete methods
+
+Your generated projects are yours: user-owned native files are never overwritten, and conflicting edits to generated files stop regeneration instead of destroying work.
+
+## Current scope
+
+Reviewed capabilities today: text, counter, button, column, row, toggle, text field, divider, progress indicator, plus user-native view/action escape hatches. State: strings, Int32 and booleans. Actions: assignment, increment and boolean toggle. See `compiler/examples/catalog.json`.
+
+Not yet claimed: Web, Windows and Linux backends (extension points exist), production navigation, persistence, animations, and arbitrary Dart logic translation. The compiler is honest about what it supports — unsupported means unsupported, at compile time.
+
+## Contributing
+
+Issues and PRs welcome — read `compiler/AGENTS.md` for the invariants (development-time only; nothing ever ships in generated apps).
+
+## License
+
+DCFlight is licensed under the [PolyForm Noncommercial License 1.0.0](compiler/LICENSE). Commercial use requires a license from DotCorr — contact licensing@dotcorr.com.
+
+## Support
+
+Your support fuels the grind. Every contribution keeps this journey alive.
+
+<a href="https://www.buymeacoffee.com/squirelboy360"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=squirelboy360&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" alt="Buy Me A Coffee"></a>
+
+---
+
+Built with ❤️ by [DotCorr](https://github.com/DotCorr) · dcflight.dev
