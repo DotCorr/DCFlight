@@ -1,0 +1,56 @@
+name: Development-time compiler
+on:
+  push:
+    paths: ['compiler/**', '.github/workflows/compiler.yml']
+  pull_request:
+    paths: ['compiler/**', '.github/workflows/compiler.yml']
+permissions:
+  contents: read
+jobs:
+  compiler:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: compiler
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: dart-lang/setup-dart@v1
+      - run: python3 -m unittest discover -s tests -v
+      - run: python3 tools/check_registry.py
+      - run: dart pub get --directory examples
+      - run: dart analyze authoring/lib examples/counter.dart
+      - run: python3 -m pip install .
+      - run: dcflight validate examples/counter.dart
+  ios:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: compiler
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python3 tools/verify_native.py --ios
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: compiler
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - run: python3 tools/verify_native.py --android-jar "$ANDROID_HOME/platforms/android-35/android.jar" --java-home "$JAVA_HOME" --gradle gradle --android-sdk "$ANDROID_HOME"

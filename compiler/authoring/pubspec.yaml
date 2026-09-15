@@ -1,0 +1,6 @@
+name: dcflight_authoring
+version: 0.1.0
+publish_to: none
+description: Development-time declarations for dcflight's restricted Dart frontend.
+environment:
+  sdk: '>=3.0.0 <4.0.0'

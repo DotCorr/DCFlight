@@ -1,0 +1,22 @@
+[
+  {
+    "format": "apple-symbolgraph",
+    "sdk": "iPhoneSimulator26.2",
+    "source": "SwiftUI.symbols.json",
+    "sourceSha256": "2cd2e78b2631e790f96a7b310f7d4b171a7fd918d297bbb854c5ce618c1d3df9",
+    "symbols": 74380,
+    "status": "unmapped",
+    "sourceUrl": "https://developer.apple.com/documentation/swiftui",
+    "inventoryFile": "swiftui.inventory.json"
+  },
+  {
+    "format": "android-api",
+    "sdk": "android-15.0.0_r1",
+    "source": "android-35.txt",
+    "sourceSha256": "a07b0a1df1b7aeeb42fd8859c07b5627ff4f7930948771ee545b004f46e73c6e",
+    "symbols": 55237,
+    "status": "unmapped",
+    "sourceUrl": "https://android.googlesource.com/platform/frameworks/base/+/android-15.0.0_r1/core/api/current.txt",
+    "inventoryFile": "android.inventory.json"
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "id": "com.dotcorr.escape",
+  "name": "Native extensions",
+  "state": {"message": "Ready"},
+  "actions": [{"id": "change", "op": "native"}],
+  "root": {"id": "screen", "type": "column", "props": {}, "children": [
+    {"id": "badge", "type": "native", "props": {"symbol": "badge"}},
+    {"id": "message", "type": "text", "props": {"text": {"ref": "message"}}},
+    {"id": "change", "type": "button", "props": {"text": "Use native action"}, "action": "change"}
+  ]}
+}

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "com.dotcorr.counter",
+  "name": "Counter",
+  "state": {"count": 0, "enabled": true, "name": "Ada"},
+  "actions": [{"id": "add", "op": "increment", "target": "count"}, {"id": "reset", "op": "set", "target": "count", "value": 0}],
+  "root": {"id": "home", "type": "column", "props": {}, "children": [
+    {"id": "heading", "type": "text", "props": {"text": "Native Counter"}},
+    {"id": "count", "type": "counter", "props": {"value": {"ref": "count"}}},
+    {"id": "add", "type": "button", "props": {"text": "Add one"}, "action": "add"},
+    {"id": "reset", "type": "button", "props": {"text": "Reset"}, "action": "reset"},
+    {"id": "enabled", "type": "toggle", "props": {"text": "Enabled", "value": {"ref": "enabled"}}},
+    {"id": "name", "type": "textField", "props": {"value": {"ref": "name"}, "placeholder": "Name"}},
+    {"id": "greeting", "type": "text", "props": {"text": {"ref": "name"}}}
+  ]}
+}

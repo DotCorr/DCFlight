@@ -1,0 +1,4 @@
+{"module":{"name":"SwiftUI"},"symbols":[
+ {"identifier":{"precise":"s:SwiftUI.Button"},"pathComponents":["Button"],"kind":{"identifier":"swift.struct"},"declarationFragments":[{"spelling":"struct Button<Label> where Label: View"}],"availability":[{"domain":"iOS","introduced":{"major":13}}]},
+ {"identifier":{"precise":"s:SwiftUI.Text"},"pathComponents":["Text"],"kind":{"identifier":"swift.struct"},"declarationFragments":[{"spelling":"struct Text"}]}
+]}

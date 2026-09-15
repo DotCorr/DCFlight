@@ -1,0 +1,219 @@
+{
+  "version": 1,
+  "capabilities": [
+    {
+      "id": "text",
+      "properties": {
+        "text": {
+          "type": "string"
+        }
+      },
+      "children": false,
+      "action": false,
+      "targets": {
+        "ios": {
+          "expression": "Text({text})",
+          "symbol": "Text",
+          "source": "https://developer.apple.com/documentation/swiftui"
+        },
+        "android": {
+          "className": "android.widget.TextView",
+          "update": "{view}.setText({text});",
+          "source": "https://developer.android.com/reference/android/widget/TextView"
+        }
+      }
+    },
+    {
+      "id": "counter",
+      "properties": {
+        "value": {
+          "type": "int"
+        }
+      },
+      "children": false,
+      "action": false,
+      "targets": {
+        "ios": {
+          "expression": "Text(String({value}))",
+          "symbol": "Text",
+          "source": "https://developer.apple.com/documentation/swiftui"
+        },
+        "android": {
+          "className": "android.widget.TextView",
+          "update": "{view}.setText(String.valueOf({value}));",
+          "source": "https://developer.android.com/reference/android/widget/TextView"
+        }
+      }
+    },
+    {
+      "id": "button",
+      "properties": {
+        "text": {
+          "type": "string"
+        }
+      },
+      "children": false,
+      "action": true,
+      "targets": {
+        "ios": {
+          "expression": "Button({text}, action: {action})",
+          "symbol": "Button",
+          "source": "https://developer.apple.com/documentation/swiftui"
+        },
+        "android": {
+          "className": "android.widget.Button",
+          "update": "{view}.setText({text});",
+          "source": "https://developer.android.com/reference/android/widget/Button"
+        }
+      }
+    },
+    {
+      "id": "column",
+      "properties": {},
+      "children": true,
+      "action": false,
+      "targets": {
+        "ios": {
+          "expression": "VStack(alignment: .leading) {\n{children}\n}",
+          "symbol": "VStack",
+          "source": "https://developer.apple.com/documentation/swiftui"
+        },
+        "android": {
+          "className": "android.widget.LinearLayout",
+          "update": "{view}.setOrientation(android.widget.LinearLayout.VERTICAL);",
+          "source": "https://developer.android.com/reference/android/widget/LinearLayout"
+        }
+      }
+    },
+    {
+      "id": "row",
+      "properties": {},
+      "children": true,
+      "action": false,
+      "targets": {
+        "ios": {
+          "expression": "HStack {\n{children}\n}",
+          "symbol": "HStack {\n{children}\n}",
+          "source": "https://developer.apple.com/documentation/swiftui"
+        },
+        "android": {
+          "className": "android.widget.LinearLayout",
+          "update": "{view}.setOrientation(android.widget.LinearLayout.HORIZONTAL);",
+          "source": "https://developer.android.com/reference/android/widget/LinearLayout"
+        }
+      }
+    },
+    {
+      "id": "toggle",
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "value": {
+          "type": "bool",
+          "binding": true
+        }
+      },
+      "children": false,
+      "action": false,
+      "targets": {
+        "ios": {
+          "expression": "Toggle({text}, isOn: {binding_value})",
+          "symbol": "Toggle",
+          "source": "https://developer.apple.com/documentation/swiftui"
+        },
+        "android": {
+          "className": "android.widget.Switch",
+          "update": "{view}.setText({text});\n{view}.setChecked({value});",
+          "source": "https://developer.android.com/reference/android/widget/Switch"
+        }
+      }
+    },
+    {
+      "id": "textField",
+      "properties": {
+        "value": {
+          "type": "string",
+          "binding": true
+        },
+        "placeholder": {
+          "type": "string",
+          "default": ""
+        }
+      },
+      "children": false,
+      "action": false,
+      "targets": {
+        "ios": {
+          "expression": "TextField({placeholder}, text: {binding_value})",
+          "symbol": "TextField",
+          "source": "https://developer.apple.com/documentation/swiftui"
+        },
+        "android": {
+          "className": "android.widget.EditText",
+          "update": "if (!{view}.getText().toString().equals({value})) {view}.setText({value});\n{view}.setHint({placeholder});",
+          "source": "https://developer.android.com/reference/android/widget/EditText"
+        }
+      }
+    },
+    {
+      "id": "divider",
+      "properties": {},
+      "children": false,
+      "action": false,
+      "targets": {
+        "ios": {
+          "expression": "Divider()",
+          "symbol": "Divider",
+          "source": "https://developer.apple.com/documentation/swiftui"
+        },
+        "android": {
+          "className": "android.view.View",
+          "update": "{view}.setBackgroundColor(android.graphics.Color.GRAY);",
+          "source": "https://developer.android.com/reference/android/view/View"
+        }
+      }
+    },
+    {
+      "id": "progress",
+      "properties": {},
+      "children": false,
+      "action": false,
+      "targets": {
+        "ios": {
+          "expression": "ProgressView()",
+          "symbol": "ProgressView",
+          "source": "https://developer.apple.com/documentation/swiftui"
+        },
+        "android": {
+          "className": "android.widget.ProgressBar",
+          "update": "{view}.setIndeterminate(true);",
+          "source": "https://developer.android.com/reference/android/widget/ProgressBar"
+        }
+      }
+    },
+    {
+      "id": "native",
+      "properties": {
+        "symbol": {
+          "type": "string",
+          "literal": true
+        }
+      },
+      "children": false,
+      "action": false,
+      "targets": {
+        "ios": {
+          "expression": "UserViews.{symbol}(model: model)",
+          "symbol": "UserViews.{symbol}",
+          "source": "https://developer.apple.com/documentation/swiftui"
+        },
+        "android": {
+          "className": "android.view.View",
+          "update": "",
+          "source": "https://developer.android.com/reference/android/view/View"
+        }
+      }
+    }
+  ]
+}

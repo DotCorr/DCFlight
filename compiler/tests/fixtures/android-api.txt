@@ -1,0 +1,12 @@
+// Signature format: 2.0
+package android.widget {
+  public class Button extends android.widget.TextView {
+    ctor public Button(android.content.Context);
+    method public void setText(java.lang.CharSequence);
+    method public void setText(int);
+  }
+  public class Switch extends android.widget.CompoundButton {
+    ctor public Switch(android.content.Context);
+    method public void setChecked(boolean);
+  }
+}

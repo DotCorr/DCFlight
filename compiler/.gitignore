@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.dart_tool/
+.pub-cache/
+.pub/
+.build/
+build/
+dist/

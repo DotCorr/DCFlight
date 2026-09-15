@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "id": "com.dotcorr.catalog",
+  "name": "Native Catalog",
+  "state": {
+    "stringValue": "Editable",
+    "intValue": 5,
+    "boolValue": true
+  },
+  "actions": [
+    {
+      "id": "increment",
+      "op": "increment",
+      "target": "intValue"
+    }
+  ],
+  "root": {
+    "id": "catalog",
+    "type": "column",
+    "props": {},
+    "children": [
+      {
+        "id": "sample_button",
+        "type": "button",
+        "props": {
+          "text": {
+            "ref": "stringValue"
+          }
+        },
+        "action": "increment"
+      },
+      {
+        "id": "sample_column",
+        "type": "column",
+        "props": {}
+      },
+      {
+        "id": "sample_counter",
+        "type": "counter",
+        "props": {
+          "value": {
+            "ref": "intValue"
+          }
+        }
+      },
+      {
+        "id": "sample_divider",
+        "type": "divider",
+        "props": {}
+      },
+      {
+        "id": "sample_progress",
+        "type": "progress",
+        "props": {}
+      },
+      {
+        "id": "sample_row",
+        "type": "row",
+        "props": {}
+      },
+      {
+        "id": "sample_text",
+        "type": "text",
+        "props": {
+          "text": {
+            "ref": "stringValue"
+          }
+        }
+      },
+      {
+        "id": "sample_textField",
+        "type": "textField",
+        "props": {
+          "value": {
+            "ref": "stringValue"
+          },
+          "placeholder": {
+            "ref": "stringValue"
+          }
+        }
+      },
+      {
+        "id": "sample_toggle",
+        "type": "toggle",
+        "props": {
+          "text": {
+            "ref": "stringValue"
+          },
+          "value": {
+            "ref": "boolValue"
+          }
+        }
+      }
+    ]
+  }
+}
