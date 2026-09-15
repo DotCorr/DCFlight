@@ -140,7 +140,7 @@ class SchemaV2ValidationTests(unittest.TestCase):
    'DROP VIEW evidence',
    'DROP TABLE evidence_payloads',
    'DROP INDEX evidence_payload_links',
-   'ALTER TABLE evidence_links RENAME COLUMN payload_id TO broken_payload',
+   'DROP VIEW evidence; ALTER TABLE evidence_links RENAME COLUMN payload_id TO broken_payload',
    'DROP TRIGGER evidence_payload_delete; CREATE TRIGGER evidence_payload_delete AFTER DELETE ON evidence_links BEGIN SELECT 1; END',
    'DROP VIEW evidence; CREATE VIEW evidence AS SELECT l.platform,l.scope,l.id,l.level,p.evidence FROM evidence_links l JOIN evidence_payloads p USING(payload_id) WHERE 0',
   ]

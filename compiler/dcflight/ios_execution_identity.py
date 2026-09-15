@@ -90,7 +90,7 @@ def stop_group(process):
     deadline=time.monotonic()+3
     while True:
         try:os.killpg(process.pid,0)
-        except ProcessLookupError:return
+        except (ProcessLookupError, PermissionError):return
         if time.monotonic()>deadline:raise ValueError('Owned native process group did not disappear')
         time.sleep(0.05)
 
