@@ -66,7 +66,7 @@ jobs:
           path: dist
       - name: Prepare release assets
         run: |
-          cp packaging/install.sh packaging/install.ps1 dist/
+          cp compiler/packaging/install.sh compiler/packaging/install.ps1 dist/
           # One pure-Python wheel serves macOS (arm64+x86_64), Windows and Linux.
           ls -la dist/
       - name: Create GitHub release
