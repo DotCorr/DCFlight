@@ -1,0 +1,5 @@
+plugins { id 'base' }
+repositories { google(); mavenCentral() }
+configurations { nativeModule { attributes { attribute(org.gradle.api.attributes.Usage.USAGE_ATTRIBUTE, objects.named(org.gradle.api.attributes.Usage, 'java-runtime')); attribute(org.gradle.api.attributes.Category.CATEGORY_ATTRIBUTE, objects.named(org.gradle.api.attributes.Category, 'library')) } } }
+dependencies { nativeModule 'org.maplibre.gl:android-sdk-opengl:12.3.1' }
+tasks.register('resolveNativeModule') { doLast { def rows = configurations.nativeModule.resolvedConfiguration.resolvedArtifacts.collect { a -> [group:a.moduleVersion.id.group, name:a.name, version:a.moduleVersion.id.version, classifier:a.classifier, extension:a.extension, source:a.file.absolutePath] }.sort { a,b -> (a.group+':'+a.name+':'+a.version+':'+a.extension) <=> (b.group+':'+b.name+':'+b.version+':'+b.extension) }; file('resolved.json').text=groovy.json.JsonOutput.toJson(rows) } }

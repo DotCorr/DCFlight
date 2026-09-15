@@ -1,0 +1,298 @@
+{
+  "protocol": "snap.v1",
+  "base_path": "/v1",
+  "authentication": "Authorization: Bearer <token>; all /v1 routes except /auth/register and /auth/login",
+  "time": "Unix epoch seconds; coordinates integer microdegrees",
+  "errors": {
+    "envelope": {
+      "detail": "human readable string; validation failures may return array"
+    },
+    "unauthorized": 401,
+    "private_or_missing": 404,
+    "conflict": 409,
+    "invalid_input": 422,
+    "too_large": 413,
+    "unsupported_photo": 415,
+    "rate_limited": 429
+  },
+  "user": {
+    "id": "string",
+    "username": "string",
+    "display_name": "string"
+  },
+  "session": {
+    "token": "opaque bearer string",
+    "expires_at": "int; 7 days",
+    "user": "user"
+  },
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/auth/register",
+      "body": {
+        "username": "ASCII letters/digits/underscore,3..24,lowercased",
+        "password": "12..128 characters",
+        "display_name": "1..60 characters"
+      },
+      "response": "session",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "body": {
+        "username": "string",
+        "password": "string"
+      },
+      "response": "session"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 204
+    },
+    {
+      "method": "GET",
+      "path": "/me",
+      "response": {
+        "id": "string",
+        "username": "string",
+        "display_name": "string",
+        "location_sharing": "bool"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/me",
+      "body": {
+        "display_name": "string"
+      },
+      "response": "user"
+    },
+    {
+      "method": "DELETE",
+      "path": "/me",
+      "body": {
+        "password": "confirmation password"
+      },
+      "status": 204
+    },
+    {
+      "method": "GET",
+      "path": "/users?q=<username-prefix>",
+      "response": {
+        "users": [
+          "user"
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/friends",
+      "response": {
+        "friends": [
+          "user"
+        ]
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/friends/{user_id}",
+      "status": 204
+    },
+    {
+      "method": "POST",
+      "path": "/friend-requests",
+      "body": {
+        "user_id": "recipient id"
+      },
+      "response": {
+        "id": "request id",
+        "status": "pending"
+      },
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/friend-requests",
+      "query": {"direction": "all (default) or incoming; incoming returns only pending requests addressed to the authenticated user"},
+      "response": {
+        "requests": [
+          {
+            "id": "string",
+            "sender": "user id",
+            "recipient": "user id",
+            "status": "pending",
+            "created_at": "int",
+            "username": "sender username",
+            "display_name": "sender name"
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/friend-requests/{id}/accept",
+      "response": {
+        "status": "accepted"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/conversations",
+      "body": {
+        "user_id": "accepted friend id"
+      },
+      "response": {
+        "id": "string",
+        "a": "participant id",
+        "b": "participant id",
+        "created_at": "int"
+      },
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/conversations",
+      "response": {
+        "conversations": [
+          {
+            "id": "string",
+            "a": "id",
+            "b": "id",
+            "created_at": "int",
+            "username": "other participant",
+            "display_name": "other name"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/conversations/{id}/messages?after=0",
+      "response": {
+        "messages": [
+          {
+            "id": "int increasing",
+            "conversation_id": "string",
+            "sender": "user id",
+            "text": "string",
+            "media_id": "string|null",
+            "created_at": "int",
+            "sender_display_name": "string; current sender profile name",
+            "has_media": "bool; media_id is non-null"
+          }
+        ],
+        "next_after": "int; last returned message id, or input after when empty",
+        "has_more": "bool; additional stored rows currently follow this page"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/conversations/{id}/messages",
+      "body": {
+        "text": "optional,0..2000 characters",
+        "media_id": "optional,own uploaded image id"
+      },
+      "response": {
+        "id": "int",
+        "conversation_id": "string",
+        "sender": "string",
+        "text": "string",
+        "media_id": "string|null",
+        "created_at": "int"
+      },
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/media",
+      "body": "Raw still JPEG/PNG/WebP bytes, max8MiB; no multipart/base64",
+      "response": {
+        "id": "string",
+        "width": "int",
+        "height": "int",
+        "content_type": "image/jpeg"
+      },
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/media/{id}",
+      "response": "Authenticated JPEG bytes; owner or shared conversation participant or active-story friend only; no public URLs"
+    },
+    {
+      "method": "POST",
+      "path": "/stories",
+      "body": {
+        "media_id": "own uploaded image id",
+        "caption": "optional,0..240 characters"
+      },
+      "response": {
+        "id": "string",
+        "owner": "user id",
+        "media_id": "string",
+        "caption": "string",
+        "created_at": "int",
+        "expires_at": "int;24hours"
+      },
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/stories",
+      "response": {
+        "stories": [
+          {
+            "id": "string",
+            "owner": "user id",
+            "media_id": "string",
+            "caption": "string",
+            "created_at": "int",
+            "expires_at": "int",
+            "username": "string",
+            "display_name": "string",
+            "is_owner": "bool; authenticated viewer owns this story"
+          }
+        ]
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/stories/{id}",
+      "status": 204
+    },
+    {
+      "method": "PUT",
+      "path": "/location",
+      "body": {
+        "enabled": "bool;false deletes coordinates",
+        "latitude_e6": "int required when enabled,-90000000..90000000",
+        "longitude_e6": "int required when enabled,-180000000..180000000"
+      },
+      "response": {
+        "enabled": "bool",
+        "expires_at": "int when enabled;1hour"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/map",
+      "response": {
+        "locations": [
+          {
+            "id": "friend user id",
+            "username": "string",
+            "display_name": "string",
+            "latitude_e6": "int",
+            "longitude_e6": "int",
+            "updated_at": "int"
+          }
+        ],
+        "expires_at": "int; earliest location expiry in this response, or0 for empty locations"
+      }
+    }
+  ],
+  "delivery": "Successful message POST means committed SQLite persistence; GET polls ordered messages, limit100. No push delivery or fake delivery receipts.",
+  "privacy": "Media has no public path. Location requires explicit opt-in and expires after1hour. Stories cease being visible after24hours. Account deletion cascades owned media/messages/stories/location/sessions/friendships. Previously delivered conversation attachments remain visible to their participants after unfriending until deleted/account deletion."
+}

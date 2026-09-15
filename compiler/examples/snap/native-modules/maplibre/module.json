@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "maplibre",
+  "version": "12.3.1",
+  "platform": "android",
+  "package": "org.maplibre.gl:android-sdk-opengl",
+  "revision": "12.3.1",
+  "permissions": ["android.permission.INTERNET"]
+}

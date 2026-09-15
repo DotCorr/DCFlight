@@ -1,0 +1,2 @@
+include authoring/pubspec.yaml
+include authoring/lib/dcflight.dart

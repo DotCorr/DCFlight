@@ -88,7 +88,16 @@ class DartParser:
                     self.take(',')
             self.take('}')
             return unique_object(pairs)
-        if token not in ("App", "Node", "Action", "Ref"):
+        predicates = {'StringIsEmpty': 'isEmpty', 'BooleanNot': 'not',
+                      'BooleanAll': 'all', 'BooleanAny': 'any'}
+        if token in predicates:
+            self.take('(')
+            operand = self.value(depth + 1)
+            if self.peek() == ',':
+                self.take(',')
+            self.take(')')
+            return {predicates[token]: operand}
+        if token not in ("App", "Node", "Action", "Ref", "FieldRef", "Logic", "LogicFunction"):
             raise Diagnostic("unsupported Dart constructor: " + token)
         self.take('(')
         pairs = []
@@ -101,14 +110,19 @@ class DartParser:
         self.take(')')
         result = unique_object(pairs)
         constructors = {
-            'App': ({'version', 'id', 'name', 'state', 'actions', 'root'}, {'version', 'id', 'name', 'root'}),
-            'Node': ({'id', 'type', 'props', 'children', 'action', 'style'}, {'id', 'type', 'props'}),
-            'Action': ({'id', 'op', 'target', 'value'}, {'id', 'op'}),
+            'App': ({'version', 'id', 'name', 'state', 'actions', 'root', 'logic'}, {'version', 'id', 'name', 'root'}),
+            'Node': ({'id', 'type', 'props', 'children', 'action', 'style', 'motion', 'visibleWhen', 'enabledWhen'}, {'id', 'type', 'props'}),
+            'Action': ({'id', 'op', 'target', 'value', 'function', 'args', 'failure'}, {'id', 'op'}),
+            'Logic': ({'source', 'prelude', 'functions'}, {'source', 'prelude', 'functions'}),
+            'LogicFunction': ({'name', 'parameters', 'returns', 'maxOutputBytes'}, {'name', 'parameters', 'returns'}),
             'Ref': ({'name'}, {'name'}),
+            'FieldRef': ({'collection', 'name'}, {'collection', 'name'}),
         }
         allowed, required = constructors[token]
         if set(result) - allowed or not required <= set(result):
             raise Diagnostic('Invalid named arguments for ' + token)
+        if token == 'FieldRef':
+            return {'field': result}
         if token == 'Ref':
             if set(result) != {'name'}:
                 raise Diagnostic("Ref requires name only")

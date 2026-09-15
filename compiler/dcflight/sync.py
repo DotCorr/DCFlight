@@ -67,7 +67,7 @@ def synchronize(output, artifacts, app_id, dry_run=False, managed_prefixes=None)
         errors = []
         for relative, artifact in sorted(artifacts.items()):
             path = safe_path(root, relative)
-            data = artifact.content.encode('utf-8')
+            data = artifact.content if isinstance(artifact.content, bytes) else artifact.content.encode('utf-8')
             current = path.read_bytes() if path.exists() else None
             owned = artifact.ownership
             if owned not in ('generated', 'user'):

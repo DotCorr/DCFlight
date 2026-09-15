@@ -1,0 +1,3 @@
+
+# Local SDK catalogs are discovered externally and are not release assets.
+compiler/registry/sdk/*.sqlite

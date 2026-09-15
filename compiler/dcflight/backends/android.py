@@ -2,6 +2,9 @@ from html import escape
 from . import Artifact, HEADER
 from .common import color_java, expression, symbol, expand
 from ..ir import ScalarType, Reference
+from ..shared_logic import call_expression
+from .android_presentation import Presentation, SPECIAL
+from . import android_social
 
 
 TEXT_CAPABILITIES = ('text', 'counter', 'button', 'toggle', 'textField')
@@ -38,7 +41,10 @@ class Android:
     target = 'android'
 
     def generate(self, app, registry):
+        _rootStyle = getattr(app.root, 'style', None)
+        root_bg_color = _rootStyle.background if (_rootStyle is not None and _rootStyle.background is not None) else '#FFFFFF'
         files = {}
+        presentation = Presentation(app)
         java = 'android/app/src/main/java/' + app.id.replace('.', '/') + '/'
         def put(path, content, ownership='generated'):
             files[path] = Artifact(content, ownership)
@@ -48,7 +54,8 @@ rootProject.name = 'App'
 include ':app'
 ''', 'user')
         put('android/build.gradle', "plugins { id 'com.android.application' version '8.9.2' apply false }\n", 'user')
-        put('android/app/build.gradle', "plugins { id 'com.android.application' }\nandroid {\n    namespace '" + app.id + "'\n    compileSdk 35\n    defaultConfig { applicationId '" + app.id + "'; minSdk 26; targetSdk 35; versionCode 1; versionName '1.0' }\n    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }\n}\n", 'user')
+        put('android/app/build.gradle', "plugins { id 'com.android.application' }\nandroid {\n    namespace '" + app.id + "'\n        defaultConfig { applicationId '" + app.id + "'; versionCode 1; versionName '1.0' }\n    packaging { jniLibs { keepDebugSymbols += ['**/libapplogic.so'] } }\n    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }\n}\n", 'user')
+        files['android/app/build.gradle']=Artifact(files['android/app/build.gradle'].content+"\napply from: 'native-versions.gradle'\n", files['android/app/build.gradle'].ownership)
         put('android/app/src/main/AndroidManifest.xml', '''<manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <application android:label="''' + escape(app.name, quote=True) + '''" android:theme="@android:style/Theme.Material.Light.NoActionBar">
     <activity android:name=".MainActivity" android:exported="true">
@@ -57,17 +64,42 @@ include ':app'
   </application>
 </manifest>
 ''', 'user')
+        if presentation.images:
+            manifest_path = 'android/app/src/main/AndroidManifest.xml'
+            original = files[manifest_path]
+            files[manifest_path] = Artifact(original.content.replace('  <application', '  <uses-permission android:name="android.permission.INTERNET"/>\n  <application'), original.ownership)
         put(java + 'MainActivity.java', HEADER + 'package ' + app.id + ''';
 public final class MainActivity extends android.app.Activity {
+    private AppScreen screen;
     @Override public void onCreate(android.os.Bundle savedState) {
         super.onCreate(savedState);
         AppModel model = new AppModel();
-        AppScreen screen = new AppScreen(this, model);
+        screen = new AppScreen(this, model);
         android.widget.FrameLayout host = new android.widget.FrameLayout(this);
-        host.setBackgroundColor(android.graphics.Color.parseColor("__ROOT_BG__"));
+        host.setBackgroundColor(android.graphics.Color.parseColor("''' + root_bg_color + '''"));
+        final int contentPadding = Math.round(''' + ('0' if getattr(app.root, 'style', None) is not None else '16') + ''' * getResources().getDisplayMetrics().density);
+        if (android.os.Build.VERSION.SDK_INT < 35) {
+            getWindow().setStatusBarColor(android.graphics.Color.parseColor("''' + root_bg_color + '''"));
+            getWindow().setNavigationBarColor(android.graphics.Color.parseColor("''' + root_bg_color + '''"));
+        }
         host.setOnApplyWindowInsetsListener((view, insets) -> {
-            view.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(),
-                insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
+            view.setPadding(insets.getSystemWindowInsetLeft() + contentPadding,
+                insets.getSystemWindowInsetTop() + contentPadding,
+                insets.getSystemWindowInsetRight() + contentPadding,
+                insets.getSystemWindowInsetBottom() + contentPadding);
+            if (android.os.Build.VERSION.SDK_INT >= 30) {
+                android.view.WindowInsetsController controller = view.getWindowInsetsController();
+                if (controller != null) {
+                    int appearance = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                        | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+                    controller.setSystemBarsAppearance(appearance, appearance);
+                }
+            } else {
+                android.view.View decor = getWindow().getDecorView();
+                decor.setSystemUiVisibility(decor.getSystemUiVisibility()
+                    | android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+                    | android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+            }
             return insets;
         });
         host.addView(screen.root, new android.widget.FrameLayout.LayoutParams(
@@ -75,8 +107,12 @@ public final class MainActivity extends android.app.Activity {
         setContentView(host);
         host.requestApplyInsets();
     }
+    @Override protected void onDestroy() {
+        if (screen != null) screen.dispose();
+        super.onDestroy();
+    }
 }
-'''.replace('__ROOT_BG__', color_java({key: value.value for key, value in app.root.style}.get('backgroundColor', '#FFFFFFFF'))), 'user')
+''', 'user')
         types = {ScalarType.STRING: 'String', ScalarType.INT: 'int', ScalarType.BOOL: 'boolean'}
         state = '\n'.join('    public ' + types[s.initial.type] + ' s_' + s.name + ' = ' + expression(s.initial, 'android') + ';' for s in app.states)
         methods = []
@@ -86,44 +122,43 @@ public final class MainActivity extends android.app.Activity {
                 body = target + '++;'
             elif action.operation == 'toggle':
                 body = target + ' = !' + target + ';'
+            elif action.operation == 'call':
+                body = target + ' = ' + call_expression(app, action, 'android', expression) + ';'
+                if action.failure:
+                    body = 'try { '+body+' } catch (SharedLogic.InputFailure error) { this.a_'+action.failure+'(); return; }'
             elif action.operation == 'set':
                 body = target + ' = ' + expression(action.value, 'android').replace('model.s_', 'this.s_') + ';'
             else:
                 body = 'UserActions.a_' + action.id + '(this);'
             methods.append('    public void a_' + action.id + '() { ' + body + ' }')
         put(java + 'AppModel.java', HEADER + 'package ' + app.id + ';\npublic final class AppModel {\n' + state + '\n' + '\n'.join(methods) + '\n}\n')
+        if android_social.supports(app):
+            files.update(android_social.generate(app))
+            return files
         fields, builds, updates, listeners = [], [], [], []
         container_margins, container_gravity = {}, {}
         for node in app.nodes():
             name = symbol(node.id)
             mapping = registry.get(node.capability)['targets']['android']
-            fields.append('    private final ' + mapping['className'] + ' ' + name + ';')
+            fields.append('    private final ' + presentation.class_name(node, mapping) + ' ' + name + ';')
             if node.capability == 'native':
                 builds.append(name + ' = UserViews.v_' + node.props()['symbol'].value + '(activity, model);')
             else:
-                builds.append(name + ' = new ' + mapping['className'] + '(activity);')
+                builds.append(presentation.construct(node, name, mapping))
             # Native platform accessibility uses text/control semantics; IDs remain stable for inspection.
             builds.append(name + '.setTag("' + node.id + '");')
             values = {key: expression(value, 'android') for key, value in node.properties}
             values['view'] = name
-            updates.append(expand(mapping['update'], values))
-            style = {key: value.value for key, value in node.style}
-            style_lines = []
-            if node.capability in ('column', 'row'):
-                spacing = style.get('spacing', 0)
-                alignment = style.get('alignment', 'start')
-                for index, child in enumerate(node.children):
-                    container_margins[symbol(child.id)] = spacing if index else 0
-                    container_gravity[symbol(child.id)] = alignment
-            android_text_style(name, node.capability, style, style_lines)
-            android_box_style(name, style, style_lines)
-            builds.extend(style_lines)
+            if node.capability not in SPECIAL:
+                updates.append(expand(mapping['update'], values))
+            builds.extend(presentation.setup(node, name))
+            updates.extend(presentation.updates(node, name))
             if node.action:
                 listeners.append(name + '.setOnClickListener(v -> { model.a_' + node.action + '(); refresh(); });')
             if node.capability == 'toggle':
                 ref = node.props()['value'].name
                 listeners.append(name + '.setOnCheckedChangeListener((button, checked) -> { if (!updating) { model.s_' + ref + ' = checked; refresh(); } });')
-            if node.capability == 'textField':
+            if node.capability in ('textField','secureField'):
                 ref = node.props()['value'].name
                 listeners.append(name + '''.addTextChangedListener(new android.text.TextWatcher() {
                     public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -134,37 +169,24 @@ public final class MainActivity extends android.app.Activity {
                 });''')
         # All views exist before parenting. Reordering changes this structural file only.
         for node in app.nodes():
-            for child in node.children:
-                child_name = symbol(child.id)
-                height = '1' if child.capability == 'divider' else 'android.view.ViewGroup.LayoutParams.WRAP_CONTENT'
-                width = 'android.view.ViewGroup.LayoutParams.MATCH_PARENT' if child.capability == 'divider' else 'android.view.ViewGroup.LayoutParams.WRAP_CONTENT'
-                if {key: value.value for key, value in child.style}.get('fillWidth') and child.capability != 'divider':
-                    width = 'android.view.ViewGroup.LayoutParams.MATCH_PARENT'
-                params = 'new android.widget.LinearLayout.LayoutParams(' + width + ', ' + height + ')'
-                modifiers = []
-                margin = container_margins.get(child_name, 0)
-                if margin:
-                    modifiers.append('params_' + child_name + '.setMargins(0, %d * dp, 0, 0);' % margin)
-                gravity = container_gravity.get(child_name)
-                if gravity and gravity != 'start':
-                    modifiers.append('params_' + child_name + '.gravity = ' + GRAVITIES_ANDROID[gravity] + ';')
-                if modifiers:
-                    builds.append('android.widget.LinearLayout.LayoutParams params_' + child_name + ' = ' + params + ';')
-                    builds.extend(modifiers)
-                    builds.append(symbol(node.id) + '.addView(' + child_name + ', params_' + child_name + ');')
-                else:
-                    builds.append(symbol(node.id) + '.addView(' + child_name + ', ' + params + ');')
+            for index, child in enumerate(node.children):
+                builds.extend(presentation.parent(node, child, index))
         body = HEADER + 'package ' + app.id + ''';
 public final class AppScreen {
     public final android.view.View root;
     private final AppModel model;
     private final int dp;
     private boolean updating;
-''' + '\n'.join(fields) + '''
+''' + '\n'.join(fields) + '\n' + presentation.declarations() + '''
     public AppScreen(android.app.Activity activity, AppModel model) {
         this.model = model;
-        this.dp = Math.round(activity.getResources().getDisplayMetrics().density);
-''' + '\n'.join(builds) + '\nroot = ' + symbol(app.root.id) + ';\n' + '\n'.join(listeners) + '''
+        this.activity = activity;
+        this.density = activity.getResources().getDisplayMetrics().density;
+''' + '\n'.join(builds) + '\nroot = ' + symbol(app.root.id) + ';\n' + '\n'.join(presentation.root_layout()) + '\n' + '\n'.join(listeners) + '''
+        root.addOnAttachStateChangeListener(new android.view.View.OnAttachStateChangeListener() {
+            public void onViewAttachedToWindow(android.view.View view) {}
+            public void onViewDetachedFromWindow(android.view.View view) { dispose(); }
+        });
         refresh();
     }
     public void refresh() {
@@ -173,7 +195,7 @@ public final class AppScreen {
 ''' + '\n'.join(updates) + '''
         } finally { updating = false; }
     }
-}
-'''
+''' + presentation.methods() + '\n}\n'
         put(java + 'AppScreen.java', body)
+        files.update(presentation.resources())
         return files

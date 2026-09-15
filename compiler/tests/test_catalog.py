@@ -55,3 +55,19 @@ class CatalogTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'multiple scopes'):
                 catalog.get('ios','same')
             self.assertEqual('two',catalog.get('ios','same','two')['scope'])
+
+    def test_verified_replacement_rolls_back_records_and_evidence_together(self):
+        evidence={'command':'swiftc','toolchain':'fixture'}
+        with Catalog(self.path,write=True) as catalog:
+            catalog.import_records('ios','test','1',[dict(id='old',emittable=True)],{},
+                                   compiled={'ids':['old'],'evidence':evidence})
+            with self.assertRaisesRegex(ValueError,'unknown'):
+                catalog.import_records('ios','test','2',[dict(id='new',emittable=True)],{},
+                                       compiled={'ids':['new','missing'],'evidence':evidence})
+            self.assertEqual('old',catalog.get('ios','old')['api']['id'])
+            self.assertEqual(1,len(catalog.get('ios','old')['evidence']))
+            self.assertEqual('1',catalog.source('ios','test')['sdk'])
+            catalog.import_records('ios','test','2',[dict(id='new',emittable=True)],{},
+                                   compiled={'ids':['new'],'evidence':evidence})
+            self.assertEqual(1,len(catalog.get('ios','new')['evidence']))
+            self.assertEqual('2',catalog.source('ios','test')['sdk'])

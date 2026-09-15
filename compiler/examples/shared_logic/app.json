@@ -1,0 +1,191 @@
+{
+  "version": 1,
+  "id": "com.dotcorr.sharedlogic",
+  "name": "Shared Native Logic",
+  "state": {
+    "count": 0,
+    "enabled": true,
+    "name": "Ada",
+    "total": 0,
+    "gcd": 0
+  },
+  "actions": [
+    {
+      "id": "add",
+      "op": "call",
+      "target": "count",
+      "function": "increment",
+      "args": [
+        {
+          "ref": "count"
+        }
+      ]
+    },
+    {
+      "id": "reset",
+      "op": "set",
+      "target": "count",
+      "value": 0
+    },
+    {
+      "id": "discount",
+      "op": "call",
+      "target": "total",
+      "function": "discountedTotal",
+      "args": [
+        2500,
+        3,
+        20
+      ]
+    },
+    {
+      "id": "gcd",
+      "op": "call",
+      "target": "gcd",
+      "function": "greatestCommonDivisor",
+      "args": [
+        48,
+        18
+      ]
+    }
+  ],
+  "root": {
+    "id": "home",
+    "type": "column",
+    "props": {},
+    "children": [
+      {
+        "id": "heading",
+        "type": "text",
+        "props": {
+          "text": "Native Counter"
+        }
+      },
+      {
+        "id": "count",
+        "type": "counter",
+        "props": {
+          "value": {
+            "ref": "count"
+          }
+        }
+      },
+      {
+        "id": "add",
+        "type": "button",
+        "props": {
+          "text": "Add one"
+        },
+        "action": "add"
+      },
+      {
+        "id": "reset",
+        "type": "button",
+        "props": {
+          "text": "Reset"
+        },
+        "action": "reset"
+      },
+      {
+        "id": "enabled",
+        "type": "toggle",
+        "props": {
+          "text": "Enabled",
+          "value": {
+            "ref": "enabled"
+          }
+        }
+      },
+      {
+        "id": "name",
+        "type": "textField",
+        "props": {
+          "value": {
+            "ref": "name"
+          },
+          "placeholder": "Name"
+        }
+      },
+      {
+        "id": "greeting",
+        "type": "text",
+        "props": {
+          "text": {
+            "ref": "name"
+          }
+        }
+      },
+      {
+        "id": "discountLabel",
+        "type": "text",
+        "props": {
+          "text": "3 \u00d7 2500 cents, 20% discount"
+        }
+      },
+      {
+        "id": "discountButton",
+        "type": "button",
+        "props": {
+          "text": "Calculate total in DC Dart"
+        },
+        "action": "discount"
+      },
+      {
+        "id": "total",
+        "type": "counter",
+        "props": {
+          "value": {
+            "ref": "total"
+          }
+        }
+      },
+      {
+        "id": "gcdButton",
+        "type": "button",
+        "props": {
+          "text": "Calculate GCD(48, 18) in DC Dart"
+        },
+        "action": "gcd"
+      },
+      {
+        "id": "gcdValue",
+        "type": "counter",
+        "props": {
+          "value": {
+            "ref": "gcd"
+          }
+        }
+      }
+    ]
+  },
+  "logic": {
+    "source": "logic.dart",
+    "prelude": "prelude.dart",
+    "functions": [
+      {
+        "name": "increment",
+        "parameters": [
+          "uint32"
+        ],
+        "returns": "uint32"
+      },
+      {
+        "name": "discountedTotal",
+        "parameters": [
+          "uint32",
+          "uint32",
+          "uint32"
+        ],
+        "returns": "uint32"
+      },
+      {
+        "name": "greatestCommonDivisor",
+        "parameters": [
+          "uint32",
+          "uint32"
+        ],
+        "returns": "uint32"
+      }
+    ]
+  }
+}

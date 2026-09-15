@@ -284,6 +284,362 @@
           "source": "https://developer.android.com/reference/android/view/View"
         }
       }
+    },
+    {
+      "id": "scroll",
+      "properties": {},
+      "children": true,
+      "action": false,
+      "targets": {
+        "ios": {
+          "expression": "ScrollView { {children} }",
+          "source": "https://developer.apple.com/documentation/swiftui"
+        },
+        "android": {
+          "className": "android.widget.ScrollView",
+          "update": "",
+          "source": "https://developer.android.com/reference/android/view/View"
+        }
+      }
+    },
+    {
+      "id": "card",
+      "properties": {},
+      "children": true,
+      "action": false,
+      "targets": {
+        "ios": {
+          "expression": "VStack(alignment: .leading, spacing: 0) { {children} }",
+          "source": "https://developer.apple.com/documentation/swiftui"
+        },
+        "android": {
+          "className": "android.widget.LinearLayout",
+          "update": "",
+          "source": "https://developer.android.com/reference/android/view/View"
+        }
+      }
+    },
+    {
+      "id": "spacer",
+      "properties": {},
+      "children": false,
+      "action": false,
+      "targets": {
+        "ios": {
+          "expression": "Spacer(minLength: 0)",
+          "source": "https://developer.apple.com/documentation/swiftui"
+        },
+        "android": {
+          "className": "android.view.View",
+          "update": "",
+          "source": "https://developer.android.com/reference/android/view/View"
+        }
+      }
+    },
+    {
+      "id": "icon",
+      "properties": {
+        "name": {
+          "type": "string",
+          "literal": true,
+          "enum": [
+            "camera",
+            "photos",
+            "image",
+            "chat",
+            "story",
+            "map",
+            "user",
+            "person",
+            "settings",
+            "add",
+            "close",
+            "back",
+            "send",
+            "search",
+            "heart",
+            "check",
+            "more",
+            "location",
+            "refresh",
+            "flash",
+            "flip",
+            "swap",
+            "share",
+            "download",
+            "lock",
+            "bell",
+            "video",
+            "trash",
+            "logout",
+            "inbox",
+            "home",
+            "mail",
+            "calendar",
+            "star",
+            "flag",
+            "clock",
+            "folder"
+          ]
+        }
+      },
+      "children": false,
+      "action": false,
+      "targets": {
+        "ios": {
+          "expression": "Image(systemName: {name})",
+          "source": "https://developer.apple.com/documentation/swiftui"
+        },
+        "android": {
+          "className": "android.widget.ImageView",
+          "update": "",
+          "source": "https://developer.android.com/reference/android/view/View"
+        }
+      }
+    },
+    {
+      "id": "image",
+      "properties": {
+        "source": {
+          "type": "string"
+        }
+      },
+      "children": false,
+      "action": false,
+      "targets": {
+        "ios": {
+          "expression": "AsyncImage(url: URL(string: {source}))",
+          "source": "https://developer.apple.com/documentation/swiftui"
+        },
+        "android": {
+          "className": "android.widget.ImageView",
+          "update": "",
+          "source": "https://developer.android.com/reference/android/view/View"
+        }
+      }
+    },
+    {
+      "id": "progressBar",
+      "properties": {
+        "value": {
+          "type": "int",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "children": false,
+      "action": false,
+      "targets": {
+        "ios": {
+          "expression": "ProgressView(value: Double({value}), total: 100)",
+          "source": "https://developer.apple.com/documentation/swiftui"
+        },
+        "android": {
+          "className": "android.widget.ProgressBar",
+          "update": "",
+          "source": "https://developer.android.com/reference/android/view/View"
+        }
+      }
+    },
+    {
+      "id": "tabs",
+      "properties": {},
+      "children": true,
+      "action": false,
+      "requiresService": false,
+      "targets": {
+        "ios": {
+          "expression": "",
+          "source": "https://developer.apple.com/documentation/swiftui/tabview"
+        },
+        "android": {
+          "className": "android.widget.FrameLayout",
+          "update": "",
+          "source": "https://developer.android.com/reference/android/widget/TabHost"
+        }
+      }
+    },
+    {
+      "id": "tab",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string",
+          "literal": true,
+          "enum": [
+            "camera",
+            "photos",
+            "image",
+            "chat",
+            "story",
+            "map",
+            "user",
+            "person",
+            "settings",
+            "add",
+            "close",
+            "back",
+            "send",
+            "search",
+            "heart",
+            "check",
+            "more",
+            "location",
+            "refresh",
+            "flash",
+            "flip",
+            "swap",
+            "share",
+            "download",
+            "lock",
+            "bell",
+            "video",
+            "trash",
+            "logout",
+            "inbox",
+            "home",
+            "mail",
+            "calendar",
+            "star",
+            "flag",
+            "clock",
+            "folder"
+          ]
+        }
+      },
+      "children": true,
+      "action": false,
+      "requiresService": false,
+      "targets": {
+        "ios": {
+          "expression": "",
+          "source": "https://developer.apple.com/documentation/swiftui/tabview"
+        },
+        "android": {
+          "className": "android.widget.FrameLayout",
+          "update": "",
+          "source": "https://developer.android.com/reference/android/widget/TabHost"
+        }
+      }
+    },
+    {
+      "id": "camera",
+      "properties": {},
+      "children": false,
+      "action": false,
+      "requiresService": true,
+      "targets": {
+        "ios": {
+          "expression": "",
+          "source": "https://developer.apple.com/documentation/swiftui/tabview"
+        },
+        "android": {
+          "className": "android.widget.FrameLayout",
+          "update": "",
+          "source": "https://developer.android.com/reference/android/widget/TabHost"
+        }
+      }
+    },
+    {
+      "id": "inbox",
+      "properties": {},
+      "children": false,
+      "action": false,
+      "requiresService": true,
+      "targets": {
+        "ios": {
+          "expression": "",
+          "source": "https://developer.apple.com/documentation/swiftui/tabview"
+        },
+        "android": {
+          "className": "android.widget.FrameLayout",
+          "update": "",
+          "source": "https://developer.android.com/reference/android/widget/TabHost"
+        }
+      }
+    },
+    {
+      "id": "stories",
+      "properties": {},
+      "children": false,
+      "action": false,
+      "requiresService": true,
+      "targets": {
+        "ios": {
+          "expression": "",
+          "source": "https://developer.apple.com/documentation/swiftui/tabview"
+        },
+        "android": {
+          "className": "android.widget.FrameLayout",
+          "update": "",
+          "source": "https://developer.android.com/reference/android/widget/TabHost"
+        }
+      }
+    },
+    {
+      "id": "friendMap",
+      "properties": {},
+      "children": false,
+      "action": false,
+      "requiresService": true,
+      "targets": {
+        "ios": {
+          "expression": "",
+          "source": "https://developer.apple.com/documentation/swiftui/tabview"
+        },
+        "android": {
+          "className": "android.widget.FrameLayout",
+          "update": "",
+          "source": "https://developer.android.com/reference/android/widget/TabHost"
+        }
+      }
+    },
+    {
+      "id": "account",
+      "properties": {},
+      "children": false,
+      "action": false,
+      "requiresService": true,
+      "targets": {
+        "ios": {
+          "expression": "",
+          "source": "https://developer.apple.com/documentation/swiftui/tabview"
+        },
+        "android": {
+          "className": "android.widget.FrameLayout",
+          "update": "",
+          "source": "https://developer.android.com/reference/android/widget/TabHost"
+        }
+      }
+    },
+    {
+      "id": "secureField",
+      "properties": {
+        "value": {
+          "type": "string",
+          "binding": true
+        },
+        "placeholder": {
+          "type": "string",
+          "default": ""
+        }
+      },
+      "children": false,
+      "action": false,
+      "targets": {
+        "ios": {
+          "expression": "SecureField({placeholder}, text: {binding_value})",
+          "symbol": "SecureField",
+          "source": "https://developer.apple.com/documentation/swiftui"
+        },
+        "android": {
+          "className": "android.widget.EditText",
+          "update": "if (!{view}.getText().toString().equals({value})) {view}.setText({value});\n{view}.setHint({placeholder});\n{view}.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);",
+          "source": "https://developer.android.com/reference/android/widget/EditText"
+        }
+      }
     }
   ]
 }

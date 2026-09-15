@@ -1,0 +1,101 @@
+name: Compiler release
+on:
+  workflow_dispatch:
+    inputs:
+      prerelease:
+        description: 'Mark the release as prerelease'
+        required: false
+        default: 'true'
+        type: boolean
+  push:
+    tags: ['compiler-v*']
+permissions:
+  contents: write
+jobs:
+  wheel:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: compiler
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: dart-lang/setup-dart@v1
+      - name: Run compiler test suite
+        run: python3 -m unittest discover -s tests -v
+      - name: Registry check
+        run: python3 tools/check_registry.py
+      - name: Build wheel (bundles the Dart authoring package)
+        run: |
+          python3 -m pip install build
+          python3 -m build --wheel
+          python3 tools/verify_dart_authoring_package.py dist/*.whl
+      - name: Smoke-test the wheel
+        run: |
+          python3 -m venv /tmp/wheel-venv
+          /tmp/wheel-venv/bin/pip install dist/*.whl
+          /tmp/wheel-venv/bin/dcflight --version
+          /tmp/wheel-venv/bin/dcflight doctor | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["items"]'
+          /tmp/wheel-venv/bin/dcflight validate examples/counter.dart
+          echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | /tmp/wheel-venv/bin/dcflight-mcp | head -1 | grep -q '"serverInfo"'
+      - id: version
+        run: echo "version=$(python3 -c 'import tomllib,sys; print("v"+tomllib.load(open("pyproject.toml","rb"))["project"]["version"])' 2>/dev/null || python3 -c 'print("v"+__import__("re").search(r"version = \"(.*)\"", open("pyproject.toml").read()).group(1))')" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dcflight-wheel
+          path: compiler/dist/*.whl
+  release:
+    needs: wheel
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dcflight-wheel
+          path: dist
+      - name: Prepare release assets
+        run: |
+          cp packaging/install.sh packaging/install.ps1 dist/
+          # One pure-Python wheel serves macOS (arm64+x86_64), Windows and Linux.
+          ls -la dist/
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'push' && github.ref_name || format('compiler-{0}', needs.wheel.outputs.version) }}
+          name: dcflight ${{ needs.wheel.outputs.version }}
+          prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
+          files: |
+            dist/*.whl
+            dist/install.sh
+            dist/install.ps1
+          body: |
+            **dcflight ${{ needs.wheel.outputs.version }}** — development-time native application compiler.
+
+            ## Install
+            macOS / Linux:
+            ```
+            curl -fsSL https://github.com/DotCorr/DCFlight/releases/latest/download/install.sh | sh
+            ```
+            Windows (PowerShell):
+            ```
+            irm https://github.com/DotCorr/DCFlight/releases/latest/download/install.ps1 | iex
+            ```
+
+            Then run `dcflight doctor` — it checks Xcode / Android SDK / JDK / Dart / dcdart,
+            explains what is missing, and `dcflight doctor --install` installs the dev
+            toolchains that can be provisioned automatically.
+
+            ## Use with coding agents (MCP)
+            ```
+            dcflight mcp-config --client claude    # or: vscode, cursor
+            ```
+            The MCP server exposes app authoring (`compile_app`), SDK search/emit,
+            validation and the doctor — schema-driven, read-only native APIs.
+
+            ## Short commands
+            `dcflight create|run|compile|validate|doctor|mcp-config|mcp …` — see `dcflight --help`.

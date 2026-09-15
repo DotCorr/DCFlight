@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dcflight-compiler"
-version = "0.1.0"
+version = "0.4.0.dev27"
 description = "Development-time native application compiler and synchronizer"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -13,9 +13,10 @@ dependencies = []
 
 [project.scripts]
 dcflight = "dcflight.cli:main"
+dcflight-mcp = "dcflight.mcp_server:main"
 
 [tool.setuptools.package-data]
-dcflight = ["data/*.json"]
+dcflight = ["data/*.json", "reload/native/*.c", "reload/native/*.h", "backends/templates/ios_social/*.swift", "backends/templates/android_social/*.java"]
 
 [tool.setuptools.packages.find]
 include = ["dcflight*"]

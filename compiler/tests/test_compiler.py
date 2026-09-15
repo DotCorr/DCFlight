@@ -208,7 +208,7 @@ class CompilerTests(unittest.TestCase):
         self.assertIn('error', server.handle({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'}))
         self.assertIn('result', server.handle({'jsonrpc': '2.0', 'id': 2, 'method': 'initialize', 'params': {'protocolVersion': '2025-03-26'}}))
         tools = server.handle({'jsonrpc': '2.0', 'id': 3, 'method': 'tools/list'})['result']['tools']
-        self.assertEqual(3, len(tools))
+        self.assertEqual(7, len(tools))  # registry_search, app_schema, validate_app, doctor, doctor_install, mcp_config, compile_app
         response = server.handle({'jsonrpc': '2.0', 'id': 4, 'method': 'tools/call', 'params': {'name': 'validate_app', 'arguments': {'app': self.data}}})
         self.assertFalse(response['result']['isError'])
         response = server.handle({'jsonrpc': '2.0', 'id': 5, 'method': 'tools/call', 'params': {'name': 'validate_app', 'arguments': {'app': {}}}})

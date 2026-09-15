@@ -2,6 +2,10 @@ import json
 from . import Artifact, HEADER
 from .common import color_int, expression, symbol, expand
 from ..ir import ScalarType
+from ..shared_logic import call_expression
+from .ios_presentation import render as render_presentation
+from .ios_presentation import color as _ios_color
+from . import ios_social
 
 
 def dc_color(hex_color):
@@ -59,8 +63,9 @@ PROJECT = '''// !$*UTF8*$!
   100000000000000000000009 = {isa = XCConfigurationList; buildConfigurations = (100000000000000000000012, 100000000000000000000013); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;};
   100000000000000000000010 = {isa = XCBuildConfiguration; buildSettings = {SDKROOT = iphoneos; IPHONEOS_DEPLOYMENT_TARGET = 17.0;}; name = Debug;};
   100000000000000000000011 = {isa = XCBuildConfiguration; buildSettings = {SDKROOT = iphoneos; IPHONEOS_DEPLOYMENT_TARGET = 17.0;}; name = Release;};
-  100000000000000000000012 = {isa = XCBuildConfiguration; buildSettings = {PRODUCT_BUNDLE_IDENTIFIER = __APP_ID__; PRODUCT_NAME = App; SWIFT_VERSION = 5.0; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES; INFOPLIST_KEY_UILaunchScreen_Generation = YES; TARGETED_DEVICE_FAMILY = "1,2"; CODE_SIGN_STYLE = Automatic; INFOPLIST_KEY_CFBundleDisplayName = __APP_NAME__; ALWAYS_SEARCH_USER_PATHS = NO;}; name = Debug;};
-  100000000000000000000013 = {isa = XCBuildConfiguration; buildSettings = {PRODUCT_BUNDLE_IDENTIFIER = __APP_ID__; PRODUCT_NAME = App; SWIFT_VERSION = 5.0; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES; INFOPLIST_KEY_UILaunchScreen_Generation = YES; TARGETED_DEVICE_FAMILY = "1,2"; CODE_SIGN_STYLE = Automatic; INFOPLIST_KEY_CFBundleDisplayName = __APP_NAME__; ALWAYS_SEARCH_USER_PATHS = NO;}; name = Release;};
+  100000000000000000000014 = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Native/Logic.xcconfig; sourceTree = SOURCE_ROOT;};
+  100000000000000000000012 = {isa = XCBuildConfiguration; baseConfigurationReference = 100000000000000000000014; buildSettings = {PRODUCT_BUNDLE_IDENTIFIER = __APP_ID__; PRODUCT_NAME = App; SWIFT_VERSION = 5.0; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES; INFOPLIST_KEY_UILaunchScreen_Generation = YES; TARGETED_DEVICE_FAMILY = "1,2"; CODE_SIGN_STYLE = Automatic; INFOPLIST_KEY_CFBundleDisplayName = __APP_NAME__; ALWAYS_SEARCH_USER_PATHS = NO;}; name = Debug;};
+  100000000000000000000013 = {isa = XCBuildConfiguration; baseConfigurationReference = 100000000000000000000014; buildSettings = {PRODUCT_BUNDLE_IDENTIFIER = __APP_ID__; PRODUCT_NAME = App; SWIFT_VERSION = 5.0; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES; INFOPLIST_KEY_UILaunchScreen_Generation = YES; TARGETED_DEVICE_FAMILY = "1,2"; CODE_SIGN_STYLE = Automatic; INFOPLIST_KEY_CFBundleDisplayName = __APP_NAME__; ALWAYS_SEARCH_USER_PATHS = NO;}; name = Release;};
  };
  rootObject = 100000000000000000000001;
 }
@@ -72,9 +77,16 @@ class IOS:
 
     def generate(self, app, registry):
         files = {}
+        legacy_capabilities = {'text','counter','button','column','row','toggle','textField','divider','progress','native'}
+        explicit_presentation = any(getattr(node,'style',None) is not None or getattr(node,'motion',None) is not None or getattr(node,'visible_when',None) is not None or node.capability not in legacy_capabilities for node in app.nodes())
+        root_padding = '' if explicit_presentation else '.padding()'
         def put(path, content, ownership='generated'):
             files['ios/' + path] = Artifact(content, ownership)
-        put('App.xcodeproj/project.pbxproj', PROJECT.replace('__APP_ID__', app.id).replace('__APP_NAME__', json.dumps(app.name, ensure_ascii=False)), 'user')
+        project = PROJECT.replace('__APP_ID__', app.id).replace('__APP_NAME__', json.dumps(app.name, ensure_ascii=False))
+        if app.service is not None:
+            project = project.replace('GENERATE_INFOPLIST_FILE = YES;', 'GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = Native/ServiceInfo.plist;')
+        put('App.xcodeproj/project.pbxproj', project, 'user')
+        put('Native/Logic.xcconfig', '// Native application logic configuration.\n')
         put('App/User/AppMain.swift', HEADER + '''import SwiftUI
 @main
 struct AppMain: App {
@@ -84,8 +96,12 @@ struct AppMain: App {
     }
 }
 ''', 'user')
-        root_style = {key: value.value for key, value in app.root.style}
-        root_bg = (dc_color(root_style['backgroundColor']) + '.ignoresSafeArea()') if 'backgroundColor' in root_style else 'Color.clear.ignoresSafeArea()'
+        if app.service is not None:
+            put('App/User/AppMain.swift', ios_social.app_main(), 'user')
+            for path, content in ios_social.artifacts(app).items():
+                put(path, content)
+        root_style = getattr(app.root, 'style', None)
+        root_bg = (_ios_color(root_style.background) if (root_style is not None and root_style.background is not None) else 'Color.clear') + '.ignoresSafeArea()'
         put('App/Generated/RootView.swift', HEADER + '''import SwiftUI
 struct RootView: View {
     @ObservedObject var model: AppModel
@@ -117,6 +133,10 @@ extension Color {
                 body = target + ' = ' + target + ' == Int32.max ? Int32.min : ' + target + ' + 1'
             elif action.operation == 'toggle':
                 body = target + '.toggle()'
+            elif action.operation == 'call':
+                body = target + ' = ' + call_expression(app, action, 'ios', expression)
+                if action.failure:
+                    body = 'do { '+body+' } catch { self.a_'+action.failure+'(); return }'
             elif action.operation == 'set':
                 body = target + ' = ' + expression(action.value, 'ios').replace('model.s_', 'self.s_')
             else:
@@ -133,18 +153,8 @@ extension Color {
                     values['binding_' + key] = '$model.s_' + props[key].name
             if node.capability == 'native':
                 values['symbol'] = 'v_' + props['symbol'].value
-            style = {key: value.value for key, value in node.style}
-            if node.capability in ('column', 'row'):
-                stack = 'VStack' if node.capability == 'column' else 'HStack'
-                # Cross-axis alignment: VStack aligns horizontally, HStack vertically.
-                axis = {'column': {'start': '.leading', 'center': '.center', 'end': '.trailing'},
-                        'row': {'start': '.top', 'center': '.center', 'end': '.bottom'}}[node.capability]
-                args = ['alignment: ' + axis[style.get('alignment', 'start')]]
-                if 'spacing' in style:
-                    args.append('spacing: %d' % style['spacing'])
-                body = stack + '(' + ', '.join(args) + ') {\n' + values['children'] + '\n}'
-            else:
-                body = expand(mapping['expression'], values)
-            body = body + ios_modifiers(node)
-            put('App/Generated/Nodes/' + symbol(node.id) + '.swift', HEADER + 'import SwiftUI\nstruct ' + symbol(node.id) + ': View {\n    @ObservedObject var model: AppModel\n    var body: some View {\n' + body + '\n    }\n}\n')
+            social = ios_social.render(node, app) if app.service is not None else None
+            presentation = render_presentation(node, social[0] if social is not None else expand(mapping['expression'], values))
+            body = presentation.body
+            put('App/Generated/Nodes/' + symbol(node.id) + '.swift', HEADER + 'import SwiftUI\nstruct ' + symbol(node.id) + ': View {\n    @ObservedObject var model: AppModel\n' + presentation.declarations + (social[1] if social is not None else '') + '    var body: some View {\n' + body + '\n    }\n}\n')
         return files

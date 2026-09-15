@@ -1,0 +1,4 @@
+# Set SNAP_DOMAIN to your actual DNS hostname. TLS certificates are automatic.
+{$SNAP_DOMAIN} {
+    reverse_proxy 127.0.0.1:8000
+}

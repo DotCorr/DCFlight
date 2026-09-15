@@ -54,16 +54,16 @@ def choose_simulator(devices, requested=None):
     raise ValueError('No iOS Simulator is installed. Install an iOS runtime in Xcode Settings > Components.')
 
 
-def run_ios(project, requested_device=None):
+def run_ios(project, requested_device=None, *, evaluate_dart=False, dart='dart'):
     if sys.platform != 'darwin':
         raise ValueError('Launching iOS requires macOS and Xcode; native Android projects can be opened in Android Studio.')
     root = Path(project).resolve()
-    source = root / 'app.json'
+    source = root / ('app.dart' if evaluate_dart else 'app.json')
     if not source.is_file():
-        raise ValueError('No app.json found. First create a project with dcflight create.')
+        raise ValueError('No '+source.name+' found in app directory.')
     # Check toolchain before generation; report actual diagnostics, not an absent preview.
     subprocess.run(['xcodebuild', '-version'], check=True, stdout=subprocess.DEVNULL)
-    compile_app(source, root / 'native', targets=('ios',))
+    compile_app(source, root / 'native', targets=('ios',), evaluate_dart=evaluate_dart, dart=dart)
     devices = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devices', 'available', '--json'], text=True))
     device = choose_simulator(devices, requested_device)
     identity = device['udid']
@@ -80,7 +80,7 @@ def run_ios(project, requested_device=None):
     with log.open('w') as stream:
         result = subprocess.run(['xcodebuild', '-project', str(root / 'native/ios/App.xcodeproj'),
             '-scheme', 'App', '-configuration', 'Debug', '-destination', 'id=' + identity,
-            '-derivedDataPath', str(derived), 'CODE_SIGNING_ALLOWED=NO', 'build'], stdout=stream, stderr=subprocess.STDOUT)
+            '-derivedDataPath', str(derived), 'CODE_SIGNING_ALLOWED=YES', 'CODE_SIGN_IDENTITY=-', 'build'], stdout=stream, stderr=subprocess.STDOUT)
     if result.returncode:
         raise ValueError('Native build failed. See ' + str(log) + '\n' + log.read_text()[-4000:])
     product = derived / 'Build/Products/Debug-iphonesimulator/App.app'

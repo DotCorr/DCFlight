@@ -1,0 +1,11 @@
+# Authored iOS deployment target
+
+The application's minimum iOS version is one canonical configuration value. The default is iOS17.0, the existing project baseline. JSON uses `nativeConfiguration.ios.deploymentTarget: [18, 0]`; Dart uses `NativeConfiguration(ios: IOSConfiguration(deploymentTarget: [18, 0]))`. Major versions17..99 and minor versions0..99 are accepted. No OS minimum is raised automatically.
+
+Application NativeOperations inherit that target when `iosVersion` is absent. A declared operation `iosVersion` may be lower or equal (useful for an exact invocation certificate), but may not exceed the application's target. Ordinary APIs introduced after the target fail native availability validation before synchronization writes files. Invocation certificates retain their exact target/context rules. Standalone SDK emission remains caller-targeted and does not implicitly define an application deployment minimum.
+
+This release rejects newer operations in older-target apps. It does not implement a runtime fallback availability guard. An authored error/failure branch alone does not make newer symbols available; the application author must explicitly choose a sufficient minimum version or another API.
+
+The generated `ios/Native/Logic.xcconfig` sets `IPHONEOS_DEPLOYMENT_TARGET`. It is the target base configuration in each ordinary generated Xcode app configuration. Existing project files remain user-owned; changing the canonical target regenerates the owned xcconfig without editing the project. Generation verifies actual parsed target/configuration/file-reference relationships. Missing, commented-out, redirected hooks and target-level deployment overrides fail with migration guidance. The initial project-level17.0 setting is superseded by the target xcconfig; Xcode's resolved build settings reflect the authored value. External command-line overrides are outside the authored contract and should not be used to claim conformance.
+
+Validation includes the previous real regression: an iOS18-only UIKit constant generated without a guard failed the normal17.0 Xcode build. With deploymentTarget[18,0], ordinary generation and an unmodified normal Xcode build succeed; showBuildSettings reports18.0 without any deployment override. This is build validation, not device execution or a complete-platform claim.

@@ -1,0 +1,1943 @@
+{
+  "version": 1,
+  "status": "audit-only; no native code changes",
+  "invariant": "One shared authored tree, copy catalog, routes and flows; native adapters implement OS mechanisms and generated source contains no runtime graph/interpreter. Whole-screen social templates must be removed as authoring authority.",
+  "scope": {
+    "dcflight/backends/templates/ios_social/Camera.swift": {
+      "sha256": "2477deb40a4e0a2a6b6d4712506d1314366bcb9624630eb5a14fc32d27b64c21",
+      "lines": 154
+    },
+    "dcflight/backends/templates/ios_social/Map.swift": {
+      "sha256": "c2745e11b8969cb9f0a424d1a88e57d7f1212ac2b34ab2a4c26db4d557f9af13",
+      "lines": 69
+    },
+    "dcflight/backends/templates/ios_social/Messaging.swift": {
+      "sha256": "0336b07fa7679c563dcdc24b8a5ba6dd97088ca20cbaa5514e9ffffc8c81cf41",
+      "lines": 133
+    },
+    "dcflight/backends/templates/ios_social/Service.swift": {
+      "sha256": "0366af9df2563d84c5a36caa59dba7c73425d9410ffd86c07750bcdec9153603",
+      "lines": 163
+    },
+    "dcflight/backends/templates/ios_social/Shell.swift": {
+      "sha256": "e6734bed4abc116f3b9b9480c253b6feb87b85dd7898af672b199d645374f463",
+      "lines": 120
+    },
+    "dcflight/backends/ios_social.py": {
+      "sha256": "4055473f7513c131ae393134c8130fc964523293bd822acb82391a5009a6ae83",
+      "lines": 114
+    },
+    "dcflight/backends/ios.py": {
+      "sha256": "1dc2f96ee4f8e8778f03aaf99ab87d58a01380bb38ceb1035b6c0d4e08befb57",
+      "lines": 101
+    }
+  },
+  "screensAndCompositions": [
+    {
+      "screen": "session gate",
+      "symbol": "SocialGate",
+      "source": {
+        "path": "dcflight/backends/templates/ios_social/Shell.swift",
+        "startLine": 3,
+        "endLine": 17
+      },
+      "ownership": "shared-authoring",
+      "textLiteralLines": [
+        11,
+        12
+      ],
+      "interactions": [
+        "session user/token/restoration branches",
+        "restore on entry; retry; local clear; authenticated-root replacement"
+      ],
+      "layoutSlots": [
+        "conditional content",
+        "restoring spinner",
+        "restore error/retry/sign-out column; gap20 padding24"
+      ]
+    },
+    {
+      "screen": "authentication",
+      "symbol": "AuthenticationScreen",
+      "source": {
+        "path": "dcflight/backends/templates/ios_social/Shell.swift",
+        "startLine": 18,
+        "endLine": 55
+      },
+      "ownership": "shared-authoring",
+      "textLiteralLines": [
+        21,
+        22,
+        23,
+        30,
+        31,
+        33,
+        34,
+        35,
+        36,
+        37,
+        40,
+        41,
+        43,
+        51
+      ],
+      "interactions": [
+        "register is initial mode",
+        "switch register/login and clear error",
+        "field validation; focus dismissal; loading/error state; clear password on success",
+        "authenticate then gate switches root"
+      ],
+      "layoutSlots": [
+        "scroll/column gap28",
+        "brand icon card and app-name/strapline header",
+        "form card with conditional name, username, secure password, helper text, notices, primary submit, mode switch",
+        "privacy footer; explicit sizes48/32; gaps8/18/28; padding16/18/20/24; corners14/16/24"
+      ]
+    },
+    {
+      "screen": "friends",
+      "symbol": "FriendsScreen",
+      "source": {
+        "path": "dcflight/backends/templates/ios_social/Shell.swift",
+        "startLine": 56,
+        "endLine": 94
+      },
+      "ownership": "shared-authoring",
+      "textLiteralLines": [
+        61,
+        70,
+        71,
+        72,
+        74,
+        75,
+        76,
+        78,
+        80,
+        81,
+        83,
+        85,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92
+      ],
+      "interactions": [
+        "entry/refresh fetch friends and requests concurrently",
+        "search query encoding and results replacement",
+        "add request then notice/reload",
+        "accept then reload",
+        "remove then reload",
+        "create conversation then callback and global conversation route"
+      ],
+      "layoutSlots": [
+        "list sections search,requests,friends",
+        "row item templates and sender/recipient conditional statuses",
+        "person initials and username prefix",
+        "swipe remove action",
+        "loading overlay/error/notice slots; row gaps12/avatar40/44"
+      ]
+    },
+    {
+      "screen": "account",
+      "symbol": "AccountScreen",
+      "source": {
+        "path": "dcflight/backends/templates/ios_social/Shell.swift",
+        "startLine": 95,
+        "endLine": 120
+      },
+      "ownership": "shared-authoring",
+      "textLiteralLines": [
+        97,
+        101,
+        106,
+        107,
+        108,
+        109,
+        111,
+        112,
+        114,
+        115,
+        118,
+        119
+      ],
+      "interactions": [
+        "initialize name from session",
+        "save profile then refresh session",
+        "push friends",
+        "logout",
+        "present delete confirmation; password gate; delete account then clear session; cancel clears password"
+      ],
+      "layoutSlots": [
+        "scroll profile header",
+        "editable profile card",
+        "manage-friends card",
+        "privacy text section",
+        "error/sign-out/delete actions",
+        "delete modal form with destructive confirmation copy",
+        "gaps4/8/14/18/24; avatar76; card padding20"
+      ]
+    },
+    {
+      "screen": "inbox",
+      "symbol": "InboxScreen",
+      "source": {
+        "path": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "startLine": 4,
+        "endLine": 36
+      },
+      "ownership": "shared-authoring",
+      "textLiteralLines": [
+        16,
+        19,
+        22,
+        26,
+        27,
+        34
+      ],
+      "interactions": [
+        "fetch on entry and refresh; poll every5s only active",
+        "empty-state/new-chat opens friends modal",
+        "conversation row pushes route with id",
+        "friends result dismisses modal then pushes conversation",
+        "consume pending conversation deep route on appear/change"
+      ],
+      "layoutSlots": [
+        "NavigationStack/list of conversation cards inside scroll",
+        "headline and compose toolbar row",
+        "loading/error/empty slots",
+        "avatar/name/subtitle/chevron row template; gaps5/14/18 padding18"
+      ]
+    },
+    {
+      "screen": "conversation",
+      "symbol": "ConversationScreen",
+      "source": {
+        "path": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "startLine": 37,
+        "endLine": 96
+      },
+      "ownership": "shared-authoring",
+      "textLiteralLines": [
+        42,
+        69,
+        70,
+        71,
+        73,
+        83,
+        93
+      ],
+      "interactions": [
+        "id route parameter",
+        "poll every3s active; after last integer ID; batch100 and deduplicate",
+        "scroll to newest message on last-id change",
+        "text and photo send validation invokes shared policy",
+        "send clears text then reloads",
+        "pick photo then normalize and present composer with conversationID; completion reloads",
+        "cancel pending task on disappear"
+      ],
+      "layoutSlots": [
+        "message list aligned by own versus peer sender",
+        "conditional image and text; time label",
+        "bubble fill,spacing,corners and max-width250",
+        "bottom attachment/input/send composer; input1..5lines",
+        "error slot; native scroll anchor"
+      ]
+    },
+    {
+      "screen": "stories",
+      "symbol": "StoriesScreen",
+      "source": {
+        "path": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "startLine": 97,
+        "endLine": 133
+      },
+      "ownership": "shared-authoring",
+      "textLiteralLines": [
+        111,
+        116,
+        118,
+        122,
+        123,
+        128,
+        131,
+        132
+      ],
+      "interactions": [
+        "entry/refresh and30s active polling",
+        "filter expiry using shared policy; grid tick30s",
+        "create story picker and normalize then composer",
+        "select story presents details with value parameter",
+        "details tick1s; remove media at expiry",
+        "owner-only delete then dismiss/reload",
+        "picker task cancellation"
+      ],
+      "layoutSlots": [
+        "heading",
+        "loading/error/empty slots with create-story action",
+        "2-column grid; gap14/18; image height210; avatar30; expiry caption",
+        "toolbar create-story",
+        "detail modal image/caption/expiry-placeholder; done/delete toolbar"
+      ]
+    },
+    {
+      "screen": "camera",
+      "symbol": "CameraScreen",
+      "source": {
+        "path": "dcflight/backends/templates/ios_social/Camera.swift",
+        "startLine": 73,
+        "endLine": 102
+      },
+      "ownership": "shared-authoring",
+      "textLiteralLines": [
+        84,
+        87,
+        90,
+        92,
+        93
+      ],
+      "interactions": [
+        "start camera only active/visible; stop on disappear/inactive",
+        "flip lens",
+        "capture",
+        "retry camera; open app settings when denied",
+        "pick library photo; normalize; present composer; clear draft on completion"
+      ],
+      "layoutSlots": [
+        "black edge-to-edge preview with overlay",
+        "top app-name and flip control",
+        "center permission/unavailable/retry panel",
+        "bottom strapline and photo/capture controls",
+        "explicit shutter84/68; side54; gap40; margins22/24/28; dark chrome"
+      ]
+    },
+    {
+      "screen": "photo composer",
+      "symbol": "MediaComposer",
+      "source": {
+        "path": "dcflight/backends/templates/ios_social/Camera.swift",
+        "startLine": 103,
+        "endLine": 154
+      },
+      "ownership": "shared-authoring",
+      "textLiteralLines": [
+        109,
+        111,
+        121,
+        122,
+        124,
+        126,
+        127,
+        128,
+        129,
+        130,
+        133,
+        134,
+        135,
+        141,
+        142,
+        143,
+        149,
+        150
+      ],
+      "interactions": [
+        "photo draft and optional conversationID route parameters",
+        "load conversations only when no preselected recipient",
+        "caption focus/keyboard Done",
+        "validate byte/message policy and story240char protocol bound",
+        "upload once and reuse id on retry",
+        "branch create story versus selected conversation message",
+        "dismiss and refresh originating resource on success; cancel pending task"
+      ],
+      "layoutSlots": [
+        "scroll photo preview",
+        "multiline caption field1..4lines",
+        "error slot",
+        "conditional fixed-recipient send or story+recipient selector+private-send actions",
+        "empty-conversations hint; busy indicators",
+        "cancel and keyboard Done toolbars; corners16/22; padding16/17; gap20"
+      ]
+    },
+    {
+      "screen": "friend map",
+      "symbol": "FriendMapScreen",
+      "source": {
+        "path": "dcflight/backends/templates/ios_social/Map.swift",
+        "startLine": 27,
+        "endLine": 69
+      },
+      "ownership": "shared-authoring",
+      "textLiteralLines": [
+        44,
+        45,
+        46,
+        48,
+        49,
+        51,
+        57,
+        61,
+        62,
+        67
+      ],
+      "interactions": [
+        "entry reads consent; fetch friends locations;30s active refresh",
+        "user opt-in requests permission/location; successful native location event invokes shared consent policy then PUT location",
+        "disable or permission denial clears remote shared location then refreshes session",
+        "failure to clear retains honest expiry notice",
+        "stop native updates on inactive/disappear; cancel task",
+        "camera center/span after successful publication"
+      ],
+      "layoutSlots": [
+        "map with dynamic friend annotation item template",
+        "compass/scale options",
+        "bottom overlay with count/empty summary,refresh,toggle,privacy,error,settings,progress slots",
+        "avatar42; stroke3; panel padding20/16; radius theme; map span0.03"
+      ]
+    },
+    {
+      "screen": "shared reusable composition",
+      "symbol": "FailureBanner",
+      "source": {
+        "path": "dcflight/backends/templates/ios_social/Service.swift",
+        "startLine": 132,
+        "endLine": 142
+      },
+      "ownership": "shared-authoring",
+      "textLiteralLines": [
+        136,
+        139
+      ],
+      "interactions": [
+        "retry action passed by caller"
+      ],
+      "layoutSlots": [
+        "icon/text/spacer/optional retry row; gap10,padding14,radius14; danger fill0.08"
+      ]
+    },
+    {
+      "screen": "shared reusable composition",
+      "symbol": "PersonAvatar",
+      "source": {
+        "path": "dcflight/backends/templates/ios_social/Service.swift",
+        "startLine": 143,
+        "endLine": 146
+      },
+      "ownership": "shared-authoring",
+      "textLiteralLines": [],
+      "interactions": [
+        "initials extraction/uppercase must be shared formatter or shared DC Dart logic, not per-platform divergent function"
+      ],
+      "layoutSlots": [
+        "circular initial badge; size-dependent font0.4; theme accent/text; decorative accessibility policy"
+      ]
+    },
+    {
+      "screen": "shared reusable composition",
+      "symbol": "AuthenticatedMedia",
+      "source": {
+        "path": "dcflight/backends/templates/ios_social/Service.swift",
+        "startLine": 147,
+        "endLine": 163
+      },
+      "ownership": "shared-authoring",
+      "textLiteralLines": [
+        156,
+        159
+      ],
+      "interactions": [
+        "resource key is media ID + retry attempt",
+        "authenticated media request; cancel on scope change; decode image; retry increments attempt"
+      ],
+      "layoutSlots": [
+        "success image-fit slot",
+        "error icon/message/retry slot",
+        "loading progress minHeight160; error padding16"
+      ]
+    }
+  ],
+  "literalIndex": {
+    "method": "Line-indexed Swift string-literal occurrences, intentionally including technical strings to avoid silently excluding app copy. This is a migration inventory, not a parser-certified semantic classification. UI wording, placeholders, helper/error/empty/accessibility copy belongs in shared authoring; paths/JSON fields belong in shared protocol; SF Symbols/OS constants belong in native mapping.",
+    "occurrences": [
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 11,
+        "owner": "PhotoPreparation",
+        "swiftLiterals": [
+          "\"Choose a still photo in a supported format.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 13,
+        "owner": "PhotoPreparation",
+        "swiftLiterals": [
+          "\"This photo is too large to upload.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 19,
+        "owner": "CameraEngine",
+        "swiftLiterals": [
+          "\"application.camera\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 35,
+        "owner": "CameraEngine",
+        "swiftLiterals": [
+          "\"Camera access is off. Enable it in Settings, or choose a photo from your library.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 41,
+        "owner": "CameraEngine",
+        "swiftLiterals": [
+          "\"A camera is not available on this device. You can still choose a photo from your library.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 44,
+        "owner": "CameraEngine",
+        "swiftLiterals": [
+          "\"The camera could not be started.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 58,
+        "owner": "CameraEngine",
+        "swiftLiterals": [
+          "\"The photo could not be captured.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 84,
+        "owner": "CameraScreen",
+        "swiftLiterals": [
+          "\"arrow.triangle.2.circlepath.camera\"",
+          "\"Flip camera\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 87,
+        "owner": "CameraScreen",
+        "swiftLiterals": [
+          "\"camera\"",
+          "\"Open Settings\"",
+          "\"Try camera again\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 90,
+        "owner": "CameraScreen",
+        "swiftLiterals": [
+          "\"A moment worth sharing.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 92,
+        "owner": "CameraScreen",
+        "swiftLiterals": [
+          "\"photo.on.rectangle\"",
+          "\"Choose a photo\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 93,
+        "owner": "CameraScreen",
+        "swiftLiterals": [
+          "\"Take photo\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 109,
+        "owner": "MediaComposer",
+        "swiftLiterals": [
+          "\"\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 111,
+        "owner": "MediaComposer",
+        "swiftLiterals": [
+          "\"\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 121,
+        "owner": "MediaComposer",
+        "swiftLiterals": [
+          "\"Photo preview\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 122,
+        "owner": "MediaComposer",
+        "swiftLiterals": [
+          "\"Add a caption\"",
+          "\"photo.caption\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 124,
+        "owner": "MediaComposer",
+        "swiftLiterals": [
+          "\"Send photo\"",
+          "\"paperplane\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 126,
+        "owner": "MediaComposer",
+        "swiftLiterals": [
+          "\"Share to your story\"",
+          "\"circle.dashed\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 127,
+        "owner": "MediaComposer",
+        "swiftLiterals": [
+          "\"Visible to friends for 24 hours\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 128,
+        "owner": "MediaComposer",
+        "swiftLiterals": [
+          "\"Send to a conversation\"",
+          "\"Choose a conversation\"",
+          "\"\"",
+          "\"Conversation\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 129,
+        "owner": "MediaComposer",
+        "swiftLiterals": [
+          "\"Send privately\"",
+          "\"lock\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 130,
+        "owner": "MediaComposer",
+        "swiftLiterals": [
+          "\"Start a conversation from Friends in the chat tab to send privately.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 133,
+        "owner": "MediaComposer",
+        "swiftLiterals": [
+          "\"Your photo\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 134,
+        "owner": "MediaComposer",
+        "swiftLiterals": [
+          "\"Cancel\"",
+          "\"Done\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 135,
+        "owner": "MediaComposer",
+        "swiftLiterals": [
+          "\"/v1/conversations\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 141,
+        "owner": "MediaComposer",
+        "swiftLiterals": [
+          "\"This photo is too large.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 142,
+        "owner": "MediaComposer",
+        "swiftLiterals": [
+          "\"Shorten your message before sending.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 143,
+        "owner": "MediaComposer",
+        "swiftLiterals": [
+          "\"Caption: use no more than 240 characters.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 149,
+        "owner": "MediaComposer",
+        "swiftLiterals": [
+          "\"/v1/stories\"",
+          "\"POST\"",
+          "\"media_id\"",
+          "\"caption\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Camera.swift",
+        "line": 150,
+        "owner": "MediaComposer",
+        "swiftLiterals": [
+          "\"/v1/conversations/\"",
+          "\"/messages\"",
+          "\"POST\"",
+          "\"media_id\"",
+          "\"text\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Map.swift",
+        "line": 19,
+        "owner": "LocationEngine",
+        "swiftLiterals": [
+          "\"Location access is off. You can enable it in Settings.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Map.swift",
+        "line": 23,
+        "owner": "LocationEngine",
+        "swiftLiterals": [
+          "\"Location permission was not granted.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Map.swift",
+        "line": 44,
+        "owner": "FriendMapScreen",
+        "swiftLiterals": [
+          "\"Your people, nearby\"",
+          "\"No friends are sharing a fresh location.\"",
+          "\"\\(friends.count) friends sharing now\"",
+          "\"arrow.clockwise\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Map.swift",
+        "line": 45,
+        "owner": "FriendMapScreen",
+        "swiftLiterals": [
+          "\"Share my location\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Map.swift",
+        "line": 46,
+        "owner": "FriendMapScreen",
+        "swiftLiterals": [
+          "\"Off by default. Updates only while this map is open. Shared locations expire after one hour without an update.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Map.swift",
+        "line": 48,
+        "owner": "FriendMapScreen",
+        "swiftLiterals": [
+          "\"Open Settings\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Map.swift",
+        "line": 49,
+        "owner": "FriendMapScreen",
+        "swiftLiterals": [
+          "\"Updating location…\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Map.swift",
+        "line": 51,
+        "owner": "FriendMapScreen",
+        "swiftLiterals": [
+          "\"Map\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Map.swift",
+        "line": 57,
+        "owner": "FriendMapScreen",
+        "swiftLiterals": [
+          "\"/v1/map\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Map.swift",
+        "line": 61,
+        "owner": "FriendMapScreen",
+        "swiftLiterals": [
+          "\"/v1/location\"",
+          "\"PUT\"",
+          "\"enabled\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Map.swift",
+        "line": 62,
+        "owner": "FriendMapScreen",
+        "swiftLiterals": [
+          "\"Could not clear the last shared location from the service. It expires within one hour. \""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Map.swift",
+        "line": 67,
+        "owner": "FriendMapScreen",
+        "swiftLiterals": [
+          "\"/v1/location\"",
+          "\"PUT\"",
+          "\"enabled\"",
+          "\"latitude_e6\"",
+          "\"longitude_e6\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "line": 16,
+        "owner": "InboxScreen",
+        "swiftLiterals": [
+          "\"Keep the conversation going.\"",
+          "\"square.and.pencil\"",
+          "\"New chat\"",
+          "\"chats.create\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "line": 19,
+        "owner": "InboxScreen",
+        "swiftLiterals": [
+          "\"Start with a friend\"",
+          "\"bubble.left.and.bubble.right\"",
+          "\"Add a friend and share your first message or photo.\"",
+          "\"Find friends\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "line": 22,
+        "owner": "InboxScreen",
+        "swiftLiterals": [
+          "\"Friend\"",
+          "\"Conversation\"",
+          "\"Tap to catch up\"",
+          "\"chevron.right\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "line": 26,
+        "owner": "InboxScreen",
+        "swiftLiterals": [
+          "\"Chats\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "line": 27,
+        "owner": "InboxScreen",
+        "swiftLiterals": [
+          "\"Done\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "line": 34,
+        "owner": "InboxScreen",
+        "swiftLiterals": [
+          "\"/v1/conversations\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "line": 42,
+        "owner": "ConversationScreen",
+        "swiftLiterals": [
+          "\"\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "line": 69,
+        "owner": "ConversationScreen",
+        "swiftLiterals": [
+          "\"photo\"",
+          "\"Attach photo\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "line": 70,
+        "owner": "ConversationScreen",
+        "swiftLiterals": [
+          "\"Message\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "line": 71,
+        "owner": "ConversationScreen",
+        "swiftLiterals": [
+          "\"arrow.up\"",
+          "\"Send message\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "line": 73,
+        "owner": "ConversationScreen",
+        "swiftLiterals": [
+          "\"Conversation\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "line": 83,
+        "owner": "ConversationScreen",
+        "swiftLiterals": [
+          "\"/v1/conversations/\"",
+          "\"/messages?after=\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "line": 93,
+        "owner": "ConversationScreen",
+        "swiftLiterals": [
+          "\"/v1/conversations/\"",
+          "\"/messages\"",
+          "\"POST\"",
+          "\"text\"",
+          "\"\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "line": 111,
+        "owner": "StoriesScreen",
+        "swiftLiterals": [
+          "\"Little moments. Here for a day.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "line": 116,
+        "owner": "StoriesScreen",
+        "swiftLiterals": [
+          "\"A new story starts with you\"",
+          "\"camera\"",
+          "\"Share a photo with your friends for 24 hours.\"",
+          "\"Create story\"",
+          "\"plus\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "line": 118,
+        "owner": "StoriesScreen",
+        "swiftLiterals": [
+          "\"You\"",
+          "\"Your story\"",
+          "\"\\(max(1,SocialPolicy.remaining(story:story,now:context.date)/3600))h left\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "line": 122,
+        "owner": "StoriesScreen",
+        "swiftLiterals": [
+          "\"Stories\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "line": 123,
+        "owner": "StoriesScreen",
+        "swiftLiterals": [
+          "\"Create story\"",
+          "\"plus\"",
+          "\"stories.create\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "line": 128,
+        "owner": "StoriesScreen",
+        "swiftLiterals": [
+          "\"Story expired\"",
+          "\"clock\"",
+          "\"This moment is no longer available.\"",
+          "\"Story\"",
+          "\"Done\"",
+          "\"Delete\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "line": 131,
+        "owner": "StoriesScreen",
+        "swiftLiterals": [
+          "\"/v1/stories\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Messaging.swift",
+        "line": 132,
+        "owner": "StoriesScreen",
+        "swiftLiterals": [
+          "\"/v1/stories/\"",
+          "\"DELETE\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 23,
+        "owner": "ServiceValidation",
+        "swiftLiterals": [
+          "\"username\"",
+          "\"Username\"",
+          "\"password\"",
+          "\"Password\"",
+          "\"display_name\"",
+          "\"Your name\"",
+          "\"caption\"",
+          "\"Caption\"",
+          "\"text\"",
+          "\"Message\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 25,
+        "owner": "ServiceValidation",
+        "swiftLiterals": [
+          "\"loc\"",
+          "\"msg\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 26,
+        "owner": "ServiceValidation",
+        "swiftLiterals": [
+          "\": \""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 28,
+        "owner": "ServiceValidation",
+        "swiftLiterals": [
+          "\"\\n\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 31,
+        "owner": "ServiceValidation",
+        "swiftLiterals": [
+          "\"^[A-Za-z0-9_]+$\"",
+          "\"Username: use 3–24 letters, numbers, or underscores.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 32,
+        "owner": "ServiceValidation",
+        "swiftLiterals": [
+          "\"Password: use 12–128 characters.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 33,
+        "owner": "ServiceValidation",
+        "swiftLiterals": [
+          "\"Your name: use 1–60 characters.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 48,
+        "owner": "SessionKeychain",
+        "swiftLiterals": [
+          "\"app\"",
+          "\".session.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 50,
+        "owner": "SessionKeychain",
+        "swiftLiterals": [
+          "\"token\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 55,
+        "owner": "SessionKeychain",
+        "swiftLiterals": [
+          "\"token\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 58,
+        "owner": "SessionKeychain",
+        "swiftLiterals": [
+          "\"token\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 59,
+        "owner": "SessionKeychain",
+        "swiftLiterals": [
+          "\"Secure storage is unavailable. Please unlock your device and try again.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 77,
+        "owner": "SocialSession",
+        "swiftLiterals": [
+          "\"GET\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 78,
+        "owner": "SocialSession",
+        "swiftLiterals": [
+          "\"Invalid service address\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 81,
+        "owner": "SocialSession",
+        "swiftLiterals": [
+          "\"application/json\"",
+          "\"Accept\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 82,
+        "owner": "SocialSession",
+        "swiftLiterals": [
+          "\"Please sign in\"",
+          "\"Bearer \"",
+          "\"Authorization\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 83,
+        "owner": "SocialSession",
+        "swiftLiterals": [
+          "\"application/json\"",
+          "\"Content-Type\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 84,
+        "owner": "SocialSession",
+        "swiftLiterals": [
+          "\"image/jpeg\"",
+          "\"Content-Type\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 88,
+        "owner": "SocialSession",
+        "swiftLiterals": [
+          "\"No response from the service\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 92,
+        "owner": "SocialSession",
+        "swiftLiterals": [
+          "\"detail\"",
+          "\"Please check your details and try again.\"",
+          "\"Request failed (\\(http.statusCode)). Please try again.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 97,
+        "owner": "SocialSession",
+        "swiftLiterals": [
+          "\"GET\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 101,
+        "owner": "SocialSession",
+        "swiftLiterals": [
+          "\"username\"",
+          "\"password\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 102,
+        "owner": "SocialSession",
+        "swiftLiterals": [
+          "\"display_name\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 103,
+        "owner": "SocialSession",
+        "swiftLiterals": [
+          "\"/v1/auth/register\"",
+          "\"/v1/auth/login\"",
+          "\"POST\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 110,
+        "owner": "SocialSession",
+        "swiftLiterals": [
+          "\"/v1/me\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 114,
+        "owner": "SocialSession",
+        "swiftLiterals": [
+          "\"/v1/me\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 119,
+        "owner": "SocialSession",
+        "swiftLiterals": [
+          "\"/v1/auth/logout\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 120,
+        "owner": "SocialSession",
+        "swiftLiterals": [
+          "\"POST\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 121,
+        "owner": "SocialSession",
+        "swiftLiterals": [
+          "\"Bearer \"",
+          "\"Authorization\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 124,
+        "owner": "SocialSession",
+        "swiftLiterals": [
+          "\"Session revocation failed\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 126,
+        "owner": "SocialSession",
+        "swiftLiterals": [
+          "\"Signed out on this device. The service could not confirm session revocation; the previous token may remain valid until it expires.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 129,
+        "owner": "SocialSession",
+        "swiftLiterals": [
+          "\"/v1/media\"",
+          "\"POST\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 136,
+        "owner": "FailureBanner",
+        "swiftLiterals": [
+          "\"exclamationmark.circle\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 139,
+        "owner": "FailureBanner",
+        "swiftLiterals": [
+          "\"Retry\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 156,
+        "owner": "AuthenticatedMedia",
+        "swiftLiterals": [
+          "\"photo.badge.exclamationmark\"",
+          "\"Retry\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Service.swift",
+        "line": 159,
+        "owner": "AuthenticatedMedia",
+        "swiftLiterals": [
+          "\"/v1/media/\"",
+          "\"Image unavailable\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 11,
+        "owner": "SocialGate",
+        "swiftLiterals": [
+          "\"Sign out\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 12,
+        "owner": "SocialGate",
+        "swiftLiterals": [
+          "\"Opening your account…\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 21,
+        "owner": "AuthenticationScreen",
+        "swiftLiterals": [
+          "\"\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 22,
+        "owner": "AuthenticationScreen",
+        "swiftLiterals": [
+          "\"\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 23,
+        "owner": "AuthenticationScreen",
+        "swiftLiterals": [
+          "\"\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 30,
+        "owner": "AuthenticationScreen",
+        "swiftLiterals": [
+          "\"camera.fill\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 31,
+        "owner": "AuthenticationScreen",
+        "swiftLiterals": [
+          "\"Your people. Your perspective.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 33,
+        "owner": "AuthenticationScreen",
+        "swiftLiterals": [
+          "\"Make yourself at home\"",
+          "\"Good to see you again\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 34,
+        "owner": "AuthenticationScreen",
+        "swiftLiterals": [
+          "\"Your name\"",
+          "\"1–60 characters\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 35,
+        "owner": "AuthenticationScreen",
+        "swiftLiterals": [
+          "\"Username\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 36,
+        "owner": "AuthenticationScreen",
+        "swiftLiterals": [
+          "\"3–24 letters, numbers, or underscores\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 37,
+        "owner": "AuthenticationScreen",
+        "swiftLiterals": [
+          "\"Password · 12–128 characters\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 40,
+        "owner": "AuthenticationScreen",
+        "swiftLiterals": [
+          "\"Create account\"",
+          "\"Sign in\"",
+          "\"arrow.right\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 41,
+        "owner": "AuthenticationScreen",
+        "swiftLiterals": [
+          "\"Already here? Sign in\"",
+          "\"New here? Create an account\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 43,
+        "owner": "AuthenticationScreen",
+        "swiftLiterals": [
+          "\"Photos stay private to the people you choose. Location sharing starts off.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 51,
+        "owner": "AuthenticationScreen",
+        "swiftLiterals": [
+          "\"\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 61,
+        "owner": "FriendsScreen",
+        "swiftLiterals": [
+          "\"\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 70,
+        "owner": "FriendsScreen",
+        "swiftLiterals": [
+          "\"Find your people\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 71,
+        "owner": "FriendsScreen",
+        "swiftLiterals": [
+          "\"Search username\"",
+          "\"Search\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 72,
+        "owner": "FriendsScreen",
+        "swiftLiterals": [
+          "\"@\"",
+          "\"Add\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 74,
+        "owner": "FriendsScreen",
+        "swiftLiterals": [
+          "\"Requests\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 75,
+        "owner": "FriendsScreen",
+        "swiftLiterals": [
+          "\"Request sent\"",
+          "\"Wants to be friends\"",
+          "\"Accept\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 76,
+        "owner": "FriendsScreen",
+        "swiftLiterals": [
+          "\"No pending requests\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 78,
+        "owner": "FriendsScreen",
+        "swiftLiterals": [
+          "\"Friends\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 80,
+        "owner": "FriendsScreen",
+        "swiftLiterals": [
+          "\"@\"",
+          "\"bubble.left\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 81,
+        "owner": "FriendsScreen",
+        "swiftLiterals": [
+          "\"Remove\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 83,
+        "owner": "FriendsScreen",
+        "swiftLiterals": [
+          "\"Find a friend to start a conversation.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 85,
+        "owner": "FriendsScreen",
+        "swiftLiterals": [
+          "\"Friends\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 87,
+        "owner": "FriendsScreen",
+        "swiftLiterals": [
+          "\"/v1/friends\"",
+          "\"/v1/friend-requests\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 88,
+        "owner": "FriendsScreen",
+        "swiftLiterals": [
+          "\"/v1/users?q=\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 89,
+        "owner": "FriendsScreen",
+        "swiftLiterals": [
+          "\"/v1/friend-requests\"",
+          "\"POST\"",
+          "\"user_id\"",
+          "\"Request sent to \""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 90,
+        "owner": "FriendsScreen",
+        "swiftLiterals": [
+          "\"/v1/friend-requests/\"",
+          "\"/accept\"",
+          "\"POST\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 91,
+        "owner": "FriendsScreen",
+        "swiftLiterals": [
+          "\"/v1/friends/\"",
+          "\"DELETE\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 92,
+        "owner": "FriendsScreen",
+        "swiftLiterals": [
+          "\"/v1/conversations\"",
+          "\"POST\"",
+          "\"user_id\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 97,
+        "owner": "AccountScreen",
+        "swiftLiterals": [
+          "\"\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 101,
+        "owner": "AccountScreen",
+        "swiftLiterals": [
+          "\"\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 106,
+        "owner": "AccountScreen",
+        "swiftLiterals": [
+          "\"\"",
+          "\"\"",
+          "\"@\"",
+          "\"\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 107,
+        "owner": "AccountScreen",
+        "swiftLiterals": [
+          "\"Your profile\"",
+          "\"Display name\"",
+          "\"Save changes\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 108,
+        "owner": "AccountScreen",
+        "swiftLiterals": [
+          "\"Manage friends\"",
+          "\"person.2\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 109,
+        "owner": "AccountScreen",
+        "swiftLiterals": [
+          "\"Your privacy\"",
+          "\"Photos are only shared with your chosen conversations or friends through stories. Location is opt-in and expires when it is no longer refreshed.\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 111,
+        "owner": "AccountScreen",
+        "swiftLiterals": [
+          "\"Sign out\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 112,
+        "owner": "AccountScreen",
+        "swiftLiterals": [
+          "\"Delete account…\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 114,
+        "owner": "AccountScreen",
+        "swiftLiterals": [
+          "\"Account\"",
+          "\"\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 115,
+        "owner": "AccountScreen",
+        "swiftLiterals": [
+          "\"Permanently delete your account\"",
+          "\"This removes your account, photos, stories, messages and location. This cannot be undone.\"",
+          "\"Confirm your password\"",
+          "\"Delete permanently\"",
+          "\"Delete account\"",
+          "\"Cancel\"",
+          "\"\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 118,
+        "owner": "AccountScreen",
+        "swiftLiterals": [
+          "\"/v1/me\"",
+          "\"PATCH\"",
+          "\"display_name\""
+        ]
+      },
+      {
+        "source": "dcflight/backends/templates/ios_social/Shell.swift",
+        "line": 119,
+        "owner": "AccountScreen",
+        "swiftLiterals": [
+          "\"/v1/me\"",
+          "\"DELETE\"",
+          "\"password\"",
+          "\"\""
+        ]
+      }
+    ]
+  },
+  "nativeAdapters": [
+    {
+      "symbol": "OriginRedirectPolicy",
+      "source": "dcflight/backends/templates/ios_social/Service.swift",
+      "retain": "URLSession delegate and same-origin redirect enforcement",
+      "moveToShared": "origin/redirect/security policy declarations; adapter returns typed transport failures, not final user copy"
+    },
+    {
+      "symbol": "SessionKeychain",
+      "source": "dcflight/backends/templates/ios_social/Service.swift",
+      "retain": "SecItem native secure token read/write/delete and access class mapping",
+      "moveToShared": "storage key identity/account/session scoping and failure-message mapping"
+    },
+    {
+      "symbol": "SocialSession",
+      "source": "dcflight/backends/templates/ios_social/Service.swift",
+      "retain": "URLSession IO, cancellation, native observable-state plumbing, byte transfer",
+      "moveToShared": "endpoint/method/auth/body/result mapping; auth/register/restore/logout workflows; state assignments; 401 session clearing; post-logout notice; timeout policy; media workflow; routes"
+    },
+    {
+      "symbol": "SocialUser/AuthReply/UsersReply/FriendsReply/FriendRequest/RequestsReply/Conversation/ConversationsReply/ChatMessage/MessagesReply/MediaReply/Story/StoriesReply/FriendLocation/LocationsReply",
+      "source": "dcflight/backends/templates/ios_social/Service.swift",
+      "retain": "ordinary Swift Codable structs generated from shared typed service schema",
+      "moveToShared": "record fields, optionality, JSON names, result shapes; no manually owned duplicate DTO truth"
+    },
+    {
+      "symbol": "ServiceValidation/ServiceFailure",
+      "source": "dcflight/backends/templates/ios_social/Service.swift",
+      "retain": "typed error transport and safe extraction of allowed backend validation fields",
+      "moveToShared": "credential constraints and Unicode counting semantics; field labels; message templates; error-state decisions; max4issues/240chars presentation policy"
+    },
+    {
+      "symbol": "PhotoPreparation",
+      "source": "dcflight/backends/templates/ios_social/Camera.swift",
+      "retain": "ImageIO decoding/downsampling/orientation normalization and JPEG encoding/metadata stripping",
+      "moveToShared": "maxPixelSize2048/quality0.85/format/metadata policy; upload validation call; all failure copy"
+    },
+    {
+      "symbol": "CameraEngine",
+      "source": "dcflight/backends/templates/ios_social/Camera.swift",
+      "retain": "AVCaptureSession/device/input/photoOutput delegate, serial queue and authorization API calls",
+      "moveToShared": "requested lens/flash mode/session settings; permission prompt trigger; lifecycle actions; retry/denial behavior and message mapping"
+    },
+    {
+      "symbol": "CameraPreviewSurface/CameraPreview",
+      "source": "dcflight/backends/templates/ios_social/Camera.swift",
+      "retain": "AVCaptureVideoPreviewLayer UIViewRepresentable leaf surface",
+      "moveToShared": "fit/fill, frame, clipping, safe-area, rotation policy; no overlay controls or app copy"
+    },
+    {
+      "symbol": "LocationEngine",
+      "source": "dcflight/backends/templates/ios_social/Map.swift",
+      "retain": "CLLocationManager delegate, typed authorization events, request and stop APIs",
+      "moveToShared": "accuracy/freshness settings; consent/publish decisions; update frequency/lifetime; failure labels"
+    },
+    {
+      "symbol": "Map/Annotation/MapCameraPosition",
+      "source": "dcflight/backends/templates/ios_social/Map.swift",
+      "retain": "MapKit leaf map/camera/coordinate rendering with typed callbacks",
+      "moveToShared": "marker collection and row template; selection actions; compass/scale options; camera parameters; overlay UI"
+    },
+    {
+      "symbol": "PhotosPicker",
+      "source": "dcflight/backends/templates/ios_social/Camera.swift;dcflight/backends/templates/ios_social/Messaging.swift",
+      "retain": "system photo chooser adapter returning typed media handle",
+      "moveToShared": "launch action, image-only filter, selection continuation, caption/composer route, label/icon and empty/error UI"
+    },
+    {
+      "symbol": "SocialPolicy/c_alias",
+      "source": "dcflight/backends/ios_social.py",
+      "retain": "C ABI wrappers that invoke actual released DC Dart native symbols",
+      "moveToShared": "policy function bindings and call sites; no duplicated validation or business constants"
+    }
+  ],
+  "generatorOwnedAppDecisions": [
+    {
+      "source": "dcflight/backends/ios_social.py",
+      "decisions": [
+        "FEATURES hardcodes screen implementations",
+        "inbox discovery controls global conversation-route tab selection",
+        "camera feature membership controls dark scheme and selected tint",
+        "first-tab default and AppStorage selection persistence",
+        "appid://conversation/<32hex> deep-link pattern",
+        "camera/location permission prompt copy",
+        "Info.plist orientations/version and service security configuration",
+        "SocialPolicy text trimming/count and server-expiry clamp are currently native wrapper decisions"
+      ]
+    },
+    {
+      "source": "dcflight/backends/ios.py",
+      "decisions": [
+        "service presence chooses alternate AppMain session gate",
+        "implicit root padding depends on feature classification",
+        "node generation should consume shared screen/route IR rather than social feature names"
+      ]
+    }
+  ],
+  "smallestReusableIRAdditions": [
+    {
+      "id": "typed-model",
+      "add": [
+        "records/enums/optional/list/blob-or-media-handle state",
+        "screen/component local state and typed resource results",
+        "field/item/result references and bindable input values",
+        "typed conditional/coalesce/comparison/list length/format expressions"
+      ],
+      "reason": "all screens render typed dynamic collections and async state, beyond scalar AppModel"
+    },
+    {
+      "id": "collection-and-slots",
+      "add": [
+        "repeat(collection,key,itemTemplate)",
+        "conditional branches with else",
+        "grid(columns,gap,itemTemplate)",
+        "overlay(alignment) and safe-area policy",
+        "reusable shared component definitions with props/slots/actions"
+      ],
+      "reason": "express chats/stories/friends, avatar/error/empty compositions without whole-screen native templates"
+    },
+    {
+      "id": "controls",
+      "add": [
+        "secure/multiline text input with semantic keyboard/content type and focus",
+        "button/iconButton child slot,disabled/loading/destructive semantics",
+        "selection picker with typed item binding",
+        "section/form and toolbar slots",
+        "image resource handle with loading/error/success slots and fit",
+        "scroll-anchor action; refresh trigger"
+      ],
+      "reason": "reuse existing text,row,column,card,scroll,style primitives; author copy/layout once"
+    },
+    {
+      "id": "routing",
+      "add": [
+        "screen definitions with typed params",
+        "navigation stack of route values",
+        "tabs with shared title/icon/root route",
+        "push/pop/replace/selectTab/presentSheet/dismiss actions",
+        "sheet route binding and result continuation",
+        "shared deep-link route pattern and typed validation"
+      ],
+      "reason": "current implicit callbacks/global conversationRoute and native sheets must become shared route graph"
+    },
+    {
+      "id": "effects",
+      "add": [
+        "typed service operation declarations from shared protocol schema",
+        "named flows: sequence,branch,await,assign,catch,finally",
+        "resource load/refresh and keyed pagination merge",
+        "scope cancellation and latest-result guards",
+        "onEnter/onExit/onForeground/onBackground/onValueChange",
+        "shared timer interval, clock source and refresh policy"
+      ],
+      "reason": "remove endpoint calls, polling intervals, post-success navigation and duplicated orchestration from screen backends"
+    },
+    {
+      "id": "os-leaves",
+      "add": [
+        "camera.preview + typed capture/start/stop/flip operations/events",
+        "photos.pick -> media handle",
+        "media.normalize config -> media handle",
+        "map view + item slot + typed camera state",
+        "location permission/request/stop -> typed state",
+        "secure storage and openSettings operations"
+      ],
+      "reason": "native adapters implement only platform mechanisms; all prompts, controls and action wiring remain shared"
+    },
+    {
+      "id": "shared-copy-policy",
+      "add": [
+        "localized text/format identifiers and accessibility labels/hints",
+        "shared DC Dart call expressions/actions over typed args",
+        "shared validation/error mapping config",
+        "theme tokens including conditional status/tab chrome"
+      ],
+      "reason": "platform Swift cannot own slogans, defaults, credential rules or independent policies"
+    }
+  ],
+  "navigationAssessment": {
+    "feasible": true,
+    "emission": "Emit ordinary SwiftUI NavigationStack(path:), enum Route with typed associated values, navigationDestination switch, native Tab/TabView with shared labels, and sheet(item:) using typed modal routes. Generate views/handlers at compile time; never evaluate route or UI JSON in app.",
+    "platformCompatibility": "Native Tab on iOS18+ and tabItem fallback on17 are backend compatibility detail. Both consume identical shared route/title/icon values.",
+    "requirements": [
+      "scope stack per shared tab route; sheet own optional stack only when declared",
+      "all destinations, titles, toolbars, confirmation copy, dismiss/result handling and deep links declared once",
+      "validate route existence/param types at compile time; stable IDs for generated files and collection identity",
+      "only shared flows choose initial auth/register mode, authenticated root and post-success navigation",
+      "expose native safe-area/navigation styles as typed shared semantics or explicit platform escape hatch, never inferred from app-specific names"
+    ]
+  },
+  "migrationAcceptance": [
+    "Changing one authored label/layout/order/action changes iOS and Android output with no edits to platform screen templates.",
+    "Generated screen source traces every text, style constant, route and effect decision to shared IR node or shared service/policy declaration.",
+    "No iOS backend special cases for Snap, CameraScreen, InboxScreen, StoriesScreen, FriendMapScreen or AccountScreen.",
+    "Existing native integration coverage retained against extracted native adapters; add equivalent shared flow/route tests across both generators.",
+    "Audit unexpected app copy/endpoint/polling literals remaining in native backend sources; allow only documented OS/protocol mechanics."
+  ]
+}

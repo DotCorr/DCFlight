@@ -11,7 +11,7 @@ import shutil
 import subprocess
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from dcflight.audit import audit, FORBIDDEN
+from dcflight.audit import audit, audit_apk, FORBIDDEN
 from dcflight.compiler import compile_app
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -82,15 +82,12 @@ def main():
             run([args.gradle, '--no-daemon', ':app:assembleDebug'], detached / 'android', work / (example + '-gradle.log'), env)
             import zipfile
             apk = detached / 'android/app/build/outputs/apk/debug/app-debug.apk'
-            with zipfile.ZipFile(apk) as archive:
-                names = archive.namelist()
-                if any(name.startswith('lib/') or name.endswith(('.dart', '.js', '.wasm')) for name in names):
-                    raise RuntimeError('Unexpected embedded runtime asset or native library')
-                for name in names:
-                    if name.endswith('.dex'):
-                        dex = archive.read(name)
-                        if any(token in dex for token in (b'dcflight', b'io/flutter/', b'com/facebook/react/', b'libdart', b'libhermes')):
-                            raise RuntimeError('Forbidden runtime reference in DEX')
+            expected = {}
+            logic_report = generated / '.dcflight/logic.json'
+            if logic_report.exists():
+                for relative, evidence in json.loads(logic_report.read_text())['libraries'].items():
+                    expected['lib/' + relative.split('/jniLibs/', 1)[1]] = evidence['sha256']
+            audit_apk(apk, expected)
             run([args.gradle, '--no-daemon', ':app:dependencies', '--configuration', 'debugRuntimeClasspath'],
                 detached / 'android', work / (example + '-android-dependencies.txt'), env)
             if 'No dependencies' not in (work / (example + '-android-dependencies.txt')).read_text():

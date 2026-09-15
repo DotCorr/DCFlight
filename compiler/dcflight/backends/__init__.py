@@ -1,13 +1,13 @@
 """A backend consumes only validated IR + reviewed mappings and returns an artifact plan."""
 from dataclasses import dataclass
-from typing import Protocol, Dict
+from typing import Protocol, Dict, Union
 from ..ir import Application
 from ..registry import Registry
 
 
 @dataclass(frozen=True)
 class Artifact:
-    content: str
+    content: Union[str, bytes]
     ownership: str = "generated"
 
 

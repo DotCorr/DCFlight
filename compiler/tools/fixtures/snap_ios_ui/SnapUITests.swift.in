@@ -1,0 +1,77 @@
+import XCTest
+@MainActor final class SnapUITests: XCTestCase {
+ func record(_ name: String, _ app: XCUIApplication) {
+  print("SNAP_UI_" + name + "_BEGIN\n" + app.debugDescription + "\nSNAP_UI_" + name + "_END")
+  let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = name; shot.lifetime = .keepAlways; add(shot)
+ }
+ func tapBounds(_ element: XCUIElement, in app: XCUIApplication) {
+  var frame = element.frame
+  var stable = 0
+  let deadline = Date().addingTimeInterval(5)
+  repeat {
+   RunLoop.current.run(until: Date().addingTimeInterval(0.25))
+   let next = element.frame
+   stable = next == frame && next.width > 0 && next.height > 0 ? stable + 1 : 0
+   frame = next
+  } while stable < 3 && Date() < deadline
+  XCTAssertGreaterThanOrEqual(stable, 3)
+  XCTAssertGreaterThan(frame.width, 0)
+  XCTAssertGreaterThan(frame.height, 0)
+  XCTAssertTrue(app.frame.contains(frame))
+  app.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0)).withOffset(CGVector(dx: frame.midX - app.frame.minX, dy: frame.midY - app.frame.minY)).tap()
+ }
+ func pickerElement(_ label: String, image: Bool) -> XCUIElement {
+  // ExtensionKit may replace the picker process after presentation. Do not
+  // retain a query tied to the previous picker PID while waiting for the UI.
+  let deadline = Date().addingTimeInterval(15)
+  repeat {
+   let picker = XCUIApplication(bundleIdentifier: "com.apple.mobileslideshow.photospicker")
+   let element = image ? picker.images.matching(identifier: "PXGGridLayout-Info").matching(NSPredicate(format: "label == %@", label)).firstMatch : picker.buttons[label]
+   if element.exists { return element }
+   RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+  } while Date() < deadline
+  let picker = XCUIApplication(bundleIdentifier: "com.apple.mobileslideshow.photospicker")
+  record("picker-timeout", picker)
+  XCTFail("Picker did not expose requested QA control: " + label)
+  return picker.buttons["missing"]
+ }
+ func testSelectPhotoAndCancel() throws {
+  continueAfterFailure = false
+  let app = XCUIApplication(bundleIdentifier: "com.dotcorr.snapshared")
+  app.activate()
+  XCTAssertTrue(app.tabBars.buttons["Camera"].waitForExistence(timeout: 10))
+  if app.buttons["Choose a library photo"].exists && !app.buttons["Choose a library photo"].isEnabled {
+   let cancel = pickerElement("Cancel", image: false)
+   tapBounds(cancel, in: app)
+   let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true AND hittable == true"), object: app.buttons["Choose a library photo"])
+   wait(for: [ready], timeout: 5)
+  }
+  app.tabBars.buttons["Camera"].tap()
+  app.scrollViews.firstMatch.swipeUp()
+  app.buttons["Choose a library photo"].tap()
+  tapBounds(pickerElement(__PHOTO_LABEL__, image: true), in: app)
+  XCTAssertTrue(app.staticTexts["A little moment."].waitForExistence(timeout: 15))
+  let preview = app.images["Your selected photo"]
+  XCTAssertTrue(preview.waitForExistence(timeout: 10))
+  XCTAssertEqual(preview.frame.midX, app.frame.midX, accuracy: 1)
+  XCTAssertTrue(app.tabBars.buttons["Camera"].isHittable, "A push inside Camera must retain its owning tabs")
+  let titleBar = app.navigationBars["Share a photo"]
+  XCTAssertTrue(titleBar.exists)
+  XCTAssertLessThanOrEqual(titleBar.frame.height, 60, "Authored compact title must not expand into large title chrome")
+  record("photo-composer", app)
+  if !app.buttons["Cancel"].isHittable { app.scrollViews.firstMatch.swipeUp() }
+  XCTAssertTrue(app.buttons["Cancel"].isHittable)
+  app.buttons["Cancel"].tap()
+  XCTAssertTrue(app.buttons["Choose a library photo"].waitForExistence(timeout: 5))
+  record("composer-cancelled", app)
+  if !app.buttons["Choose a library photo"].isHittable { app.scrollViews.firstMatch.swipeUp() }
+  app.buttons["Choose a library photo"].tap()
+  let cancel = pickerElement("Cancel", image: false)
+  tapBounds(cancel, in: app)
+  let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true AND hittable == true"), object: app.buttons["Choose a library photo"])
+   wait(for: [ready], timeout: 5)
+  XCTAssertTrue(app.staticTexts["Photo selection cancelled."].waitForExistence(timeout: 5))
+  XCTAssertTrue(app.buttons["Choose a library photo"].isEnabled)
+  record("picker-cancelled", app)
+ }
+}

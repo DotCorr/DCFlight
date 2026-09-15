@@ -1,5 +1,5 @@
 import json
-from ..ir import Reference, ScalarType
+from ..ir import Reference, ScalarType, StringIsEmpty, BooleanNot, BooleanAll, BooleanAny
 
 
 def symbol(name):
@@ -7,7 +7,17 @@ def symbol(name):
     return 'n_' + name
 
 
-def expression(expr, target):
+def expression(expr, target, render=None):
+    # Routed row bindings provide their leaf resolver; predicates stay native
+    # expressions, with the same lexical scope at every nesting depth.
+    child = render or (lambda value: expression(value, target))
+    if isinstance(expr, StringIsEmpty):
+        return '(' + child(expr.value) + ').isEmpty' + ('' if target == 'ios' else '()')
+    if isinstance(expr, BooleanNot):
+        return '(!' + child(expr.value) + ')'
+    if isinstance(expr, (BooleanAll, BooleanAny)):
+        operator = ' && ' if isinstance(expr, BooleanAll) else ' || '
+        return '(' + operator.join(child(value) for value in expr.values) + ')'
     if isinstance(expr, Reference):
         return 'model.s_' + expr.name
     if expr.type == ScalarType.BOOL:
