@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 class SnapPackagingTests(unittest.TestCase):
     def test_open_installed_shared_app_does_not_compile_or_reinstall(self):
-        tool=Path(__file__).resolve().parents[1]/'tools/snap_launcher.py'
+        tool=Path(__file__).resolve().parents[1]/'examples/snap/tools/snap_launcher.py'
         spec=importlib.util.spec_from_file_location('snap_launcher_test',tool)
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
         with tempfile.TemporaryDirectory() as temp:
@@ -29,7 +29,7 @@ class SnapPackagingTests(unittest.TestCase):
     def test_mac_launcher_reaches_success_without_shell_status_collision(self):
         zsh=shutil.which('zsh')
         if not zsh:self.skipTest('zsh required for Mac command launcher')
-        tool=Path(__file__).resolve().parents[1]/'tools/package_snap.py'
+        tool=Path(__file__).resolve().parents[1]/'examples/snap/tools/package_snap.py'
         spec=importlib.util.spec_from_file_location('snap_packager',tool)
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
         with tempfile.TemporaryDirectory() as temp:

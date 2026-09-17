@@ -45,10 +45,10 @@ The native projects are the product. Shared routed applications use ordinary Swi
 
 ## Shared-source Snap
 
-`examples/snap-shared/app.dart` is the active shared application definition: screens, copy, styling, navigation, typed state, requests and effects. `logic.dart` owns its compiled client decisions. The two native generators translate those declarations; they do not contain separate Snap screens. The older `examples/snap/` feature templates remain for compatibility and are not evidence of shared-source parity.
+`examples/snap/shared/app.dart` is the active shared application definition: screens, copy, styling, navigation, typed state, requests and effects. `logic.dart` owns its compiled client decisions. The two native generators translate those declarations; they do not contain separate Snap screens. The complete Snap example (apps, server contract, QA harnesses) lives in `examples/snap/`.
 
 ```sh
-./bin/dcflight compile examples/snap-shared/app.dart --out /absolute/path/snap-native --evaluate-dart --dart-sdk /path/to/dart
+./bin/dcflight compile examples/snap/shared/app.dart --out /absolute/path/snap-native --evaluate-dart --dart-sdk /path/to/dart
 ```
 
 The native projects build independently after generation. See [shared effects](docs/shared-effects-contract.md), [typed collections](docs/shared-collections-contract.md), [native media](docs/shared-media-contract.md) and [camera/maps/location](docs/shared-device-contract.md) for the implemented contracts and limits. Native device adapters are implemented; complete hardware, UI and production acceptance remain unfinished. Successful compilation is not a claim that every product flow is complete.

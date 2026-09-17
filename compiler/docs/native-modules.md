@@ -22,7 +22,7 @@ This runs a temporary reviewed Gradle initialization script against the app's `d
 
 For an aligned lock, all locked AAR/JAR bytes remain in the generated project. Its Gradle include excludes Maven duplicates of those modules only from application compile/runtime classpaths; compiler/plugin classpaths are untouched. No locked artifact is silently discarded. A re-lock operation temporarily disables these generated exclusions during resolution, without building the application. Re-resolve and verify native builds when changing host dependency requirements. Locks that select different versions of the same module cannot be combined without joint alignment.
 
-`examples/native-modules/maplibre-compose/` records the shared Snap compatibility graph. This fixes the duplicate AndroidX/Kotlin classes produced by combining the earlier standalone MapLibre lock with Compose. A resolved graph still requires native compilation and execution before claiming compatibility.
+`examples/native-modules/maplibre-compose/` records the Snap example's compatibility graph (see `examples/snap/`). This fixes the duplicate AndroidX/Kotlin classes produced by combining the earlier standalone MapLibre lock with Compose. A resolved graph still requires native compilation and execution before claiming compatibility.
 
 Dart authors attach the locked module to the app:
 

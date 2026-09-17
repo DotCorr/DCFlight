@@ -24,7 +24,7 @@ Root owns IR/validation/schema/compiler integration, backend service and shared 
 
 ## Social service and native feature contract
 
-`Application.service: Optional[Service]` has `base_url: str`, `protocol: str='snap.v1'`, `development: bool=False`. JSON `service:{baseUrl,protocol,development}`. Production baseUrl must be HTTPS, no credentials/query/fragment. Explicit development permits only HTTP localhost/127.0.0.1; Android generator maps loopback to10.0.2.2 for the emulator. No public deployment is implied. API contract lives in services/snap/. No credentials are authored into the IR.
+`Application.service: Optional[Service]` has `base_url: str`, `protocol: str='snap.v1'`, `development: bool=False`. JSON `service:{baseUrl,protocol,development}`. Production baseUrl must be HTTPS, no credentials/query/fragment. Explicit development permits only HTTP localhost/127.0.0.1; Android generator maps loopback to10.0.2.2 for the emulator. No public deployment is implied. API contract lives in examples/snap/server/. No credentials are authored into the IR.
 
 `Application.theme: Optional[Theme]` fields accent/background/surface/text/muted/danger hexRGBA colors, radius integer0..128 and padding integer0..128. Defaults in ir.py. A theme is compile-time configuration. No runtime theme registry.
 
