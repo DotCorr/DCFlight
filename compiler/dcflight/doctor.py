@@ -89,10 +89,12 @@ def _detect():
 
 
 def status():
-    """Return {'items': [...], 'ready': bool, 'missing': [...]}."""
+    """Return {'items': [...], 'ready': bool, 'missing': [...], 'designCompanion': {...}}."""
     items = _detect()
     missing = [row['name'] for row in items if not row['present'] and row['name'] in REQUIRED]
-    return {'items': items, 'ready': not missing, 'missing': missing}
+    from .design_companion import APPLLLAMA
+    return {'items': items, 'ready': not missing, 'missing': missing,
+            'designCompanion': APPLLLAMA}
 
 
 def install(missing=None, progress=None):

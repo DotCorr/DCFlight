@@ -55,6 +55,8 @@ AUTHORING_TOOLS = [
     {'name': 'compile_app', 'description': 'Compile a trusted local Dart authoring file (buildApp()) into native iOS and Android projects at outDir. Runs the trusted-local Dart toolchain; never call on untrusted files.',
      'inputSchema': object_schema({'source': {'type': 'string'}, 'outDir': {'type': 'string'},
          'target': {'type': 'string', 'enum': ['ios', 'android']}, 'dart': {'type': 'string'}}, ('source', 'outDir'))},
+    {'name': 'design_guidance', 'description': 'Platform-first authoring guidance (overview, list, navigation, form, cards, tabbar) plus the default design-companion registration (Appllama MCP + skills). Users may replace the companion with their own skills.',
+     'inputSchema': object_schema({'topic': {'type': 'string'}})},
 ]
 
 
@@ -152,6 +154,9 @@ class Server:
                     files = compile_app(Path(args['source']), args['outDir'], targets, document=data)
                     result = {'outDir': str(Path(args['outDir']).resolve()),
                               'targets': list(targets), 'files': len(files)}
+                elif name == 'design_guidance':
+                    from .design_companion import guidance
+                    result = guidance(args.get('topic'))
                 elif name == 'registry_search':
                     query = args.get('query', '')
                     if not isinstance(query, str):

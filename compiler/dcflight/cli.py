@@ -61,6 +61,9 @@ def main(argv=None):
     command.add_argument('--catalog')
     command = sub.add_parser('mcp-config', help='Print an MCP client configuration block for this compiler')
     command.add_argument('--client', default='generic')
+    command = sub.add_parser('design-guidance', help='Platform-first authoring guidance and the design-companion registration')
+    command.add_argument('topic', nargs='?', default=None,
+                         help='overview, list, navigation, form, cards or tabbar')
     command = sub.add_parser('doctor', help='Check installed native toolchains (Xcode, Android, Dart, dcdart)')
     command.add_argument('--install', action='store_true', help='Opt in to installing missing dev toolchains')
     command.add_argument('--tool', action='append', default=[], help='Install only these tools (dart, dcc)')
@@ -189,6 +192,9 @@ def main(argv=None):
         elif args.command == 'mcp-config':
             from .mcp import mcp_config
             result = mcp_config(args.client)
+        elif args.command == 'design-guidance':
+            from .design_companion import guidance
+            result = guidance(args.topic)
         elif args.command == 'doctor':
             from . import doctor
             if args.install or args.tool:

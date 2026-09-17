@@ -23,7 +23,7 @@ class MCPCatalogTests(unittest.TestCase):
             self.assertEqual(set(names),{'registry_search','app_schema','validate_app',
                 'sdk_android_invocation_schema','sdk_emit_operation','sdk_emit_sequence',
                 'sdk_search','sdk_get','sdk_coverage','sdk_emit',
-                'doctor','doctor_install','mcp_config','compile_app'})
+                'doctor','doctor_install','mcp_config','compile_app','design_guidance'})
             schema_result=call('tools/call',name='sdk_android_invocation_schema',arguments={})
             self.assertFalse(schema_result.get('isError',False))
             schema=json.loads(schema_result['content'][0]['text'])
