@@ -4,7 +4,7 @@ import json,os,sys,subprocess,hashlib
 from pathlib import Path
 import argparse,shutil
 parser=argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--compiler',type=Path,default=Path(__file__).resolve().parents[1])
+parser.add_argument('--compiler',type=Path,default=Path(__file__).resolve().parents[3])
 parser.add_argument('--toolchain',type=Path,required=True)
 parser.add_argument('--output',type=Path,required=True)
 args=parser.parse_args();repo=args.compiler.resolve();r=args.output.resolve()
@@ -31,7 +31,7 @@ os.environ['PATH']=str(Path(cfg['dart']).parent)+os.pathsep+os.environ['PATH']
 os.environ.update(CI='true',DART_SUPPRESS_ANALYTICS='true',CLANG_MODULE_CACHE_PATH=str(r/'clang-cache'),SWIFT_MODULECACHE_PATH=str(r/'swift-cache'),DCFLIGHT_DCC=cfg['dcc'],DCFLIGHT_ANDROID_CLANG=cfg['androidClang'])
 (r/'fixture').mkdir()
 shutil.copyfile(Path(__file__).resolve().parents[1]/'tests/fixtures/shared_utf8_results.dart',r/'fixture/logic.dart')
-shutil.copyfile(repo/'examples/snap-shared/prelude.dart',r/'fixture/prelude.dart')
+shutil.copyfile(repo/'examples/snap/shared/prelude.dart',r/'fixture/prelude.dart')
 app=SimpleNamespace(id='com.example.utf8result',logic=LogicModule('logic.dart','prelude.dart',(LogicFunction('transform',(ABIType.UTF8,ABIType.UINT32),ABIType.UTF8,64),LogicFunction('empty',(),ABIType.UTF8,1))))
 artifacts=generate_logic(app,r/'fixture/app.json',('ios','android'))
 for name,artifact in artifacts.items():

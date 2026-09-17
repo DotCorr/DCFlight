@@ -10,7 +10,7 @@ import subprocess
 def main():
     p=argparse.ArgumentParser();p.add_argument('--dcc',required=True);p.add_argument('--dart',required=True);p.add_argument('--out',required=True)
     args=p.parse_args();out=Path(args.out).resolve();out.mkdir(parents=True,exist_ok=True)
-    source=Path(__file__).resolve().parents[1]/'examples/snap-shared/logic.dart';prelude=source.with_name('prelude.dart')
+    source=Path(__file__).resolve().parents[1]/'shared/logic.dart';prelude=source.with_name('prelude.dart')
     env={**os.environ,'DCDART_DART':str(Path(args.dart).absolute())}
     for target in ('host','ios-arm64','ios-simulator-arm64','android-arm64'):
         subprocess.run([args.dcc,'build','--mode','bare','--target',target,'--prelude',prelude,source,'-o',out/(target+'.o'),'--emit-header',out/(target+'.h')],env=env,check=True)

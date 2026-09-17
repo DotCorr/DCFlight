@@ -14,7 +14,8 @@ import time
 import urllib.request
 import uuid
 ROOT=Path(__file__).resolve().parents[1]
-sys.path.insert(0,str(ROOT))
+COMPILER=Path(__file__).resolve().parents[3]
+sys.path.insert(0,str(COMPILER))
 from dcflight.evaluated_frontend import load_evaluated
 from dcflight.compiler import compile_app
 from dcflight.audit import audit
@@ -24,7 +25,7 @@ def main():
     p=argparse.ArgumentParser();p.add_argument('--dcc',required=True);p.add_argument('--dart',required=True);p.add_argument('--out',required=True);p.add_argument('--simulator')
     a=p.parse_args();out=Path(a.out).resolve();out.mkdir(parents=True,exist_ok=True)
     with socket.socket() as sock:sock.bind(('127.0.0.1',0));port=sock.getsockname()[1]
-    base=f'http://127.0.0.1:{port}';source=ROOT/'examples/snap-shared/app.dart'
+    base=f'http://127.0.0.1:{port}';source=ROOT/'shared/app.dart'
     source_evidence={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (source,source.with_name('logic.dart'))}
     data=load_evaluated(source,dart=a.dart);data['transport']['baseUrl']=base
     data['id']='com.dotcorr.flowtest'+uuid.uuid4().hex[:12]
@@ -72,7 +73,7 @@ def main():
         simulator_result=container/'Documents/flow-report.json';simulator_result.unlink(missing_ok=True)
     else:subprocess.run(['codesign','--force','--sign','-',bundle],check=True,capture_output=True)
     with (out/'backend.log').open('w') as log:
-        backend=subprocess.Popen([sys.executable,'-m','uvicorn','snap_service.main:create_app','--factory','--host','127.0.0.1','--port',str(port),'--no-access-log','--log-level','error'],cwd=ROOT/'services/snap',env=env,stdout=log,stderr=subprocess.STDOUT)
+        backend=subprocess.Popen([sys.executable,'-m','uvicorn','snap_service.main:create_app','--factory','--host','127.0.0.1','--port',str(port),'--no-access-log','--log-level','error'],cwd=ROOT/'server',env=env,stdout=log,stderr=subprocess.STDOUT)
     try:
         for _ in range(80):
             try:

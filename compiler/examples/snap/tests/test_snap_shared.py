@@ -13,7 +13,7 @@ class SnapSharedSourceTests(unittest.TestCase):
     def setUpClass(cls):
         dart=shutil.which('dart')
         if not dart:raise unittest.SkipTest('Dart SDK required')
-        cls.app=lower_routed(load_evaluated(Path(__file__).resolve().parents[1]/'examples/snap-shared/app.dart',dart=dart),Registry())
+        cls.app=lower_routed(load_evaluated(Path(__file__).resolve().parents[1]/'shared/app.dart',dart=dart),Registry())
         cls.flows={f.id:f for f in cls.app.flow_actions}
 
     def test_real_account_routes_and_initial_restore(self):

@@ -14,7 +14,7 @@ The four business gates call the released DC Dart AOT library through generated 
 
 Android uses the explicitly declared MapLibre Native OpenGL12.3.1 module. The compiler module lock resolves exact native AAR/JAR content; this is an ordinary native mapping SDK. The OpenFreeMap style retains map attribution. Loading errors are shown; friend coordinates come only from the authorized backend. Development HTTP is restricted to the emulator loopback alias10.0.2.2; all other cleartext traffic is refused.
 
-The service contract is `services/snap/api-contract.json`. Private media always uses authenticated `/v1/media/{id}` requests. There are no public attachment URLs, fabricated message receipts, synthetic friends or fake locations. Conversations poll while foregrounded; push notifications are not implemented.
+The service contract is `../server/api-contract.json`. Private media always uses authenticated `/v1/media/{id}` requests. There are no public attachment URLs, fabricated message receipts, synthetic friends or fake locations. Conversations poll while foregrounded; push notifications are not implemented.
 
 ## Verification boundaries
 

@@ -15,7 +15,8 @@ import sys
 import time
 
 ROOT=Path(__file__).resolve().parents[1]
-sys.path.insert(0,str(ROOT))
+COMPILER=Path(__file__).resolve().parents[3]
+sys.path.insert(0,str(COMPILER))
 from dcflight.backends.ios import PROJECT
 
 

@@ -8,13 +8,13 @@ import shlex
 
 
 def package(destination,config_path,python,ios_device,android_starter,*,allow_existing=False,backend_database=None):
-    root=Path(destination).resolve();compiler=Path(__file__).resolve().parents[1]
+    root=Path(destination).resolve();snap=Path(__file__).resolve().parents[1];compiler=snap.parents[1]
     if not (root/'app.dart').is_file() or not (root/'ios').is_dir() or not (root/'android').is_dir():
         raise ValueError('Destination must already contain the Snap authoring and generated native projects')
     config=json.loads(Path(config_path).read_text())
     config.update(compiler=str(compiler),python=str(Path(python).absolute()),iosDevice=ios_device,applicationId='com.dotcorr.snap',allowExistingBackend=allow_existing)
     if backend_database:config['backendDatabase']=str(Path(backend_database).resolve())
-    shutil.copytree(compiler/'services/snap',root/'backend',dirs_exist_ok=True,ignore=shutil.ignore_patterns('__pycache__','.pytest_cache','.venv','data','*.sqlite3','*.sqlite3-*'))
+    shutil.copytree(snap/'server',root/'backend',dirs_exist_ok=True,ignore=shutil.ignore_patterns('__pycache__','.pytest_cache','.venv','data','*.sqlite3','*.sqlite3-*'))
     shutil.copy2(Path(__file__).with_name('snap_launcher.py'),root/'launch.py')
     shutil.copy2(android_starter,root/'start_android.py')
     (root/'toolchain.json').write_text(json.dumps(config,indent=2)+'\n')

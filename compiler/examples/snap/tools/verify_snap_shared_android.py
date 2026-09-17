@@ -62,7 +62,7 @@ def main():
         report=json.loads((out/'report.json').read_text());report['artifactAudit']=audit_artifact(root,out/'generated',out/'artifact-audit');report['passed']=report['passed'] and report['artifactAudit']['passed']
         (out/'report.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps({'passed':report['passed'],'artifactAudit':report['artifactAudit']}));return 0 if report['passed'] else 1
     compiler_hashes={str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (root/'dcflight').rglob('*.py')}
-    tag=uuid.uuid4().hex[:12];app='com.dotcorr.flowtest'+tag;checks=app+'checks';source=root/'examples/snap-shared/app.dart'
+    tag=uuid.uuid4().hex[:12];app='com.dotcorr.flowtest'+tag;checks=app+'checks';source=Path(__file__).resolve().parents[1]/'shared/app.dart'
     with socket.socket() as sock:sock.bind(('127.0.0.1',0));port=sock.getsockname()[1]
     base=f'http://127.0.0.1:{port}'
     env={**os.environ,'JAVA_HOME':c['javaHome'],'ANDROID_HOME':c['androidSDK'],'ANDROID_SDK_ROOT':c['androidSDK'],'DCFLIGHT_DCC':c['dcc'],'DCDART_DART':c['dart'],'DCFLIGHT_ANDROID_CLANG':c['androidClang'],'DCFLIGHT_NM':str(Path(c['androidClang']).with_name('llvm-nm')),'DCFLIGHT_READELF':'/opt/homebrew/opt/llvm/bin/llvm-readelf','SNAP_DATABASE':str(out/'backend.sqlite3'),'CI':'true','DART_SUPPRESS_ANALYTICS':'true'}
@@ -94,7 +94,7 @@ def main():
     try:
         for name in (app,checks):
             if package_exists(name):raise RuntimeError('Refusing existing QA identity '+name)
-        with (out/'backend.log').open('w') as log:backend=subprocess.Popen([c['python'],'-m','uvicorn','snap_service.main:create_app','--factory','--host','127.0.0.1','--port',str(port),'--no-access-log','--log-level','error'],cwd=root/'services/snap',env=env,stdout=log,stderr=subprocess.STDOUT)
+        with (out/'backend.log').open('w') as log:backend=subprocess.Popen([c['python'],'-m','uvicorn','snap_service.main:create_app','--factory','--host','127.0.0.1','--port',str(port),'--no-access-log','--log-level','error'],cwd=root/'examples/snap/server',env=env,stdout=log,stderr=subprocess.STDOUT)
         for _ in range(100):
             if backend.poll() is not None:raise RuntimeError('Isolated backend exited')
             try:
