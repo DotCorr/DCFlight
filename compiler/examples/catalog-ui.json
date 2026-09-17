@@ -1,0 +1,213 @@
+{
+  "version": 1,
+  "id": "com.dotcorr.catalogui",
+  "name": "DCFlight UI Catalog",
+  "state": {
+    "taps": 0,
+    "handle": "tahiru",
+    "secret": "",
+    "wifi": true,
+    "level": 64
+  },
+  "actions": [
+    {"id": "tap", "op": "increment", "target": "taps"},
+    {"id": "reset", "op": "set", "target": "taps", "value": 0}
+  ],
+  "root": {
+    "id": "page",
+    "type": "scroll",
+    "props": {},
+    "style": {"backgroundColor": "#0B0F1AFF", "fillWidth": true},
+    "children": [
+      {
+        "id": "content",
+        "type": "column",
+        "props": {},
+        "style": {
+          "backgroundColor": "#0B0F1AFF",
+          "padding": 20,
+          "spacing": 18,
+          "fillWidth": true
+        },
+        "children": [
+      {
+        "id": "title",
+        "type": "text",
+        "props": {"text": "DCFlight UI Catalog"},
+        "style": {"color": "#F4F6FBFF", "fontSize": 24, "fontWeight": "bold", "fillWidth": true, "alignment": "center"}
+      },
+      {
+        "id": "subtitle",
+        "type": "text",
+        "props": {"text": "Every portable UI capability, one true source"},
+        "style": {"color": "#9BA8B9FF", "fontSize": 12, "fontWeight": "medium", "fillWidth": true, "alignment": "center"}
+      },
+      {
+        "id": "divider1",
+        "type": "divider",
+        "props": {},
+        "style": {"backgroundColor": "#1D2538FF", "height": 1, "fillWidth": true}
+      },
+
+      {
+        "id": "typoCard",
+        "type": "column",
+        "props": {},
+        "style": {"backgroundColor": "#151B2BFF", "cornerRadius": 16, "padding": 16, "spacing": 10, "fillWidth": true},
+        "children": [
+          {"id": "typoHead", "type": "text", "props": {"text": "Typography"}, "style": {"color": "#3B82F6FF", "fontSize": 13, "fontWeight": "semibold"}},
+          {"id": "typoRegular", "type": "text", "props": {"text": "Regular 15 — The quick native fox"}, "style": {"color": "#E7EBF3FF", "fontSize": 15, "fontWeight": "regular"}},
+          {"id": "typoMedium", "type": "text", "props": {"text": "Medium 15 — jumps over the lazy"}, "style": {"color": "#E7EBF3FF", "fontSize": 15, "fontWeight": "medium"}},
+          {"id": "typoSemibold", "type": "text", "props": {"text": "Semibold 15 — runtime bridge"}, "style": {"color": "#E7EBF3FF", "fontSize": 15, "fontWeight": "semibold"}},
+          {"id": "typoBold", "type": "text", "props": {"text": "Bold 15 — with zero JavaScript"}, "style": {"color": "#E7EBF3FF", "fontSize": 15, "fontWeight": "bold"}}
+        ]
+      },
+
+      {
+        "id": "colorCard",
+        "type": "column",
+        "props": {},
+        "style": {"backgroundColor": "#151B2BFF", "cornerRadius": 16, "padding": 16, "spacing": 12, "fillWidth": true},
+        "children": [
+          {"id": "colorHead", "type": "text", "props": {"text": "Color, radius & opacity"}, "style": {"color": "#3B82F6FF", "fontSize": 13, "fontWeight": "semibold"}},
+          {
+            "id": "swatches",
+            "type": "row",
+            "props": {},
+            "style": {"spacing": 12, "alignment": "center", "fillWidth": true},
+            "children": [
+              {"id": "swBlue", "type": "column", "props": {}, "style": {"backgroundColor": "#3B82F6FF", "width": 48, "height": 48, "cornerRadius": 12}},
+              {"id": "swGreen", "type": "column", "props": {}, "style": {"backgroundColor": "#22C55EFF", "width": 48, "height": 48, "cornerRadius": 24}},
+              {"id": "swRed", "type": "column", "props": {}, "style": {"backgroundColor": "#EF4444FF", "width": 48, "height": 48, "cornerRadius": 0}},
+              {"id": "swAmber", "type": "column", "props": {}, "style": {"backgroundColor": "#F59E0BFF", "width": 48, "height": 48, "cornerRadius": 12, "opacity": 50}}
+            ]
+          },
+          {
+            "id": "borderBox",
+            "type": "column",
+            "props": {},
+            "style": {
+              "backgroundColor": "#0B0F1AFF",
+              "borderColor": "#3B82F6FF",
+              "borderWidth": 2,
+              "cornerRadius": 12,
+              "padding": 12,
+              "fillWidth": true,
+              "alignment": "center"
+            },
+            "children": [
+              {"id": "borderLabel", "type": "text", "props": {"text": "2px border · 12px radius"}, "style": {"color": "#9BA8B9FF", "fontSize": 12}}
+            ]
+          }
+        ]
+      },
+
+      {
+        "id": "layoutCard",
+        "type": "column",
+        "props": {},
+        "style": {"backgroundColor": "#151B2BFF", "cornerRadius": 16, "padding": 16, "spacing": 12, "fillWidth": true},
+        "children": [
+          {"id": "layoutHead", "type": "text", "props": {"text": "Row alignment & spacing"}, "style": {"color": "#3B82F6FF", "fontSize": 13, "fontWeight": "semibold"}},
+          {
+            "id": "rowStart",
+            "type": "row",
+            "props": {},
+            "style": {"spacing": 8, "alignment": "start", "fillWidth": true},
+            "children": [
+              {"id": "r1", "type": "text", "props": {"text": "start"}, "style": {"color": "#FFFFFFFF", "fontSize": 12, "fontWeight": "medium", "backgroundColor": "#334155FF", "padding": 8, "cornerRadius": 8}},
+              {"id": "r2", "type": "text", "props": {"text": "8px gap"}, "style": {"color": "#FFFFFFFF", "fontSize": 12, "fontWeight": "medium", "backgroundColor": "#334155FF", "padding": 8, "cornerRadius": 8}}
+            ]
+          },
+          {
+            "id": "rowCenter",
+            "type": "row",
+            "props": {},
+            "style": {"spacing": 8, "alignment": "center", "fillWidth": true},
+            "children": [
+              {"id": "r3", "type": "text", "props": {"text": "center"}, "style": {"color": "#0B0F1AFF", "fontSize": 12, "fontWeight": "semibold", "backgroundColor": "#22C55EFF", "padding": 8, "cornerRadius": 8}},
+              {"id": "spacerMid", "type": "spacer", "props": {}},
+              {"id": "r4", "type": "text", "props": {"text": "+ spacer"}, "style": {"color": "#FFFFFFFF", "fontSize": 12, "fontWeight": "medium", "backgroundColor": "#334155FF", "padding": 8, "cornerRadius": 8}}
+            ]
+          },
+          {
+            "id": "rowEnd",
+            "type": "row",
+            "props": {},
+            "style": {"alignment": "end", "fillWidth": true},
+            "children": [
+              {"id": "r5", "type": "text", "props": {"text": "pushed to the end"}, "style": {"color": "#FFFFFFFF", "fontSize": 12, "fontWeight": "medium", "backgroundColor": "#334155FF", "padding": 8, "cornerRadius": 8}}
+            ]
+          }
+        ]
+      },
+
+      {
+        "id": "inputCard",
+        "type": "column",
+        "props": {},
+        "style": {"backgroundColor": "#151B2BFF", "cornerRadius": 16, "padding": 16, "spacing": 12, "fillWidth": true},
+        "children": [
+          {"id": "inputHead", "type": "text", "props": {"text": "Inputs & actions"}, "style": {"color": "#3B82F6FF", "fontSize": 13, "fontWeight": "semibold"}},
+          {"id": "handleField", "type": "textField", "props": {"value": {"ref": "handle"}, "placeholder": "Username"}, "style": {"backgroundColor": "#0B0F1AFF", "color": "#F4F6FBFF", "cornerRadius": 10, "padding": 12, "fillWidth": true}},
+          {"id": "secretField", "type": "secureField", "props": {"value": {"ref": "secret"}, "placeholder": "Password"}, "style": {"backgroundColor": "#0B0F1AFF", "color": "#F4F6FBFF", "cornerRadius": 10, "padding": 12, "fillWidth": true}},
+          {"id": "wifiToggle", "type": "toggle", "props": {"text": "Wi-Fi sync", "value": {"ref": "wifi"}}, "style": {"color": "#E7EBF3FF", "fontSize": 14, "fillWidth": true}},
+          {"id": "tapBtn", "type": "button", "props": {"text": "Increment counter"}, "action": "tap", "style": {"backgroundColor": "#3B82F6FF", "color": "#FFFFFFFF", "fontSize": 14, "fontWeight": "semibold", "cornerRadius": 12, "padding": 14, "fillWidth": true}},
+          {"id": "resetBtn", "type": "button", "props": {"text": "Reset"}, "action": "reset", "style": {"backgroundColor": "#1D2538FF", "color": "#9BA8B9FF", "fontSize": 14, "fontWeight": "medium", "cornerRadius": 12, "padding": 14, "fillWidth": true}},
+          {"id": "tapCount", "type": "counter", "props": {"value": {"ref": "taps"}}, "style": {"alignment": "center", "fillWidth": true}}
+        ]
+      },
+
+      {
+        "id": "progressCard",
+        "type": "column",
+        "props": {},
+        "style": {"backgroundColor": "#151B2BFF", "cornerRadius": 16, "padding": 16, "spacing": 12, "fillWidth": true},
+        "children": [
+          {"id": "progressHead", "type": "text", "props": {"text": "Progress & indicators"}, "style": {"color": "#3B82F6FF", "fontSize": 13, "fontWeight": "semibold"}},
+          {"id": "bar", "type": "progressBar", "props": {"value": {"ref": "level"}}, "style": {"fillWidth": true}},
+          {"id": "spin", "type": "progress", "props": {}, "style": {"alignment": "center", "fillWidth": true}}
+        ]
+      },
+
+      {
+        "id": "mediaCard",
+        "type": "column",
+        "props": {},
+        "style": {"backgroundColor": "#151B2BFF", "cornerRadius": 16, "padding": 16, "spacing": 12, "fillWidth": true},
+        "children": [
+          {"id": "mediaHead", "type": "text", "props": {"text": "Media & icons"}, "style": {"color": "#3B82F6FF", "fontSize": 13, "fontWeight": "semibold"}},
+          {
+            "id": "iconRow",
+            "type": "row",
+            "props": {},
+            "style": {"spacing": 18, "alignment": "center", "fillWidth": true},
+            "children": [
+              {"id": "icBell", "type": "icon", "props": {"name": "bell"}},
+              {"id": "icHeart", "type": "icon", "props": {"name": "heart"}},
+              {"id": "icStar", "type": "icon", "props": {"name": "star"}},
+              {"id": "icHome", "type": "icon", "props": {"name": "home"}},
+              {"id": "icGear", "type": "icon", "props": {"name": "settings"}},
+              {"id": "icSearch", "type": "icon", "props": {"name": "search"}}
+            ]
+          },
+          {
+            "id": "photo",
+            "type": "image",
+            "props": {"source": "https://picsum.photos/seed/dcflight/640/360"},
+            "style": {"cornerRadius": 12, "height": 160, "fillWidth": true}
+          }
+        ]
+      },
+
+      {
+        "id": "footer",
+        "type": "text",
+        "props": {"text": "Compiled from one JSON source to SwiftUI + Android Views"},
+        "style": {"color": "#5B6779FF", "fontSize": 11, "fontWeight": "medium", "fillWidth": true, "alignment": "center"}
+      }
+        ]
+      }
+    ]
+  }
+}
